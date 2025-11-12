@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #ff6b9d;
+  --secondary: #c44569;
+  --accent: #ffa502;
+}
+
+body {
+  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  min-height: 100vh;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6 backdrop-blur-sm bg-opacity-95;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-secondary text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-md;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-100 text-primary font-semibold py-3 px-6 rounded-full transition-all duration-300 border-2 border-primary;
+  }
+}
