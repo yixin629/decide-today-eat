@@ -2,6 +2,8 @@
 
 ## 📋 已完成的功能
 
+### 核心功能
+
 ### 1. 💡 功能申请箱 (`/feature-requests`)
 - ✅ 双方都可以提交功能申请
 - ✅ 可以标记完成状态（待处理/已完成/已拒绝）
@@ -28,6 +30,33 @@
 - ✅ 一键复制功能
 - ✅ 预设5条默认情话
 
+### 游戏功能
+
+### 5. 🤔 情侣问答 (`/couple-quiz`)
+- ✅ 互相回答关于对方的问题
+- ✅ 显示默契度/匹配率
+- ✅ 可以自定义添加题目
+- ✅ 答题结果保存到数据库
+- ✅ 进度条显示
+
+### 6. ✊ 石头剪刀布 (`/rock-paper-scissors`)
+- ✅ 在线对战（电脑随机）
+- ✅ 记录胜负统计
+- ✅ 显示胜率
+- ✅ 游戏历史保存到数据库
+
+### 7. 🃏 记忆翻牌游戏 (`/memory-game`)
+- ✅ 经典翻牌配对游戏
+- ✅ 显示步数统计
+- ✅ 使用爱心主题表情
+
+### 8. 🎨 猜猜我画的 (`/drawing`)
+- ✅ 简单画板工具
+- ✅ 计时功能
+- ✅ 可调颜色和粗细
+- ✅ 保存作品到数据库
+- ✅ 作品集展示
+
 ## 🚀 部署步骤
 
 ### 步骤 1: 执行数据库脚本
@@ -49,7 +78,7 @@
 
 ```bash
 git add .
-git commit -m "✨ 新增多个情侣互动功能：真心话大冒险、任务清单、情话生成器、功能申请箱"
+git commit -m "✨ 新增8个情侣互动功能：真心话大冒险、任务清单、情话生成器、功能申请箱、情侣问答、石头剪刀布、记忆翻牌、画板"
 git push origin main
 ```
 
@@ -63,10 +92,14 @@ git push origin main
 ### 步骤 4: 测试功能
 
 部署完成后，访问以下页面测试：
-- https://your-domain.vercel.app/feature-requests
-- https://your-domain.vercel.app/truth-or-dare
-- https://your-domain.vercel.app/bucket-list
-- https://your-domain.vercel.app/love-quotes
+- https://your-domain.vercel.app/feature-requests - 功能申请箱
+- https://your-domain.vercel.app/truth-or-dare - 真心话大冒险
+- https://your-domain.vercel.app/bucket-list - 100件想做的事
+- https://your-domain.vercel.app/love-quotes - 情话生成器
+- https://your-domain.vercel.app/couple-quiz - 情侣问答
+- https://your-domain.vercel.app/rock-paper-scissors - 石头剪刀布
+- https://your-domain.vercel.app/memory-game - 记忆翻牌
+- https://your-domain.vercel.app/drawing - 猜猜我画的
 
 ## 📝 功能使用说明
 
@@ -100,16 +133,41 @@ git push origin main
 3. 点击"复制"按钮可以复制到剪贴板
 4. 点击"添加情话"可以添加专属情话
 
+### 情侣问答
+1. 选择你的名字（zyx 或 zly）
+2. 点击"开始答题"
+3. 回答关于对方的问题
+4. 答完所有题目后显示默契度
+5. 可以自己添加题目来测试对方
+
+### 石头剪刀布
+1. 选择玩家（zyx 或 zly）
+2. 选择石头、剪刀或布
+3. 系统随机生成对手选择
+4. 查看胜负结果和统计数据
+5. 所有游戏记录都会保存
+
+### 记忆翻牌游戏
+1. 点击"开始游戏"
+2. 点击卡片翻开
+3. 找到相同的表情配对
+4. 完成所有配对即胜利
+5. 显示使用的步数
+
+### 猜猜我画的
+1. 在画布上自由绘画
+2. 选择颜色和粗细
+3. 有计时功能记录绘画时间
+4. 输入画的内容
+5. 保存作品到作品集
+
 ## 🎨 下一步可以添加的功能
 
 以下功能的数据库表已经创建，可以后续实现：
-- 🎭 情侣问答 (`couple_quiz`)
-- 🎨 猜猜我画的 (`drawings`)
-- ✊ 石头剪刀布 (`rps_games`)
-- ⏰ 倒计时 (`countdowns`)
-- 📅 共享日程 (`shared_calendar`)
-- 🎁 时光胶囊 (`time_capsules`)
-- 📖 恋爱日记 (`love_diary`)
+- ⏰ 倒计时 (`countdowns`) - 重要日期倒计时
+- 📅 共享日程 (`shared_calendar`) - 记录约会计划
+- 🎁 时光胶囊 (`time_capsules`) - 写给未来的信
+- 📖 恋爱日记 (`love_diary`) - 共同编辑日记
 
 ## 💡 提示
 

@@ -125,7 +125,7 @@ export default function LoveQuotesPage() {
                 <div className="mb-8 p-8 bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded-xl">
                   <div className="text-6xl mb-6">💝</div>
                   <div className="text-2xl font-serif italic mb-4 leading-relaxed">
-                    "{currentQuote.content}"
+                    &ldquo;{currentQuote.content}&rdquo;
                   </div>
                   <div className="text-sm text-gray-400">
                     —— {currentQuote.author}
@@ -229,7 +229,7 @@ export default function LoveQuotesPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <p className="text-lg italic mb-2">"{quote.content}"</p>
+                            <p className="text-lg italic mb-2">&ldquo;{quote.content}&rdquo;</p>
                             <div className="flex items-center gap-4 text-sm text-gray-400">
                               <span>—— {quote.author}</span>
                               <span>by {quote.created_by}</span>

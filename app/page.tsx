@@ -133,6 +133,58 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* Couple Quiz */}
+          <Link href="/couple-quiz">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">🤔</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                情侣问答
+              </h2>
+              <p className="text-gray-600 text-center">
+                测测你们的默契度
+              </p>
+            </div>
+          </Link>
+
+          {/* Rock Paper Scissors */}
+          <Link href="/rock-paper-scissors">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">✊</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                石头剪刀布
+              </h2>
+              <p className="text-gray-600 text-center">
+                看谁的运气更好
+              </p>
+            </div>
+          </Link>
+
+          {/* Memory Game */}
+          <Link href="/memory-game">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">🃏</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                记忆翻牌
+              </h2>
+              <p className="text-gray-600 text-center">
+                考验记忆力的游戏
+              </p>
+            </div>
+          </Link>
+
+          {/* Drawing */}
+          <Link href="/drawing">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">🎨</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                猜猜我画的
+              </h2>
+              <p className="text-gray-600 text-center">
+                发挥你的艺术天赋
+              </p>
+            </div>
+          </Link>
+
           {/* Feature Requests */}
           <Link href="/feature-requests">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
