@@ -93,6 +93,58 @@ export default function Home() {
               </p>
             </div>
           </Link>
+
+          {/* Truth or Dare */}
+          <Link href="/truth-or-dare">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">💖</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                真心话大冒险
+              </h2>
+              <p className="text-gray-600 text-center">
+                增进了解的趣味游戏
+              </p>
+            </div>
+          </Link>
+
+          {/* Bucket List */}
+          <Link href="/bucket-list">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">💑</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                100件想做的事
+              </h2>
+              <p className="text-gray-600 text-center">
+                我们的爱情任务清单
+              </p>
+            </div>
+          </Link>
+
+          {/* Love Quotes */}
+          <Link href="/love-quotes">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">💝</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                情话生成器
+              </h2>
+              <p className="text-gray-600 text-center">
+                每天一句甜蜜情话
+              </p>
+            </div>
+          </Link>
+
+          {/* Feature Requests */}
+          <Link href="/feature-requests">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
+              <div className="text-6xl mb-4 text-center">💡</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                功能申请箱
+              </h2>
+              <p className="text-gray-600 text-center">
+                提出你的想法和建议
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* Footer */}
