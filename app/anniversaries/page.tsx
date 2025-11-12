@@ -37,13 +37,14 @@ export default function AnniversariesPage() {
 
       if (data && data.length > 0) {
         setAnniversaries(data)
+        setLoading(false)
       } else {
         // 如果数据库为空，插入默认数据
         await insertDefaultData()
+        setLoading(false)
       }
     } catch (error) {
       console.error('加载纪念日失败:', error)
-    } finally {
       setLoading(false)
     }
   }
