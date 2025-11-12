@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 interface TimeCapsule {
@@ -160,6 +161,10 @@ export default function TimeCapsulePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-8">
       <div className="max-w-6xl mx-auto">
+        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
+          ← 返回首页
+        </Link>
+        
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">🎁 时光胶囊</h1>
