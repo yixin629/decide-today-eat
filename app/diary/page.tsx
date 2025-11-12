@@ -264,7 +264,7 @@ export default function DiaryPage() {
             <p className="text-xl text-gray-300">
               {selectedDate ? '这天还没有日记' : '还没有写过日记'}
             </p>
-            <p className="text-gray-400 mt-2">点击"写日记"开始记录美好时光</p>
+            <p className="text-gray-400 mt-2">点击&ldquo;写日记&rdquo;开始记录美好时光</p>
           </div>
         ) : (
           <div className="space-y-6">

@@ -221,7 +221,7 @@ export default function CountdownPage() {
           <div className="text-center py-20">
             <div className="text-6xl mb-4">⏰</div>
             <p className="text-xl text-gray-300">还没有添加任何计时器</p>
-            <p className="text-gray-400 mt-2">点击"添加计时"开始记录重要时刻</p>
+            <p className="text-gray-400 mt-2">点击&ldquo;添加计时&rdquo;开始记录重要时刻</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

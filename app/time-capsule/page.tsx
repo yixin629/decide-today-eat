@@ -282,7 +282,7 @@ export default function TimeCapsulePage() {
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🎁</div>
             <p className="text-xl text-gray-300">还没有创建任何时光胶囊</p>
-            <p className="text-gray-400 mt-2">点击"创建胶囊"写下对未来的期许</p>
+            <p className="text-gray-400 mt-2">点击&ldquo;创建胶囊&rdquo;写下对未来的期许</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

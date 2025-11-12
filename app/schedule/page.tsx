@@ -283,7 +283,7 @@ export default function SchedulePage() {
           <div className="text-center py-20">
             <div className="text-6xl mb-4">📅</div>
             <p className="text-xl text-gray-300">还没有添加任何日程</p>
-            <p className="text-gray-400 mt-2">点击"添加日程"开始规划约会</p>
+            <p className="text-gray-400 mt-2">点击&ldquo;添加日程&rdquo;开始规划约会</p>
           </div>
         ) : (
           <div className="space-y-4">
