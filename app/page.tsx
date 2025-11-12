@@ -185,6 +185,58 @@ export default function Home() {
             </div>
           </Link>
 
+          {/* Countdown */}
+          <Link href="/countdown">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">⏰</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                时光计时器
+              </h2>
+              <p className="text-gray-600 text-center">
+                记录我们的每一个重要时刻
+              </p>
+            </div>
+          </Link>
+
+          {/* Schedule */}
+          <Link href="/schedule">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">📅</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                共享日程
+              </h2>
+              <p className="text-gray-600 text-center">
+                规划两人的约会计划
+              </p>
+            </div>
+          </Link>
+
+          {/* Time Capsule */}
+          <Link href="/time-capsule">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">🎁</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                时光胶囊
+              </h2>
+              <p className="text-gray-600 text-center">
+                写给未来的信
+              </p>
+            </div>
+          </Link>
+
+          {/* Diary */}
+          <Link href="/diary">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-6xl mb-4 text-center">📖</div>
+              <h2 className="text-2xl font-bold text-center mb-2 text-primary">
+                恋爱日记
+              </h2>
+              <p className="text-gray-600 text-center">
+                记录每天的甜蜜瞬间
+              </p>
+            </div>
+          </Link>
+
           {/* Feature Requests */}
           <Link href="/feature-requests">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
