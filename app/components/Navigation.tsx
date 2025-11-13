@@ -13,6 +13,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   // 功能页面
+  { name: '个人资料', path: '/profile', icon: '👤', category: 'feature' },
   { name: '倒计时/正计时', path: '/countdown', icon: '⏰', category: 'feature' },
   { name: '共享日程', path: '/schedule', icon: '📅', category: 'feature' },
   { name: '时光胶囊', path: '/time-capsule', icon: '🎁', category: 'feature' },
