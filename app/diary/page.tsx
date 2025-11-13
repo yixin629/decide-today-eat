@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface DiaryEntry {
   id: string
@@ -22,6 +24,8 @@ export default function DiaryPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
+  const [previewMode, setPreviewMode] = useState(false) // 新增：预览模式
+  const [editPreviewMode, setEditPreviewMode] = useState(false) // 新增：编辑预览模式
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split('T')[0],
     title: '',
@@ -236,14 +240,34 @@ export default function DiaryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-800 mb-2">日记内容 *</label>
-                  <textarea
-                    value={newEntry.content}
-                    onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
-                    className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800 placeholder-gray-400"
-                    placeholder="记录下今天的心情、发生的事情、想说的话..."
-                    rows={8}
-                  />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-gray-800">日记内容 * (支持Markdown格式)</label>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode(!previewMode)}
+                      className="px-3 py-1 bg-white/20 text-gray-800 rounded-lg hover:bg-white/30 transition-colors text-sm"
+                    >
+                      {previewMode ? '📝 编辑' : '👁️ 预览'}
+                    </button>
+                  </div>
+                  {previewMode ? (
+                    <div className="w-full min-h-[200px] px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800 prose prose-sm max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {newEntry.content || '*预览区域为空*'}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <textarea
+                      value={newEntry.content}
+                      onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
+                      className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800 placeholder-gray-400"
+                      placeholder="支持Markdown格式：**粗体** *斜体* - 列表 [链接](url)"
+                      rows={8}
+                    />
+                  )}
+                  <p className="text-xs text-gray-600 mt-1">
+                    提示：支持 **粗体** *斜体* ### 标题 - 列表 等Markdown语法
+                  </p>
                 </div>
 
                 <button onClick={handleAddEntry} className="w-full btn-primary">
@@ -300,15 +324,32 @@ export default function DiaryPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-gray-800 mb-2">内容</label>
-                        <textarea
-                          value={editingEntry.content}
-                          onChange={(e) =>
-                            setEditingEntry({ ...editingEntry, content: e.target.value })
-                          }
-                          className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800"
-                          rows={6}
-                        />
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="block text-gray-800">内容 (支持Markdown)</label>
+                          <button
+                            type="button"
+                            onClick={() => setEditPreviewMode(!editPreviewMode)}
+                            className="px-3 py-1 bg-white/20 text-gray-800 rounded-lg hover:bg-white/30 transition-colors text-sm"
+                          >
+                            {editPreviewMode ? '📝 编辑' : '👁️ 预览'}
+                          </button>
+                        </div>
+                        {editPreviewMode ? (
+                          <div className="w-full min-h-[150px] px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800 prose prose-sm max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {editingEntry.content || '*预览区域为空*'}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <textarea
+                            value={editingEntry.content}
+                            onChange={(e) =>
+                              setEditingEntry({ ...editingEntry, content: e.target.value })
+                            }
+                            className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800"
+                            rows={6}
+                          />
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -363,9 +404,9 @@ export default function DiaryPage() {
                       </div>
 
                       <div className="bg-white/10 rounded-lg p-4 mb-3">
-                        <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                          {entry.content}
-                        </p>
+                        <div className="prose prose-sm max-w-none text-gray-800">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
+                        </div>
                       </div>
 
                       <div className="text-xs text-gray-500">
