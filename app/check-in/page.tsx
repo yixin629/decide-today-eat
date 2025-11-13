@@ -315,7 +315,7 @@ export default function CheckInPage() {
                 {day}
               </div>
             ))}
-            
+
             {/* 日期格子 */}
             {(() => {
               const today = new Date()
@@ -323,35 +323,39 @@ export default function CheckInPage() {
               const month = today.getMonth()
               const firstDay = new Date(year, month, 1).getDay()
               const daysInMonth = new Date(year, month + 1, 0).getDate()
-              
+
               const checkInDates = new Set(
-                checkIns.map((record) => {
-                  const date = new Date(record.check_in_date)
-                  if (date.getMonth() === month && date.getFullYear() === year) {
-                    return date.getDate()
-                  }
-                  return null
-                }).filter(Boolean)
+                checkIns
+                  .map((record) => {
+                    const date = new Date(record.check_in_date)
+                    if (date.getMonth() === month && date.getFullYear() === year) {
+                      return date.getDate()
+                    }
+                    return null
+                  })
+                  .filter(Boolean)
               )
 
               const days = []
-              
+
               // 前面的空格
               for (let i = 0; i < firstDay; i++) {
-                days.push(
-                  <div key={`empty-${i}`} className="aspect-square"></div>
-                )
+                days.push(<div key={`empty-${i}`} className="aspect-square"></div>)
               }
-              
+
               // 实际日期
               for (let day = 1; day <= daysInMonth; day++) {
                 const isChecked = checkInDates.has(day)
                 const isToday = day === today.getDate()
                 const checkInRecord = checkIns.find((record) => {
                   const date = new Date(record.check_in_date)
-                  return date.getDate() === day && date.getMonth() === month && date.getFullYear() === year
+                  return (
+                    date.getDate() === day &&
+                    date.getMonth() === month &&
+                    date.getFullYear() === year
+                  )
                 })
-                
+
                 days.push(
                   <div
                     key={day}
@@ -369,7 +373,7 @@ export default function CheckInPage() {
                   </div>
                 )
               }
-              
+
               return days
             })()}
           </div>
