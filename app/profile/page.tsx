@@ -52,6 +52,12 @@ export default function ProfilePage() {
   const emojiOptions = ['😊', '🥰', '😎', '🤗', '😘', '💕', '⭐', '🍐', '🌟', '💖']
 
   useEffect(() => {
+    // 从localStorage获取当前登录用户
+    const loggedInUser = localStorage.getItem('loggedInUser')
+    if (loggedInUser) {
+      setCurrentUser(loggedInUser)
+    }
+
     loadData()
     checkBirthdayReminders()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,12 +82,6 @@ export default function ProfilePage() {
 
       if (reminderError) throw reminderError
       setReminders(reminderData || [])
-
-      // 从localStorage获取当前用户
-      const savedUser = localStorage.getItem('currentUser')
-      if (savedUser) {
-        setCurrentUser(savedUser)
-      }
     } catch (error) {
       console.error('加载数据失败:', error)
     } finally {
@@ -241,11 +241,6 @@ export default function ProfilePage() {
     return age
   }
 
-  const selectUser = (name: string) => {
-    setCurrentUser(name)
-    localStorage.setItem('currentUser', name)
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -269,28 +264,6 @@ export default function ProfilePage() {
             👥 个人资料
           </h1>
           <p className="text-gray-600 text-center mb-6">管理个人信息和生日提醒</p>
-
-          {/* Current User Selection */}
-          {profiles.length > 0 && (
-            <div className="mb-6 p-4 bg-pink-50 rounded-lg">
-              <p className="text-sm text-gray-700 mb-2">当前身份：</p>
-              <div className="flex gap-3 flex-wrap">
-                {profiles.map((profile) => (
-                  <button
-                    key={profile.id}
-                    onClick={() => selectUser(profile.name)}
-                    className={`px-4 py-2 rounded-lg transition-all ${
-                      currentUser === profile.name
-                        ? 'bg-primary text-white scale-105'
-                        : 'bg-white text-gray-800 hover:bg-gray-100'
-                    }`}
-                  >
-                    {profile.avatar_emoji} {profile.nickname || profile.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <button
             onClick={() => setShowAddProfile(!showAddProfile)}

@@ -15,15 +15,6 @@ export default function Home() {
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Profile */}
-          <Link href="/profile">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-300">
-              <div className="text-6xl mb-4 text-center">👤</div>
-              <h2 className="text-2xl font-bold text-center mb-2 text-primary">个人资料</h2>
-              <p className="text-gray-600 text-center">管理信息和生日提醒</p>
-            </div>
-          </Link>
-
           {/* Photo Album */}
           <Link href="/photos">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
