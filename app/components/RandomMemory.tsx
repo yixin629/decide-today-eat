@@ -14,9 +14,9 @@ interface Photo {
 
 interface Note {
   id: string
-  from_name: string
-  to_name: string
-  message: string
+  author: string
+  to_person: string
+  content: string
   created_at: string
 }
 
@@ -120,15 +120,15 @@ export default function RandomMemory() {
 
               <div className="bg-white rounded-lg p-4 mb-4">
                 <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-wrap">
-                  {memory.data.message}
+                  {memory.data.content}
                 </p>
               </div>
 
               <div className="flex justify-between items-center text-sm text-gray-500">
                 <span>
-                  From: <span className="font-semibold text-primary">{memory.data.from_name}</span>
+                  From: <span className="font-semibold text-primary">{memory.data.author}</span>
                   {' → '}
-                  To: <span className="font-semibold text-secondary">{memory.data.to_name}</span>
+                  To: <span className="font-semibold text-secondary">{memory.data.to_person}</span>
                 </span>
                 <span>{new Date(memory.data.created_at).toLocaleDateString('zh-CN')}</span>
               </div>
