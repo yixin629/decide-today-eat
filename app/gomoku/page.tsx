@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 type Player = 'black' | 'white'
 type Cell = Player | null
@@ -10,7 +11,9 @@ const BOARD_SIZE = 15
 
 export default function GomokuPage() {
   const [board, setBoard] = useState<Cell[][]>(() =>
-    Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null))
+    Array(BOARD_SIZE)
+      .fill(null)
+      .map(() => Array(BOARD_SIZE).fill(null))
   )
   const [currentPlayer, setCurrentPlayer] = useState<Player>('black')
   const [winner, setWinner] = useState<Player | null>(null)
@@ -66,7 +69,7 @@ export default function GomokuPage() {
   const handleCellClick = (row: number, col: number) => {
     if (board[row][col] || winner) return
 
-    const newBoard = board.map(row => [...row])
+    const newBoard = board.map((row) => [...row])
     newBoard[row][col] = currentPlayer
     setBoard(newBoard)
     setLastMove([row, col])
@@ -79,7 +82,11 @@ export default function GomokuPage() {
   }
 
   const resetGame = () => {
-    setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)))
+    setBoard(
+      Array(BOARD_SIZE)
+        .fill(null)
+        .map(() => Array(BOARD_SIZE).fill(null))
+    )
     setCurrentPlayer('black')
     setWinner(null)
     setLastMove(null)
@@ -88,14 +95,10 @@ export default function GomokuPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card text-center">
-          <h1 className="text-4xl font-bold text-primary mb-6">
-            ⚫⚪ 五子棋对战 ⚫⚪
-          </h1>
+          <h1 className="text-4xl font-bold text-primary mb-6">⚫⚪ 五子棋对战 ⚫⚪</h1>
 
           {/* Game Status */}
           <div className="mb-6">
@@ -112,16 +115,17 @@ export default function GomokuPage() {
 
           {/* Game Board */}
           <div className="inline-block bg-yellow-700 p-4 rounded-lg shadow-2xl mb-6">
-            <div className="grid gap-0" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}>
+            <div
+              className="grid gap-0"
+              style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+            >
               {board.map((row, rowIndex) =>
                 row.map((cell, colIndex) => (
                   <button
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => handleCellClick(rowIndex, colIndex)}
                     className={`w-8 h-8 border border-gray-800 flex items-center justify-center hover:bg-yellow-600 transition-colors ${
-                      lastMove &&
-                      lastMove[0] === rowIndex &&
-                      lastMove[1] === colIndex
+                      lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex
                         ? 'ring-2 ring-red-500'
                         : ''
                     }`}

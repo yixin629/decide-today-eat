@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface FeatureRequest {
   id: number
@@ -19,12 +21,13 @@ interface FeatureRequest {
 }
 
 export default function FeatureRequestsPage() {
+  const toast = useToast()
   const [requests, setRequests] = useState<FeatureRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -60,7 +63,7 @@ export default function FeatureRequestsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       if (editingId) {
         // 更新现有申请
@@ -77,12 +80,12 @@ export default function FeatureRequestsPage() {
         if (error) throw error
       } else {
         // 创建新申请
-        const { error } = await supabase
-          .from('feature_requests')
-          .insert([{
+        const { error } = await supabase.from('feature_requests').insert([
+          {
             ...formData,
             status: 'pending',
-          }])
+          },
+        ])
 
         if (error) throw error
       }
@@ -95,10 +98,11 @@ export default function FeatureRequestsPage() {
         requester: 'zyx',
         priority: 'medium',
       })
+      toast.success('功能建议提交成功！')
       loadRequests()
     } catch (error) {
       console.error('提交失败:', error)
-      alert('提交失败，请重试')
+      toast.error('提交失败，请重试')
     }
   }
 
@@ -147,10 +151,7 @@ export default function FeatureRequestsPage() {
     if (!confirm('确定要删除这个申请吗？')) return
 
     try {
-      const { error } = await supabase
-        .from('feature_requests')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('feature_requests').delete().eq('id', id)
 
       if (error) throw error
       loadRequests()
@@ -161,42 +162,52 @@ export default function FeatureRequestsPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500'
-      case 'rejected': return 'bg-red-500'
-      default: return 'bg-yellow-500'
+      case 'completed':
+        return 'bg-green-500'
+      case 'rejected':
+        return 'bg-red-500'
+      default:
+        return 'bg-yellow-500'
     }
   }
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed': return '✅ 已完成'
-      case 'rejected': return '❌ 已拒绝'
-      default: return '⏳ 待处理'
+      case 'completed':
+        return '✅ 已完成'
+      case 'rejected':
+        return '❌ 已拒绝'
+      default:
+        return '⏳ 待处理'
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-500'
-      case 'medium': return 'text-yellow-500'
-      default: return 'text-gray-500'
+      case 'high':
+        return 'text-red-500'
+      case 'medium':
+        return 'text-yellow-500'
+      default:
+        return 'text-gray-500'
     }
   }
 
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case 'high': return '🔴 高'
-      case 'medium': return '🟡 中'
-      default: return '⚪ 低'
+      case 'high':
+        return '🔴 高'
+      case 'medium':
+        return '🟡 中'
+      default:
+        return '⚪ 低'
     }
   }
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">
@@ -276,9 +287,7 @@ export default function FeatureRequestsPage() {
                   </h2>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold mb-2">
-                        功能标题 *
-                      </label>
+                      <label className="block text-sm font-semibold mb-2">功能标题 *</label>
                       <input
                         type="text"
                         value={formData.title}
@@ -290,9 +299,7 @@ export default function FeatureRequestsPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold mb-2">
-                        详细描述 *
-                      </label>
+                      <label className="block text-sm font-semibold mb-2">详细描述 *</label>
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -304,9 +311,7 @@ export default function FeatureRequestsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold mb-2">
-                          申请人
-                        </label>
+                        <label className="block text-sm font-semibold mb-2">申请人</label>
                         <select
                           value={formData.requester}
                           onChange={(e) => setFormData({ ...formData, requester: e.target.value })}
@@ -319,12 +324,12 @@ export default function FeatureRequestsPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold mb-2">
-                          优先级
-                        </label>
+                        <label className="block text-sm font-semibold mb-2">优先级</label>
                         <select
                           value={formData.priority}
-                          onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                          onChange={(e) =>
+                            setFormData({ ...formData, priority: e.target.value as any })
+                          }
                           className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-primary focus:outline-none"
                         >
                           <option value="low">⚪ 低</option>
@@ -370,23 +375,41 @@ export default function FeatureRequestsPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-xl font-bold">{request.title}</h3>
-                            <span className={`text-xs px-2 py-1 rounded ${getStatusColor(request.status)} text-white`}>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${getStatusColor(
+                                request.status
+                              )} text-white`}
+                            >
                               {getStatusText(request.status)}
                             </span>
-                            <span className={`text-sm font-semibold ${getPriorityColor(request.priority)}`}>
+                            <span
+                              className={`text-sm font-semibold ${getPriorityColor(
+                                request.priority
+                              )}`}
+                            >
                               {getPriorityText(request.priority)}
                             </span>
                           </div>
                           <p className="text-gray-300 mb-3">{request.description}</p>
                           <div className="flex items-center gap-4 text-sm text-gray-400">
                             <span>👤 申请人: {request.requester}</span>
-                            <span>📅 {format(new Date(request.created_at), 'yyyy-MM-dd HH:mm', { locale: zhCN })}</span>
+                            <span>
+                              📅{' '}
+                              {format(new Date(request.created_at), 'yyyy-MM-dd HH:mm', {
+                                locale: zhCN,
+                              })}
+                            </span>
                             {request.completed_at && (
-                              <span>✅ 完成于: {format(new Date(request.completed_at), 'yyyy-MM-dd', { locale: zhCN })}</span>
+                              <span>
+                                ✅ 完成于:{' '}
+                                {format(new Date(request.completed_at), 'yyyy-MM-dd', {
+                                  locale: zhCN,
+                                })}
+                              </span>
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="flex gap-2 ml-4">
                           <button
                             onClick={() => toggleStatus(request.id, request.status)}

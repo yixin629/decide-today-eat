@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface TimeCapsule {
   id: string
@@ -17,6 +19,7 @@ interface TimeCapsule {
 }
 
 export default function TimeCapsulePage() {
+  const toast = useToast()
   const [capsules, setCapsules] = useState<TimeCapsule[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -59,13 +62,13 @@ export default function TimeCapsulePage() {
 
   const handleAddCapsule = async () => {
     if (!newCapsule.title || !newCapsule.content || !newCapsule.sender || !newCapsule.unlock_date) {
-      alert('请填写所有必填字段')
+      toast.warning('请填写所有必填字段')
       return
     }
 
     const openDate = new Date(newCapsule.unlock_date)
     if (openDate <= new Date()) {
-      alert('开启日期必须是未来的时间')
+      toast.warning('开启日期必须是未来的时间')
       return
     }
 
@@ -87,10 +90,11 @@ export default function TimeCapsulePage() {
         unlock_date: '',
       })
       setShowAddForm(false)
+      toast.success('时光胶囊创建成功！')
       loadCapsules()
     } catch (error) {
       console.error('Error adding time capsule:', error)
-      alert('添加失败')
+      toast.error('添加失败，请重试')
     }
   }
 
@@ -99,7 +103,7 @@ export default function TimeCapsulePage() {
     const now = new Date()
 
     if (openDate > now) {
-      alert(`时光胶囊还未到开启时间！\n将在 ${openDate.toLocaleString('zh-CN')} 开启`)
+      toast.info(`时光胶囊还未到开启时间！将在 ${openDate.toLocaleString('zh-CN')} 开启`)
       return
     }
 
@@ -115,10 +119,11 @@ export default function TimeCapsulePage() {
         .eq('id', capsule.id)
 
       if (error) throw error
+      toast.success('时光胶囊已开启！')
       loadCapsules()
     } catch (error) {
       console.error('Error opening time capsule:', error)
-      alert('开启失败')
+      toast.error('开启失败，请重试')
     }
   }
 
@@ -129,10 +134,11 @@ export default function TimeCapsulePage() {
       const { error } = await supabase.from('time_capsules').delete().eq('id', id)
 
       if (error) throw error
+      toast.success('删除成功')
       loadCapsules()
     } catch (error) {
       console.error('Error deleting time capsule:', error)
-      alert('删除失败')
+      toast.error('删除失败，请重试')
     }
   }
 
@@ -158,12 +164,7 @@ export default function TimeCapsulePage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-800 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card">
           <div className="flex justify-between items-center mb-8">

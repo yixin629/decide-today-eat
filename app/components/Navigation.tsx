@@ -85,7 +85,7 @@ export default function Navigation() {
 
       {/* 侧边导航栏 */}
       <div
-        className={`fixed top-0 left-0 h-full w-full max-w-[320px] sm:w-80 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-0 left-0 h-full w-[85vw] max-w-[280px] sm:max-w-[320px] md:w-80 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out overflow-hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

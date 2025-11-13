@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface Note {
   id: string
@@ -14,6 +16,7 @@ interface Note {
 }
 
 export default function NotesPage() {
+  const toast = useToast()
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const [newNote, setNewNote] = useState({
@@ -86,10 +89,11 @@ export default function NotesPage() {
         }
         setNotes([newNoteData, ...notes])
         setNewNote({ author: '', content: '', toPerson: '' })
+        toast.success('留言发送成功！')
       }
     } catch (error) {
       console.error('发送留言失败:', error)
-      alert('发送失败，请检查网络连接')
+      toast.error('发送失败，请检查网络连接')
     }
   }
 
@@ -114,9 +118,10 @@ export default function NotesPage() {
       if (error) throw error
 
       setNotes(notes.filter((note) => note.id !== id))
+      toast.success('删除成功')
     } catch (error) {
       console.error('删除失败:', error)
-      alert('删除失败，请重试')
+      toast.error('删除失败，请重试')
     }
   }
 
@@ -125,12 +130,7 @@ export default function NotesPage() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-700 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card">
           <h1 className="text-3xl md:text-4xl font-bold text-primary mb-8 text-center">

@@ -94,6 +94,118 @@ ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY)
 
 ---
 
+### 问题 3: UI/UX 全面优化 ✨
+
+**时间**: 2024-11-13  
+**描述**: 根据用户需求，对整个项目进行全面的 UI/UX 优化
+
+**优化内容**:
+
+#### 1. Toast 通知系统
+
+- 创建 `Toast.tsx` 和 `ToastProvider.tsx` 组件
+- 替代所有 `alert()` 弹窗
+- 支持 success/error/info/warning 四种类型
+- 自动消失 + 手动关闭
+- 优雅的滑入动画
+
+#### 2. 移动端导航优化
+
+- 导航栏宽度从 `w-full` 改为 `w-[85vw]`
+- 优化响应式断点
+- 小屏幕设备体验更好
+
+#### 3. 统一返回按钮
+
+- 创建可复用的 `BackButton` 组件
+- 带图标和悬停效果
+- 统一整个项目的导航体验
+
+#### 4. 照片查看器增强
+
+- 添加键盘导航（左右箭头、ESC）
+- 添加触摸滑动切换
+- 添加导航按钮和照片计数
+- 支持循环浏览
+
+#### 5. 首页响应式优化
+
+- 优化所有断点的间距和字体大小
+- 改进网格布局
+- 小屏幕设备显示更舒适
+
+#### 6. 加载骨架屏
+
+- 创建 `LoadingSkeleton` 组件
+- 提供多种类型：卡片、照片网格、列表、日记、表格
+- 替代简单的"加载中..."文字
+
+**文件**:
+
+- `app/components/Toast.tsx`
+- `app/components/ToastProvider.tsx`
+- `app/components/BackButton.tsx`
+- `app/components/LoadingSkeleton.tsx`
+- `app/components/Navigation.tsx`
+- `app/photos/page.tsx`
+- `app/page.tsx`
+- `app/globals.css`
+- `app/layout.tsx`
+
+**效果**: 大幅提升了用户体验，移动端和桌面端都更加流畅和美观
+
+---
+
+## 🛠️ 重要问题解决记录
+
+### 问题 1: 画笔位置不准确 🎨
+
+- CSS 通过 `w-full` 将画布缩放以适应屏幕
+- 代码未考虑缩放比例，导致坐标计算错误
+
+**解决方案**:
+
+```typescript
+// 计算缩放比例
+const scaleX = canvas.width / rect.width
+const scaleY = canvas.height / rect.height
+
+// 应用缩放到坐标计算
+ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY)
+ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY)
+```
+
+**文件**: `app/drawing/page.tsx`  
+**修改函数**: `startDrawing()`, `draw()`
+
+---
+
+### 问题 2: 登录密码提示优化 🔐
+
+**时间**: 2024-11-13  
+**描述**: 原密码提示"对方的名字"过于模糊，需要更明确的提示
+
+**修改前**:
+
+```tsx
+💡 提示：{用户昵称}的密码是对方的名字哦
+```
+
+**修改后**:
+
+```tsx
+💡 提示：love+对方名字首字母缩写
+```
+
+**实际密码规则**:
+
+- zyx 的密码: `lovezly` (love + zly 首字母)
+- zly 的密码: `lovezyx` (love + zyx 首字母)
+
+**文件**: `app/login/page.tsx`
+
+---
+
 ## 💡 开发最佳实践
 
 ### 1. 沟通方式

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 const DEFAULT_FOODS = [
   { name: '火锅', emoji: '🍲' },
@@ -18,6 +20,7 @@ const DEFAULT_FOODS = [
 ]
 
 export default function FoodPage() {
+  const toast = useToast()
   const [selectedFood, setSelectedFood] = useState<any>(null)
   const [isSpinning, setIsSpinning] = useState(false)
   const [foodOptions, setFoodOptions] = useState<any[]>([])
@@ -58,12 +61,14 @@ export default function FoodPage() {
     try {
       const { data, error } = await supabase
         .from('food_options')
-        .insert(DEFAULT_FOODS.map(food => ({
-          name: food.name,
-          emoji: food.emoji,
-          category: '默认',
-          is_favorite: false,
-        })))
+        .insert(
+          DEFAULT_FOODS.map((food) => ({
+            name: food.name,
+            emoji: food.emoji,
+            category: '默认',
+            is_favorite: false,
+          }))
+        )
         .select()
 
       if (!error && data) {
@@ -77,7 +82,7 @@ export default function FoodPage() {
 
   const spinWheel = () => {
     if (isSpinning || foodOptions.length === 0) return
-    
+
     setIsSpinning(true)
     setSelectedFood(null)
 
@@ -97,16 +102,18 @@ export default function FoodPage() {
 
   const addCustomFood = async () => {
     if (!newFood.trim()) return
-    
+
     try {
       const { data, error } = await supabase
         .from('food_options')
-        .insert([{
-          name: newFood.trim(),
-          emoji: '🍱',
-          category: '自定义',
-          is_favorite: false,
-        }])
+        .insert([
+          {
+            name: newFood.trim(),
+            emoji: '🍱',
+            category: '自定义',
+            is_favorite: false,
+          },
+        ])
         .select()
 
       if (error) throw error
@@ -114,35 +121,32 @@ export default function FoodPage() {
       if (data && data.length > 0) {
         setFoodOptions([...foodOptions, data[0]])
         setNewFood('')
+        toast.success('添加成功！')
       }
     } catch (error) {
       console.error('添加食物失败:', error)
-      alert('添加食物失败，请重试')
+      toast.error('添加食物失败，请重试')
     }
   }
 
   const deleteFood = async (id: number) => {
     try {
-      const { error } = await supabase
-        .from('food_options')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('food_options').delete().eq('id', id)
 
       if (error) throw error
 
-      setFoodOptions(foodOptions.filter(food => food.id !== id))
+      setFoodOptions(foodOptions.filter((food) => food.id !== id))
+      toast.success('删除成功')
     } catch (error) {
       console.error('删除食物失败:', error)
-      alert('删除失败，请重试')
+      toast.error('删除失败，请重试')
     }
   }
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">
@@ -150,18 +154,14 @@ export default function FoodPage() {
           </div>
         ) : (
           <div className="card text-center">
-            <h1 className="text-4xl font-bold text-primary mb-8">
-              🍱 今晚吃什么？ 🍱
-            </h1>
+            <h1 className="text-4xl font-bold text-primary mb-8">🍱 今晚吃什么？ 🍱</h1>
 
             {/* Result Display */}
             <div className="mb-8">
               {selectedFood ? (
                 <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl p-8 transform scale-110 transition-all">
                   <div className="text-8xl mb-4">{selectedFood.emoji}</div>
-                  <div className="text-4xl font-bold text-primary">
-                    {selectedFood.name}
-                  </div>
+                  <div className="text-4xl font-bold text-primary">{selectedFood.name}</div>
                 </div>
               ) : (
                 <div className="text-6xl mb-4">❓</div>
@@ -203,9 +203,7 @@ export default function FoodPage() {
 
             {/* Custom Food Input */}
             <div className="border-t pt-6">
-              <h3 className="text-xl font-bold text-gray-700 mb-4">
-                添加自定义选项
-              </h3>
+              <h3 className="text-xl font-bold text-gray-700 mb-4">添加自定义选项</h3>
               <div className="flex gap-2">
                 <input
                   type="text"

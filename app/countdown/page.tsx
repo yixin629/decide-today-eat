@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface Countdown {
   id: string
@@ -14,6 +16,7 @@ interface Countdown {
 }
 
 export default function CountdownPage() {
+  const toast = useToast()
   const [countdowns, setCountdowns] = useState<Countdown[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -69,7 +72,7 @@ export default function CountdownPage() {
 
   const handleAddCountdown = async () => {
     if (!newCountdown.title || !newCountdown.target_date) {
-      alert('请填写标题和日期')
+      toast.warning('请填写标题和日期')
       return
     }
 
@@ -85,10 +88,11 @@ export default function CountdownPage() {
         emoji: '⏰',
       })
       setShowAddForm(false)
+      toast.success('倒计时添加成功！')
       loadCountdowns()
     } catch (error) {
       console.error('Error adding countdown:', error)
-      alert('添加失败')
+      toast.error('添加失败，请重试')
     }
   }
 
@@ -99,10 +103,11 @@ export default function CountdownPage() {
       const { error } = await supabase.from('countdowns').delete().eq('id', id)
 
       if (error) throw error
+      toast.success('删除成功')
       loadCountdowns()
     } catch (error) {
       console.error('Error deleting countdown:', error)
-      alert('删除失败')
+      toast.error('删除失败，请重试')
     }
   }
 
@@ -119,12 +124,7 @@ export default function CountdownPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-700 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card">
           <h1 className="text-4xl font-bold text-primary mb-2 text-center">⏰ 时光计时器</h1>

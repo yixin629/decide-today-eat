@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 interface LoveQuote {
   id: number
@@ -116,12 +117,7 @@ export default function LoveQuotesPage() {
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-700 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">

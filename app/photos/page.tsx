@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { useToast } from '@/app/components/ToastProvider'
+import BackButton from '@/app/components/BackButton'
+import { PhotoGridSkeleton } from '@/app/components/LoadingSkeleton'
 
 interface Photo {
   id: string
@@ -20,6 +23,7 @@ export default function PhotosPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadTitle, setUploadTitle] = useState('')
@@ -27,6 +31,79 @@ export default function PhotosPage() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const { success, error: showError } = useToast()
+
+  // 导航到上一张或下一张照片
+  const navigatePhoto = useCallback(
+    (direction: 'prev' | 'next') => {
+      if (selectedIndex === -1 || photos.length === 0) return
+
+      let newIndex = direction === 'next' ? selectedIndex + 1 : selectedIndex - 1
+
+      // 循环到开始或结束
+      if (newIndex >= photos.length) newIndex = 0
+      if (newIndex < 0) newIndex = photos.length - 1
+
+      setSelectedIndex(newIndex)
+      setSelectedPhoto(photos[newIndex])
+    },
+    [selectedIndex, photos]
+  )
+
+  // 键盘事件处理
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedPhoto) return
+
+      if (e.key === 'ArrowLeft') {
+        navigatePhoto('prev')
+      } else if (e.key === 'ArrowRight') {
+        navigatePhoto('next')
+      } else if (e.key === 'Escape') {
+        setSelectedPhoto(null)
+        setSelectedIndex(-1)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedPhoto, navigatePhoto])
+
+  // 触摸滑动处理
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  const minSwipeDistance = 50
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      navigatePhoto('next')
+    } else if (isRightSwipe) {
+      navigatePhoto('prev')
+    }
+  }
+
+  // 打开照片查看器时设置索引
+  const openPhotoViewer = (photo: Photo) => {
+    const index = photos.findIndex((p) => p.id === photo.id)
+    setSelectedIndex(index)
+    setSelectedPhoto(photo)
+  }
 
   // 加载数据并设置实时订阅
   useEffect(() => {
@@ -173,9 +250,10 @@ export default function PhotosPage() {
       setUploadFile(null)
       setUploadTitle('')
       setUploadDescription('')
+      success('照片上传成功！')
     } catch (error) {
       console.error('上传失败:', error)
-      alert('上传失败，请检查网络连接和 Storage 配置')
+      showError('上传失败，请检查网络连接和 Storage 配置')
     } finally {
       setUploading(false)
     }
@@ -231,9 +309,10 @@ export default function PhotosPage() {
 
       setPhotos(photos.filter((photo) => photo.id !== id))
       setSelectedPhoto(null)
+      success('照片已删除')
     } catch (error) {
       console.error('删除失败:', error)
-      alert('删除失败，请重试')
+      showError('删除失败，请重试')
     }
   }
 
@@ -276,10 +355,10 @@ export default function PhotosPage() {
       }
 
       setEditingPhoto(null)
-      alert('更新成功！')
+      success('照片信息已更新！')
     } catch (error) {
       console.error('更新失败:', error)
-      alert('更新失败，请重试')
+      showError('更新失败，请重试')
     }
   }
 
@@ -292,20 +371,13 @@ export default function PhotosPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-white hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton />
 
         <div className="card">
           <h1 className="text-4xl font-bold text-primary mb-8 text-center">📸 我们的相册 📸</h1>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="text-2xl">加载中... ⏳</div>
-            </div>
+            <PhotoGridSkeleton />
           ) : (
             <>
               {/* Upload Section */}
@@ -330,7 +402,7 @@ export default function PhotosPage() {
                     <div
                       key={photo.id}
                       className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
-                      onClick={() => setSelectedPhoto(photo)}
+                      onClick={() => openPhotoViewer(photo)}
                     >
                       <div className="relative h-64 bg-gray-200">
                         <img
@@ -370,25 +442,69 @@ export default function PhotosPage() {
         {/* Photo Modal */}
         {selectedPhoto && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedPhoto(null)}
+            className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setSelectedPhoto(null)
+              setSelectedIndex(-1)
+            }}
           >
             <div
               className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto"
               onClick={(e) => e.stopPropagation()}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
             >
               <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selectedPhoto.url}
                   alt={selectedPhoto.title}
-                  className="w-full max-h-[70vh] object-contain"
+                  className="w-full max-h-[70vh] object-contain bg-gray-100"
                 />
+
+                {/* 关闭按钮 */}
                 <button
-                  onClick={() => setSelectedPhoto(null)}
-                  className="absolute top-4 right-4 bg-white rounded-full w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100"
+                  onClick={() => {
+                    setSelectedPhoto(null)
+                    setSelectedIndex(-1)
+                  }}
+                  className="absolute top-4 right-4 bg-white rounded-full w-10 h-10 flex items-center justify-center text-2xl hover:bg-gray-100 shadow-lg z-10"
                 >
                   ×
                 </button>
+
+                {/* 上一张/下一张按钮 */}
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigatePhoto('prev')
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg transition-all"
+                      aria-label="上一张"
+                    >
+                      ‹
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigatePhoto('next')
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full w-12 h-12 flex items-center justify-center text-2xl shadow-lg transition-all"
+                      aria-label="下一张"
+                    >
+                      ›
+                    </button>
+
+                    {/* 照片计数 */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                      {selectedIndex + 1} / {photos.length}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="p-6">
                 <h2 className="text-2xl font-bold mb-2">{selectedPhoto.title}</h2>
@@ -399,10 +515,10 @@ export default function PhotosPage() {
                   上传者: {selectedPhoto.uploadedBy} •{' '}
                   {new Date(selectedPhoto.createdAt).toLocaleDateString('zh-CN')}
                 </p>
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-wrap">
                   <button
                     onClick={() => likePhoto(selectedPhoto.id)}
-                    className="btn-primary flex-1"
+                    className="btn-primary flex-1 min-w-[120px]"
                   >
                     ❤️ 喜欢 ({selectedPhoto.likes})
                   </button>
@@ -410,14 +526,15 @@ export default function PhotosPage() {
                     onClick={() => {
                       handleEditPhoto(selectedPhoto)
                       setSelectedPhoto(null)
+                      setSelectedIndex(-1)
                     }}
-                    className="btn-secondary flex-1"
+                    className="btn-secondary flex-1 min-w-[120px]"
                   >
                     ✏️ 编辑
                   </button>
                   <button
                     onClick={() => deletePhoto(selectedPhoto.id)}
-                    className="btn-secondary flex-1 !border-red-500 !text-red-500 hover:!bg-red-50"
+                    className="btn-secondary flex-1 min-w-[120px] !border-red-500 !text-red-500 hover:!bg-red-50"
                   >
                     🗑️ 删除
                   </button>

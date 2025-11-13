@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 const emojis = ['❤️', '💕', '💖', '💗', '💝', '💞', '🌹', '🌺']
 
@@ -29,7 +30,7 @@ export default function MemoryGamePage() {
         isFlipped: false,
         isMatched: false,
       }))
-    
+
     setCards(shuffled)
     setFlippedCards([])
     setMoves(0)
@@ -52,7 +53,7 @@ export default function MemoryGamePage() {
 
     if (newFlippedCards.length === 2) {
       setMoves(moves + 1)
-      
+
       const [first, second] = newFlippedCards
       if (cards[first].emoji === cards[second].emoji) {
         // 匹配成功
@@ -62,10 +63,10 @@ export default function MemoryGamePage() {
           updatedCards[second].isMatched = true
           setCards(updatedCards)
           setFlippedCards([])
-          
+
           const newMatchedPairs = matchedPairs + 1
           setMatchedPairs(newMatchedPairs)
-          
+
           if (newMatchedPairs === emojis.length) {
             setGameWon(true)
           }
@@ -86,22 +87,15 @@ export default function MemoryGamePage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card">
           <h1 className="text-4xl font-bold text-center mb-8">🃏 记忆翻牌游戏 🃏</h1>
 
           {!gameStarted ? (
             <div className="text-center">
-              <p className="text-lg mb-6 text-gray-300">
-                翻开卡片，找到所有配对！考验你的记忆力！
-              </p>
-              <button
-                onClick={initializeGame}
-                className="btn-primary text-xl px-12 py-4"
-              >
+              <p className="text-lg mb-6 text-gray-300">翻开卡片，找到所有配对！考验你的记忆力！</p>
+              <button onClick={initializeGame} className="btn-primary text-xl px-12 py-4">
                 🎮 开始游戏
               </button>
             </div>
@@ -115,7 +109,9 @@ export default function MemoryGamePage() {
                 </div>
                 <div className="px-6 py-3 bg-white/10 rounded-lg">
                   <span className="text-gray-400">配对：</span>
-                  <span className="font-bold text-green-500">{matchedPairs} / {emojis.length}</span>
+                  <span className="font-bold text-green-500">
+                    {matchedPairs} / {emojis.length}
+                  </span>
                 </div>
               </div>
 
@@ -132,7 +128,7 @@ export default function MemoryGamePage() {
                         : 'bg-white/10 hover:bg-white/20 hover:scale-105'
                     } ${card.isMatched ? 'opacity-50' : ''}`}
                   >
-                    {(card.isFlipped || card.isMatched) ? card.emoji : '❓'}
+                    {card.isFlipped || card.isMatched ? card.emoji : '❓'}
                   </button>
                 ))}
               </div>
@@ -148,10 +144,7 @@ export default function MemoryGamePage() {
               )}
 
               <div className="flex gap-4 justify-center">
-                <button
-                  onClick={initializeGame}
-                  className="btn-primary px-8 py-3"
-                >
+                <button onClick={initializeGame} className="btn-primary px-8 py-3">
                   🔄 重新开始
                 </button>
               </div>

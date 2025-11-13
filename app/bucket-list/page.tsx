@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface BucketItem {
   id: number
@@ -19,12 +21,13 @@ interface BucketItem {
 }
 
 export default function BucketListPage() {
+  const toast = useToast()
   const [items, setItems] = useState<BucketItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterCompleted, setFilterCompleted] = useState('all')
-  
+
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -57,11 +60,9 @@ export default function BucketListPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
-      const { error } = await supabase
-        .from('love_bucket_list')
-        .insert([newItem])
+      const { error } = await supabase.from('love_bucket_list').insert([newItem])
 
       if (error) throw error
 
@@ -72,10 +73,11 @@ export default function BucketListPage() {
         category: '体验',
         priority: 0,
       })
+      toast.success('愿望添加成功！')
       loadItems()
     } catch (error) {
       console.error('添加失败:', error)
-      alert('添加失败，请重试')
+      toast.error('添加失败，请重试')
     }
   }
 
@@ -101,10 +103,7 @@ export default function BucketListPage() {
     if (!confirm('确定要删除这项任务吗？')) return
 
     try {
-      const { error} = await supabase
-        .from('love_bucket_list')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('love_bucket_list').delete().eq('id', id)
 
       if (error) throw error
       loadItems()
@@ -113,22 +112,20 @@ export default function BucketListPage() {
     }
   }
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item) => {
     if (filterCategory !== 'all' && item.category !== filterCategory) return false
     if (filterCompleted === 'completed' && !item.is_completed) return false
     if (filterCompleted === 'pending' && item.is_completed) return false
     return true
   })
 
-  const completedCount = items.filter(item => item.is_completed).length
+  const completedCount = items.filter((item) => item.is_completed).length
   const progress = items.length > 0 ? (completedCount / items.length) * 100 : 0
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">
@@ -139,10 +136,7 @@ export default function BucketListPage() {
             <div className="card mb-6">
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">💑 我们想做的100件事</h1>
-                <button
-                  onClick={() => setShowForm(!showForm)}
-                  className="btn-primary"
-                >
+                <button onClick={() => setShowForm(!showForm)} className="btn-primary">
                   {showForm ? '取消' : '➕ 添加任务'}
                 </button>
               </div>
@@ -153,9 +147,7 @@ export default function BucketListPage() {
                   <span className="text-lg font-semibold">
                     已完成: {completedCount} / {items.length}
                   </span>
-                  <span className="text-lg font-semibold text-primary">
-                    {progress.toFixed(1)}%
-                  </span>
+                  <span className="text-lg font-semibold text-primary">{progress.toFixed(1)}%</span>
                 </div>
                 <div className="w-full bg-white/10 rounded-full h-4 overflow-hidden">
                   <div
@@ -213,7 +205,9 @@ export default function BucketListPage() {
                         <label className="block text-sm font-semibold mb-2">优先级</label>
                         <select
                           value={newItem.priority}
-                          onChange={(e) => setNewItem({ ...newItem, priority: parseInt(e.target.value) })}
+                          onChange={(e) =>
+                            setNewItem({ ...newItem, priority: parseInt(e.target.value) })
+                          }
                           className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-primary focus:outline-none"
                         >
                           <option value="0">普通</option>
@@ -243,7 +237,7 @@ export default function BucketListPage() {
                 >
                   全部
                 </button>
-                {categories.slice(1).map(cat => (
+                {categories.slice(1).map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setFilterCategory(cat)}
@@ -314,16 +308,18 @@ export default function BucketListPage() {
                             {item.is_completed && '✓'}
                           </button>
                         </div>
-                        
+
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className={`text-lg font-semibold ${item.is_completed ? 'line-through text-gray-500' : ''}`}>
+                            <h3
+                              className={`text-lg font-semibold ${
+                                item.is_completed ? 'line-through text-gray-500' : ''
+                              }`}
+                            >
                               {item.title}
                             </h3>
                             {item.priority > 0 && (
-                              <span className="text-yellow-500">
-                                {'⭐'.repeat(item.priority)}
-                              </span>
+                              <span className="text-yellow-500">{'⭐'.repeat(item.priority)}</span>
                             )}
                             {item.category && (
                               <span className="text-xs px-2 py-1 rounded bg-white/10">
@@ -331,21 +327,26 @@ export default function BucketListPage() {
                               </span>
                             )}
                           </div>
-                          
+
                           {item.description && (
-                            <p className={`text-sm mb-2 ${item.is_completed ? 'text-gray-500' : 'text-gray-300'}`}>
+                            <p
+                              className={`text-sm mb-2 ${
+                                item.is_completed ? 'text-gray-500' : 'text-gray-300'
+                              }`}
+                            >
                               {item.description}
                             </p>
                           )}
-                          
+
                           {item.is_completed && item.completed_at && (
                             <p className="text-sm text-green-500">
-                              ✅ {format(new Date(item.completed_at), 'yyyy-MM-dd', { locale: zhCN })} 
+                              ✅{' '}
+                              {format(new Date(item.completed_at), 'yyyy-MM-dd', { locale: zhCN })}
                               {item.completed_by && ` by ${item.completed_by}`}
                             </p>
                           )}
                         </div>
-                        
+
                         <button
                           onClick={() => deleteItem(item.id)}
                           className="flex-shrink-0 px-3 py-1 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors text-sm"

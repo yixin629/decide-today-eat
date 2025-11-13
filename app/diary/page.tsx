@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface DiaryEntry {
   id: string
@@ -19,6 +22,7 @@ interface DiaryEntry {
 }
 
 export default function DiaryPage() {
+  const toast = useToast()
   const [entries, setEntries] = useState<DiaryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -59,7 +63,7 @@ export default function DiaryPage() {
 
   const handleAddEntry = async () => {
     if (!newEntry.title || !newEntry.content || !newEntry.author) {
-      alert('请填写标题、内容和作者')
+      toast.warning('请填写标题、内容和作者')
       return
     }
 
@@ -76,10 +80,11 @@ export default function DiaryPage() {
         author: '',
       })
       setShowAddForm(false)
+      toast.success('日记添加成功！')
       loadEntries()
     } catch (error) {
       console.error('Error adding diary entry:', error)
-      alert('添加失败')
+      toast.error('添加失败，请重试')
     }
   }
 
@@ -100,10 +105,11 @@ export default function DiaryPage() {
       if (error) throw error
 
       setEditingEntry(null)
+      toast.success('更新成功！')
       loadEntries()
     } catch (error) {
       console.error('Error updating diary entry:', error)
-      alert('更新失败')
+      toast.error('更新失败，请重试')
     }
   }
 
@@ -114,10 +120,11 @@ export default function DiaryPage() {
       const { error } = await supabase.from('diary_entries').delete().eq('id', id)
 
       if (error) throw error
+      toast.success('删除成功')
       loadEntries()
     } catch (error) {
       console.error('Error deleting diary entry:', error)
-      alert('删除失败')
+      toast.error('删除失败，请重试')
     }
   }
 
@@ -136,8 +143,13 @@ export default function DiaryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">加载中...</div>
+      <div className="min-h-screen p-8">
+        <div className="max-w-6xl mx-auto">
+          <BackButton href="/" text="返回首页" />
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">📖 恋爱日记</h1>
+          <p className="text-gray-600 mb-8">记录每天的甜蜜瞬间</p>
+          <LoadingSkeleton type="diary" count={3} />
+        </div>
       </div>
     )
   }
@@ -145,12 +157,7 @@ export default function DiaryPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-800 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card">
           <div className="flex justify-between items-center mb-8">

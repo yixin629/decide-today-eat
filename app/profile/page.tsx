@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import BackButton from '../components/BackButton'
 
 interface UserProfile {
   id: string
@@ -252,12 +253,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-800 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="card mb-6">
           <h1 className="text-3xl md:text-4xl font-bold text-primary mb-2 text-center">

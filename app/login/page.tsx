@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/app/components/ToastProvider'
 
 export default function LoginPage() {
   const [selectedUser, setSelectedUser] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const { success, error, warning } = useToast()
 
   useEffect(() => {
     // 检查是否已登录
@@ -19,25 +21,28 @@ export default function LoginPage() {
 
   const handleLogin = () => {
     if (!selectedUser) {
-      alert('请选择用户')
+      warning('请选择用户')
       return
     }
 
     if (!password) {
-      alert('请输入密码')
+      warning('请输入密码')
       return
     }
 
     // 验证密码
     const correctPassword = selectedUser === 'zyx' ? 'lovezly' : 'lovezyx'
     if (password !== correctPassword) {
-      alert('密码错误！')
+      error('密码错误！')
       setPassword('')
       return
     }
 
     localStorage.setItem('loggedInUser', selectedUser)
-    router.push('/')
+    success('登录成功！')
+    setTimeout(() => {
+      router.push('/')
+    }, 500)
   }
 
   const users = [

@@ -1,76 +1,76 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+import { useToast } from '../components/ToastProvider'
+import BackButton from '../components/BackButton'
 
 interface Schedule {
-  id: string;
-  title: string;
-  description: string;
-  event_date: string;
-  location?: string;
-  reminder_minutes?: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  created_by: string;
-  created_at: string;
+  id: string
+  title: string
+  description: string
+  event_date: string
+  location?: string
+  reminder_minutes?: number
+  status: 'upcoming' | 'completed' | 'cancelled'
+  created_by: string
+  created_at: string
 }
 
 export default function SchedulePage() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
+  const toast = useToast()
+  const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all')
   const [newSchedule, setNewSchedule] = useState({
     title: '',
     description: '',
     event_date: '',
     location: '',
     reminder_minutes: 30,
-    created_by: ''
-  });
+    created_by: '',
+  })
 
   const loadSchedules = useCallback(async () => {
     try {
-      let query = supabase
-        .from('schedules')
-        .select('*')
-        .order('event_date', { ascending: true });
+      let query = supabase.from('schedules').select('*').order('event_date', { ascending: true })
 
       if (filter !== 'all') {
-        query = query.eq('status', filter);
+        query = query.eq('status', filter)
       }
 
-      const { data, error} = await query;
+      const { data, error } = await query
 
-      if (error) throw error;
-      setSchedules(data || []);
+      if (error) throw error
+      setSchedules(data || [])
     } catch (error) {
-      console.error('Error loading schedules:', error);
+      console.error('Error loading schedules:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [filter]);
+  }, [filter])
 
   useEffect(() => {
-    loadSchedules();
-  }, [loadSchedules]);
+    loadSchedules()
+  }, [loadSchedules])
 
   const handleAddSchedule = async () => {
     if (!newSchedule.title || !newSchedule.event_date || !newSchedule.created_by) {
-      alert('请填写标题、日期和你的名字');
-      return;
+      toast.warning('请填写标题、日期和你的名字')
+      return
     }
 
     try {
-      const { error } = await supabase
-        .from('schedules')
-        .insert([{
+      const { error } = await supabase.from('schedules').insert([
+        {
           ...newSchedule,
-          status: 'upcoming'
-        }]);
+          status: 'upcoming',
+        },
+      ])
 
-      if (error) throw error;
+      if (error) throw error
 
       setNewSchedule({
         title: '',
@@ -78,89 +78,81 @@ export default function SchedulePage() {
         event_date: '',
         location: '',
         reminder_minutes: 30,
-        created_by: ''
-      });
-      setShowAddForm(false);
-      loadSchedules();
+        created_by: '',
+      })
+      setShowAddForm(false)
+      toast.success('日程添加成功！')
+      loadSchedules()
     } catch (error) {
-      console.error('Error adding schedule:', error);
-      alert('添加失败');
+      console.error('Error adding schedule:', error)
+      toast.error('添加失败，请重试')
     }
-  };
+  }
 
   const handleUpdateStatus = async (id: string, status: 'upcoming' | 'completed' | 'cancelled') => {
     try {
-      const { error } = await supabase
-        .from('schedules')
-        .update({ status })
-        .eq('id', id);
+      const { error } = await supabase.from('schedules').update({ status }).eq('id', id)
 
-      if (error) throw error;
-      loadSchedules();
+      if (error) throw error
+      toast.success('状态更新成功')
+      loadSchedules()
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('更新失败');
+      console.error('Error updating status:', error)
+      toast.error('更新失败，请重试')
     }
-  };
+  }
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm('确定要删除这个日程吗？')) return;
+    if (!confirm('确定要删除这个日程吗？')) return
 
     try {
-      const { error } = await supabase
-        .from('schedules')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('schedules').delete().eq('id', id)
 
-      if (error) throw error;
-      loadSchedules();
+      if (error) throw error
+      toast.success('删除成功')
+      loadSchedules()
     } catch (error) {
-      console.error('Error deleting schedule:', error);
-      alert('删除失败');
+      console.error('Error deleting schedule:', error)
+      toast.error('删除失败，请重试')
     }
-  };
+  }
 
   const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = new Date(dateString)
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      weekday: 'long'
-    });
-  };
+      weekday: 'long',
+    })
+  }
 
   const isUpcoming = (dateString: string) => {
-    return new Date(dateString) > new Date();
-  };
+    return new Date(dateString) > new Date()
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">加载中...</div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-gray-700 hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
-        
+        <BackButton href="/" text="返回首页" />
+
         <div className="card">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-4xl font-bold text-primary mb-2">📅 共享日程</h1>
               <p className="text-gray-600">记录两人的约会计划</p>
             </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="btn-primary"
-            >
+            <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary">
               {showAddForm ? '取消' : '+ 添加日程'}
             </button>
           </div>
@@ -205,7 +197,9 @@ export default function SchedulePage() {
                   <label className="block text-gray-700 mb-2 font-semibold">描述</label>
                   <textarea
                     value={newSchedule.description}
-                    onChange={(e) => setNewSchedule({ ...newSchedule, description: e.target.value })}
+                    onChange={(e) =>
+                      setNewSchedule({ ...newSchedule, description: e.target.value })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="详细说明..."
                     rows={3}
@@ -218,7 +212,9 @@ export default function SchedulePage() {
                     <input
                       type="datetime-local"
                       value={newSchedule.event_date}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, event_date: e.target.value })}
+                      onChange={(e) =>
+                        setNewSchedule({ ...newSchedule, event_date: e.target.value })
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
@@ -237,10 +233,17 @@ export default function SchedulePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-700 mb-2 font-semibold">提前提醒（分钟）</label>
+                    <label className="block text-gray-700 mb-2 font-semibold">
+                      提前提醒（分钟）
+                    </label>
                     <select
                       value={newSchedule.reminder_minutes}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, reminder_minutes: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setNewSchedule({
+                          ...newSchedule,
+                          reminder_minutes: parseInt(e.target.value),
+                        })
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value={15}>15分钟</option>
@@ -256,17 +259,16 @@ export default function SchedulePage() {
                     <input
                       type="text"
                       value={newSchedule.created_by}
-                      onChange={(e) => setNewSchedule({ ...newSchedule, created_by: e.target.value })}
+                      onChange={(e) =>
+                        setNewSchedule({ ...newSchedule, created_by: e.target.value })
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="你的名字"
                     />
                   </div>
                 </div>
 
-                <button
-                  onClick={handleAddSchedule}
-                  className="btn-primary w-full"
-                >
+                <button onClick={handleAddSchedule} className="btn-primary w-full">
                   添加日程
                 </button>
               </div>
@@ -292,21 +294,29 @@ export default function SchedulePage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-bold text-gray-800">{schedule.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          schedule.status === 'upcoming'
-                            ? 'bg-green-100 text-green-700'
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            schedule.status === 'upcoming'
+                              ? 'bg-green-100 text-green-700'
+                              : schedule.status === 'completed'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {schedule.status === 'upcoming'
+                            ? '即将到来'
                             : schedule.status === 'completed'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {schedule.status === 'upcoming' ? '即将到来' : schedule.status === 'completed' ? '已完成' : '已取消'}
+                            ? '已完成'
+                            : '已取消'}
                         </span>
                         {isUpcoming(schedule.event_date) && schedule.status === 'upcoming' && (
                           <span className="animate-pulse text-yellow-500">🔔</span>
                         )}
                       </div>
 
-                      <p className="text-lg text-gray-600 mb-3">{formatDateTime(schedule.event_date)}</p>
+                      <p className="text-lg text-gray-600 mb-3">
+                        {formatDateTime(schedule.event_date)}
+                      </p>
 
                       {schedule.description && (
                         <p className="text-gray-700 mb-3">{schedule.description}</p>
@@ -322,7 +332,13 @@ export default function SchedulePage() {
                         {schedule.reminder_minutes && (
                           <div className="flex items-center gap-1">
                             <span>⏰</span>
-                            <span>提前{schedule.reminder_minutes >= 60 ? `${schedule.reminder_minutes / 60}小时` : `${schedule.reminder_minutes}分钟`}提醒</span>
+                            <span>
+                              提前
+                              {schedule.reminder_minutes >= 60
+                                ? `${schedule.reminder_minutes / 60}小时`
+                                : `${schedule.reminder_minutes}分钟`}
+                              提醒
+                            </span>
                           </div>
                         )}
                         <div className="flex items-center gap-1">
@@ -364,5 +380,5 @@ export default function SchedulePage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 type Choice = 'rock' | 'paper' | 'scissors'
 
@@ -97,16 +98,16 @@ export default function RPSPage() {
 
   const makeChoice = (choice: Choice) => {
     setPlayerChoice(choice)
-    
+
     // 对手随机选择
     const opponentChoice = choices[Math.floor(Math.random() * 3)].value
-    
+
     // 判断胜负
     const winner = determineWinner(choice, opponentChoice)
-    
+
     // 保存到数据库
     saveGame(choice, opponentChoice, winner)
-    
+
     // 显示结果
     setCurrentGame({
       ...currentGame!,
@@ -114,19 +115,13 @@ export default function RPSPage() {
       player2_choice: opponentChoice,
       winner,
     })
-    
-    setResult(
-      winner === playerName
-        ? '🎉 你赢了！'
-        : winner === null
-        ? '🤝 平局！'
-        : '😢 你输了！'
-    )
+
+    setResult(winner === playerName ? '🎉 你赢了！' : winner === null ? '🤝 平局！' : '😢 你输了！')
   }
 
   const determineWinner = (p1: Choice, p2: Choice): string | null => {
     if (p1 === p2) return null // 平局
-    
+
     if (
       (p1 === 'rock' && p2 === 'scissors') ||
       (p1 === 'paper' && p2 === 'rock') ||
@@ -134,22 +129,22 @@ export default function RPSPage() {
     ) {
       return playerName
     }
-    
+
     return playerName === 'zyx' ? 'zly' : 'zyx'
   }
 
   const saveGame = async (p1Choice: Choice, p2Choice: Choice, winner: string | null) => {
     try {
-      await supabase
-        .from('rps_games')
-        .insert([{
+      await supabase.from('rps_games').insert([
+        {
           player1: playerName,
           player2: playerName === 'zyx' ? 'zly' : 'zyx',
           player1_choice: p1Choice,
           player2_choice: p2Choice,
           winner: winner,
-        }])
-      
+        },
+      ])
+
       loadStats()
     } catch (error) {
       console.error('保存游戏失败:', error)
@@ -185,9 +180,7 @@ export default function RPSPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">
@@ -198,7 +191,7 @@ export default function RPSPage() {
             {showNameInput ? (
               <div className="card text-center">
                 <h1 className="text-4xl font-bold mb-8">✊✋✌️ 石头剪刀布 ✊✋✌️</h1>
-                
+
                 {/* 统计数据 */}
                 <div className="grid grid-cols-2 gap-6 mb-8 max-w-2xl mx-auto">
                   <div className="p-6 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg">
@@ -239,11 +232,8 @@ export default function RPSPage() {
                     <option value="zyx">👨 zyx</option>
                     <option value="zly">👩 zly</option>
                   </select>
-                  
-                  <button
-                    onClick={startGame}
-                    className="btn-primary w-full text-xl py-4"
-                  >
+
+                  <button onClick={startGame} className="btn-primary w-full text-xl py-4">
                     🎮 开始游戏
                   </button>
                 </div>
@@ -252,7 +242,8 @@ export default function RPSPage() {
               <div className="card">
                 <div className="text-center mb-8">
                   <h2 className="text-3xl font-bold mb-2">
-                    {playerName === 'zyx' ? '👨 zyx' : '👩 zly'} VS {playerName === 'zyx' ? '👩 zly' : '👨 zyx'}
+                    {playerName === 'zyx' ? '👨 zyx' : '👩 zly'} VS{' '}
+                    {playerName === 'zyx' ? '👩 zly' : '👨 zyx'}
                   </h2>
                   <div className="text-gray-400">做出你的选择</div>
                 </div>
@@ -278,38 +269,37 @@ export default function RPSPage() {
                       <div className="text-center p-6 bg-blue-500/20 rounded-lg">
                         <div className="text-sm text-gray-400 mb-2">你的选择</div>
                         <div className="text-6xl mb-2">
-                          {choices.find(c => c.value === currentGame?.player1_choice)?.emoji}
+                          {choices.find((c) => c.value === currentGame?.player1_choice)?.emoji}
                         </div>
                         <div className="text-lg font-bold">
-                          {choices.find(c => c.value === currentGame?.player1_choice)?.label}
+                          {choices.find((c) => c.value === currentGame?.player1_choice)?.label}
                         </div>
                       </div>
 
                       <div className="text-center">
-                        <div className="text-4xl font-bold text-primary mb-2">
-                          {result}
-                        </div>
+                        <div className="text-4xl font-bold text-primary mb-2">{result}</div>
                         <div className="text-6xl">
-                          {currentGame?.winner === null ? '🤝' : currentGame?.winner === playerName ? '🎉' : '😢'}
+                          {currentGame?.winner === null
+                            ? '🤝'
+                            : currentGame?.winner === playerName
+                            ? '🎉'
+                            : '😢'}
                         </div>
                       </div>
 
                       <div className="text-center p-6 bg-pink-500/20 rounded-lg">
                         <div className="text-sm text-gray-400 mb-2">对手选择</div>
                         <div className="text-6xl mb-2">
-                          {choices.find(c => c.value === currentGame?.player2_choice)?.emoji}
+                          {choices.find((c) => c.value === currentGame?.player2_choice)?.emoji}
                         </div>
                         <div className="text-lg font-bold">
-                          {choices.find(c => c.value === currentGame?.player2_choice)?.label}
+                          {choices.find((c) => c.value === currentGame?.player2_choice)?.label}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex gap-4 justify-center">
-                      <button
-                        onClick={playAgain}
-                        className="btn-primary px-8 py-3"
-                      >
+                      <button onClick={playAgain} className="btn-primary px-8 py-3">
                         🔄 再来一局
                       </button>
                       <button

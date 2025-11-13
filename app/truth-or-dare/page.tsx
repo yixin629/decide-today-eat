@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 interface TruthOrDare {
   id: number
@@ -19,8 +20,10 @@ export default function TruthOrDarePage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedType, setSelectedType] = useState<'truth' | 'dare' | 'random'>('random')
-  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard' | 'random'>('random')
-  
+  const [selectedDifficulty, setSelectedDifficulty] = useState<
+    'easy' | 'medium' | 'hard' | 'random'
+  >('random')
+
   const [newItem, setNewItem] = useState({
     type: 'truth' as 'truth' | 'dare',
     content: '',
@@ -53,12 +56,12 @@ export default function TruthOrDarePage() {
 
     // 按类型筛选
     if (selectedType !== 'random') {
-      filtered = filtered.filter(item => item.type === selectedType)
+      filtered = filtered.filter((item) => item.type === selectedType)
     }
 
     // 按难度筛选
     if (selectedDifficulty !== 'random') {
-      filtered = filtered.filter(item => item.difficulty === selectedDifficulty)
+      filtered = filtered.filter((item) => item.difficulty === selectedDifficulty)
     }
 
     if (filtered.length === 0) {
@@ -72,14 +75,14 @@ export default function TruthOrDarePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
-      const { error } = await supabase
-        .from('truth_or_dare')
-        .insert([{
+      const { error } = await supabase.from('truth_or_dare').insert([
+        {
           ...newItem,
           is_custom: true,
-        }])
+        },
+      ])
 
       if (error) throw error
 
@@ -101,10 +104,7 @@ export default function TruthOrDarePage() {
     if (!confirm('确定要删除这条记录吗？')) return
 
     try {
-      const { error } = await supabase
-        .from('truth_or_dare')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('truth_or_dare').delete().eq('id', id)
 
       if (error) throw error
       loadItems()
@@ -115,28 +115,34 @@ export default function TruthOrDarePage() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'text-green-500'
-      case 'medium': return 'text-yellow-500'
-      case 'hard': return 'text-red-500'
-      default: return 'text-gray-500'
+      case 'easy':
+        return 'text-green-500'
+      case 'medium':
+        return 'text-yellow-500'
+      case 'hard':
+        return 'text-red-500'
+      default:
+        return 'text-gray-500'
     }
   }
 
   const getDifficultyText = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return '简单'
-      case 'medium': return '中等'
-      case 'hard': return '困难'
-      default: return ''
+      case 'easy':
+        return '简单'
+      case 'medium':
+        return '中等'
+      case 'hard':
+        return '困难'
+      default:
+        return ''
     }
   }
 
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="inline-block mb-6 text-white hover:text-primary transition-colors">
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         {loading ? (
           <div className="card text-center">
@@ -180,9 +186,7 @@ export default function TruthOrDarePage() {
               {/* 当前题目显示 */}
               {currentItem && (
                 <div className="mb-8 p-8 bg-gradient-to-r from-primary/20 to-accent/20 rounded-xl">
-                  <div className="text-6xl mb-4">
-                    {currentItem.type === 'truth' ? '💬' : '🎯'}
-                  </div>
+                  <div className="text-6xl mb-4">{currentItem.type === 'truth' ? '💬' : '🎯'}</div>
                   <div className="text-2xl font-bold mb-2">
                     {currentItem.type === 'truth' ? '真心话' : '大冒险'}
                   </div>
@@ -199,10 +203,7 @@ export default function TruthOrDarePage() {
               )}
 
               {/* 抽取按钮 */}
-              <button
-                onClick={getRandomItem}
-                className="btn-primary text-xl px-12 py-4 mb-6"
-              >
+              <button onClick={getRandomItem} className="btn-primary text-xl px-12 py-4 mb-6">
                 🎲 随机抽取
               </button>
 
@@ -249,7 +250,9 @@ export default function TruthOrDarePage() {
                         <label className="block text-sm font-semibold mb-2">难度</label>
                         <select
                           value={newItem.difficulty}
-                          onChange={(e) => setNewItem({ ...newItem, difficulty: e.target.value as any })}
+                          onChange={(e) =>
+                            setNewItem({ ...newItem, difficulty: e.target.value as any })
+                          }
                           className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:border-primary focus:outline-none"
                         >
                           <option value="easy">🟢 简单</option>
@@ -283,11 +286,11 @@ export default function TruthOrDarePage() {
             <div className="card">
               <h2 className="text-2xl font-bold mb-4">📝 自定义题目列表</h2>
               <div className="space-y-3">
-                {items.filter(item => item.is_custom).length === 0 ? (
+                {items.filter((item) => item.is_custom).length === 0 ? (
                   <p className="text-center text-gray-400 py-8">还没有自定义题目</p>
                 ) : (
                   items
-                    .filter(item => item.is_custom)
+                    .filter((item) => item.is_custom)
                     .map((item) => (
                       <div
                         key={item.id}
@@ -295,9 +298,7 @@ export default function TruthOrDarePage() {
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl">
-                              {item.type === 'truth' ? '💬' : '🎯'}
-                            </span>
+                            <span className="text-2xl">{item.type === 'truth' ? '💬' : '🎯'}</span>
                             <span className="font-semibold">
                               {item.type === 'truth' ? '真心话' : '大冒险'}
                             </span>

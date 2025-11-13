@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import BackButton from '../components/BackButton'
 
 export default function DrawingPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -180,12 +181,7 @@ export default function DrawingPage() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <Link
-          href="/"
-          className="inline-block mb-6 text-gray-700 hover:text-primary transition-colors"
-        >
-          ← 返回首页
-        </Link>
+        <BackButton href="/" text="返回首页" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* 画板 */}
