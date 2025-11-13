@@ -72,8 +72,12 @@ export default function DrawingPage() {
       clientY = e.clientY
     }
 
+    // 计算缩放比例
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
     ctx.beginPath()
-    ctx.moveTo(clientX - rect.left, clientY - rect.top)
+    ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY)
   }
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
@@ -99,7 +103,11 @@ export default function DrawingPage() {
       clientY = e.clientY
     }
 
-    ctx.lineTo(clientX - rect.left, clientY - rect.top)
+    // 计算缩放比例
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+
+    ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY)
     ctx.strokeStyle = color
     ctx.lineWidth = lineWidth
     ctx.lineCap = 'round'
