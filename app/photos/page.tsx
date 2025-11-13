@@ -17,10 +17,25 @@ interface Photo {
   uploadedBy: string
   createdAt: string
   likes: number
+  tag?: string
 }
+
+const photoFilters = {
+  normal: { name: '原图', css: '' },
+  vintage: { name: '复古', css: 'sepia(50%) contrast(110%)' },
+  grayscale: { name: '黑白', css: 'grayscale(100%)' },
+  warm: { name: '暖色', css: 'sepia(30%) saturate(150%)' },
+  cold: { name: '冷色', css: 'hue-rotate(180deg) saturate(120%)' },
+  bright: { name: '明亮', css: 'brightness(120%) contrast(110%)' },
+  dreamy: { name: '梦幻', css: 'blur(0.5px) brightness(110%) saturate(130%)' },
+  pink: { name: '粉嫩', css: 'sepia(20%) hue-rotate(300deg) saturate(150%)' },
+}
+
+const photoTags = ['全部', '约会', '美食', '旅行', '自拍', '风景', '日常', '节日']
 
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<Photo[]>([])
+  const [filteredPhotos, setFilteredPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
@@ -30,7 +45,19 @@ export default function PhotosPage() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [currentFilter, setCurrentFilter] = useState<keyof typeof photoFilters>('normal')
+  const [currentTag, setCurrentTag] = useState('全部')
+  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid')
   const { success, error: showError } = useToast()
+
+  // 过滤照片
+  useEffect(() => {
+    let filtered = photos
+    if (currentTag !== '全部') {
+      filtered = photos.filter((photo) => photo.tag === currentTag)
+    }
+    setFilteredPhotos(filtered)
+  }, [currentTag, photos])
 
   // 导航到上一张或下一张照片
   const navigatePhoto = useCallback(
@@ -350,6 +377,69 @@ export default function PhotosPage() {
             <PhotoGridSkeleton />
           ) : (
             <>
+              {/* 过滤器和标签栏 */}
+              <div className="mb-6 space-y-4">
+                {/* 滤镜选择 */}
+                <div className="bg-white rounded-2xl p-4 shadow-lg">
+                  <h3 className="font-bold mb-3 text-gray-800">滤镜效果 🎨</h3>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {Object.entries(photoFilters).map(([key, value]) => (
+                      <button
+                        key={key}
+                        onClick={() => setCurrentFilter(key as keyof typeof photoFilters)}
+                        className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
+                          currentFilter === key
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {value.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 标签筛选 */}
+                <div className="bg-white rounded-2xl p-4 shadow-lg">
+                  <h3 className="font-bold mb-3 text-gray-800">照片分类 🏷️</h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {photoTags.map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => setCurrentTag(tag)}
+                        className={`px-4 py-2 rounded-full transition-all ${
+                          currentTag === tag
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 视图模式切换 */}
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`px-4 py-2 rounded-lg ${
+                      viewMode === 'grid' ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    📷 网格
+                  </button>
+                  <button
+                    onClick={() => setViewMode('timeline')}
+                    className={`px-4 py-2 rounded-lg ${
+                      viewMode === 'timeline' ? 'bg-pink-500 text-white' : 'bg-white text-gray-700'
+                    }`}
+                  >
+                    📅 时间轴
+                  </button>
+                </div>
+              </div>
+
               {/* Upload Section */}
               <div className="mb-8 text-center">
                 <label className="btn-primary cursor-pointer inline-block">
@@ -368,47 +458,114 @@ export default function PhotosPage() {
                 </p>
               </div>
 
-              {/* Photos Grid */}
-              {photos.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {photos.map((photo) => (
-                    <div
-                      key={photo.id}
-                      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
-                      onClick={() => openPhotoViewer(photo)}
-                    >
-                      <div className="relative h-64 bg-gray-200">
-                        <Image
-                          src={photo.url}
-                          alt={photo.title}
-                          fill
-                          className="object-cover rounded-xl"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          priority={true}
-                        />
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-bold text-lg mb-2 truncate">{photo.title}</h3>
-                        <div className="flex items-center justify-between text-sm text-gray-600">
-                          <span>上传者: {photo.uploadedBy}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              likePhoto(photo.id)
-                            }}
-                            className="flex items-center gap-1 hover:text-red-500 transition-colors"
-                          >
-                            ❤️ {photo.likes}
-                          </button>
+              {/* Photos Display */}
+              {filteredPhotos.length > 0 ? (
+                viewMode === 'grid' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredPhotos.map((photo) => (
+                      <div
+                        key={photo.id}
+                        className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
+                        onClick={() => openPhotoViewer(photo)}
+                      >
+                        <div className="relative h-64 bg-gray-200">
+                          <Image
+                            src={photo.url}
+                            alt={photo.title}
+                            fill
+                            className="object-cover rounded-xl"
+                            style={{ filter: photoFilters[currentFilter].css }}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            priority={true}
+                          />
+                          {photo.tag && (
+                            <span className="absolute top-2 right-2 bg-white/90 px-3 py-1 rounded-full text-sm font-semibold text-pink-600">
+                              {photo.tag}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-bold text-lg mb-2 truncate">{photo.title}</h3>
+                          <div className="flex items-center justify-between text-sm text-gray-600">
+                            <span>上传者: {photo.uploadedBy}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                likePhoto(photo.id)
+                              }}
+                              className="flex items-center gap-1 hover:text-red-500 transition-colors"
+                            >
+                              ❤️ {photo.likes}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* 时间轴视图 */
+                  <div className="space-y-8">
+                    {Object.entries(
+                      filteredPhotos.reduce((acc, photo) => {
+                        const date = new Date(photo.createdAt).toLocaleDateString('zh-CN')
+                        if (!acc[date]) acc[date] = []
+                        acc[date].push(photo)
+                        return acc
+                      }, {} as Record<string, Photo[]>)
+                    )
+                      .sort(
+                        ([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime()
+                      )
+                      .map(([date, dayPhotos]) => (
+                        <div key={date}>
+                          <div className="flex items-center gap-3 mb-4">
+                            <h3 className="text-xl font-bold text-gray-800">{date}</h3>
+                            <div className="flex-1 h-px bg-gray-300"></div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {dayPhotos.map((photo) => (
+                              <div
+                                key={photo.id}
+                                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all cursor-pointer"
+                                onClick={() => openPhotoViewer(photo)}
+                              >
+                                <div className="relative h-48 bg-gray-200">
+                                  <Image
+                                    src={photo.url}
+                                    alt={photo.title}
+                                    fill
+                                    className="object-cover"
+                                    style={{ filter: photoFilters[currentFilter].css }}
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                  />
+                                  {photo.tag && (
+                                    <span className="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded-full text-xs font-semibold text-pink-600">
+                                      {photo.tag}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="p-3">
+                                  <h4 className="font-semibold truncate">{photo.title}</h4>
+                                  <div className="flex items-center justify-between text-xs text-gray-600 mt-1">
+                                    <span>{photo.uploadedBy}</span>
+                                    <span>❤️ {photo.likes}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )
               ) : (
                 <div className="text-center py-16">
                   <div className="text-6xl mb-4">📷</div>
-                  <p className="text-gray-500 text-lg">还没有照片，赶快上传第一张吧！</p>
+                  <p className="text-gray-500 text-lg">
+                    {currentTag !== '全部'
+                      ? `暂无 "${currentTag}" 分类的照片`
+                      : '还没有照片，赶快上传第一张吧！'}
+                  </p>
                 </div>
               )}
             </>
@@ -439,7 +596,7 @@ export default function PhotosPage() {
                   width={1200}
                   height={700}
                   className="w-full max-h-[70vh] object-contain bg-gray-100 rounded-xl"
-                  style={{ objectFit: 'contain' }}
+                  style={{ objectFit: 'contain', filter: photoFilters[currentFilter].css }}
                   priority={true}
                 />
 

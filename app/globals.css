@@ -6,10 +6,16 @@
   --primary: #ff6b9d;
   --secondary: #c44569;
   --accent: #ffa502;
+  /* 主题系统变量 */
+  --color-primary: #ec4899;
+  --color-secondary: #f472b6;
+  --color-accent: #db2777;
+  --bg-gradient: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+  --card-bg: rgba(255, 255, 255, 0.9);
 }
 
 body {
-  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+  background: var(--bg-gradient);
   min-height: 100vh;
 }
 

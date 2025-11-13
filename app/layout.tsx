@@ -6,6 +6,7 @@ import UserAvatar from './components/UserAvatar'
 import AuthProvider from './components/AuthProvider'
 import { ToastProvider } from './components/ToastProvider'
 import AIChatbot from './components/AIChatbot'
+import ThemeSwitcher from './components/ThemeSwitcher'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <UserAvatar />
             {children}
             <AIChatbot />
+            <ThemeSwitcher />
           </AuthProvider>
         </ToastProvider>
       </body>

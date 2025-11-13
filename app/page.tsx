@@ -1,17 +1,95 @@
+'use client'
+
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 import RandomMemory from './components/RandomMemory'
 
+interface Stats {
+  photos: number
+  wishes: number
+  checkIns: number
+  daysTogeth: number
+}
+
 export default function Home() {
+  const [stats, setStats] = useState<Stats>({
+    photos: 0,
+    wishes: 0,
+    checkIns: 0,
+    daysTogeth: 0,
+  })
+
+  useEffect(() => {
+    loadStats()
+  }, [])
+
+  const loadStats = async () => {
+    try {
+      // 恋爱天数（假设从2024年1月1日开始）
+      const startDate = new Date('2024-01-01')
+      const today = new Date()
+      const days = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+
+      // 获取照片数量
+      const { count: photosCount } = await supabase
+        .from('photos')
+        .select('*', { count: 'exact', head: true })
+
+      // 获取心愿数量
+      const { count: wishesCount } = await supabase
+        .from('wishlist')
+        .select('*', { count: 'exact', head: true })
+
+      // 获取签到数量
+      const { count: checkInsCount } = await supabase
+        .from('check_ins')
+        .select('*', { count: 'exact', head: true })
+
+      setStats({
+        photos: photosCount || 0,
+        wishes: wishesCount || 0,
+        checkIns: checkInsCount || 0,
+        daysTogeth: days,
+      })
+    } catch (error) {
+      console.error('加载统计数据失败:', error)
+    }
+  }
   return (
     <main className="min-h-screen p-4 sm:p-6 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <header className="text-center mb-8 md:mb-12 mt-4 md:mt-8">
+        <header className="text-center mb-6 md:mb-8 mt-4 md:mt-8">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 md:mb-4 drop-shadow-lg">
             💕 zyx和zly的小世界 💕
           </h1>
           <p className="text-lg sm:text-xl text-white drop-shadow">属于我们两个人的专属空间</p>
         </header>
+
+        {/* Love Stats Dashboard */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-gradient-to-br from-pink-500 to-red-500 rounded-2xl p-4 text-white shadow-xl">
+            <div className="text-3xl font-bold">{stats.daysTogeth}</div>
+            <div className="text-sm opacity-90">在一起的天数</div>
+            <div className="text-2xl mt-1">❤️</div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl p-4 text-white shadow-xl">
+            <div className="text-3xl font-bold">{stats.photos}</div>
+            <div className="text-sm opacity-90">共同回忆</div>
+            <div className="text-2xl mt-1">📸</div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-4 text-white shadow-xl">
+            <div className="text-3xl font-bold">{stats.checkIns}</div>
+            <div className="text-sm opacity-90">签到天数</div>
+            <div className="text-2xl mt-1">📅</div>
+          </div>
+          <div className="bg-gradient-to-br from-orange-500 to-yellow-500 rounded-2xl p-4 text-white shadow-xl">
+            <div className="text-3xl font-bold">{stats.wishes}</div>
+            <div className="text-sm opacity-90">心愿清单</div>
+            <div className="text-2xl mt-1">✨</div>
+          </div>
+        </div>
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -26,7 +104,18 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* Gomoku Game */}
+          {/* Check In */}
+          <Link href="/check-in">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💖</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                每日签到
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">记录每一天的小确幸</p>
+            </div>
+          </Link>
+
+          {/* Gomoku */}
           <Link href="/gomoku">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
               <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⚫⚪</div>
