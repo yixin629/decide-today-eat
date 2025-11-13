@@ -50,6 +50,20 @@ export default function PhotosPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid')
   const { success, error: showError } = useToast()
 
+  // 加载保存的滤镜偏好
+  useEffect(() => {
+    const savedFilter = localStorage.getItem('photoFilter')
+    if (savedFilter && photoFilters[savedFilter as keyof typeof photoFilters]) {
+      setCurrentFilter(savedFilter as keyof typeof photoFilters)
+    }
+  }, [])
+
+  // 保存滤镜偏好
+  const handleFilterChange = (filter: keyof typeof photoFilters) => {
+    setCurrentFilter(filter)
+    localStorage.setItem('photoFilter', filter)
+  }
+
   // 过滤照片
   useEffect(() => {
     let filtered = photos
@@ -229,7 +243,9 @@ export default function PhotosPage() {
     e.target.value = ''
   }
 
-  const handleBatchUpload = async (files: { file: File; title: string; description: string }[]) => {
+  const handleBatchUpload = async (
+    files: { file: File; title: string; description: string; tag?: string }[]
+  ) => {
     setBatchUploading(true)
     try {
       for (const f of files) {
@@ -247,6 +263,7 @@ export default function PhotosPage() {
           {
             title: f.title || f.file.name,
             description: f.description,
+            tag: f.tag || '日常',
             image_url: urlData.publicUrl,
             uploaded_by: 'zyx',
             likes: 0,
@@ -386,7 +403,7 @@ export default function PhotosPage() {
                     {Object.entries(photoFilters).map(([key, value]) => (
                       <button
                         key={key}
-                        onClick={() => setCurrentFilter(key as keyof typeof photoFilters)}
+                        onClick={() => handleFilterChange(key as keyof typeof photoFilters)}
                         className={`px-4 py-2 rounded-full whitespace-nowrap transition-all ${
                           currentFilter === key
                             ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'

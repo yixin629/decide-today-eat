@@ -63,6 +63,17 @@ export default function CheckInPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string>('')
+  const [achievements, setAchievements] = useState<string[]>([])
+
+  // 成就徽章定义
+  const achievementsList = [
+    { id: 'first', name: '初次签到', desc: '完成第1次签到', emoji: '🌟', requirement: 1 },
+    { id: 'week', name: '坚持一周', desc: '连续签到7天', emoji: '🔥', requirement: 7 },
+    { id: 'twoweeks', name: '半月之约', desc: '连续签到14天', emoji: '💪', requirement: 14 },
+    { id: 'month', name: '满月成就', desc: '连续签到30天', emoji: '🏆', requirement: 30 },
+    { id: 'hundred', name: '百日之恋', desc: '累计签到100天', emoji: '👑', requirement: 100 },
+    { id: 'explorer', name: '探索者', desc: '完成10个不同挑战', emoji: '🗺️', requirement: 10 },
+  ]
 
   useEffect(() => {
     // 获取当前登录用户
@@ -94,11 +105,60 @@ export default function CheckInPage() {
       setCheckIns(data || [])
       calculateStreak(data || [])
       checkTodayStatus(data || [])
+      calculateAchievements(data || [])
     } catch (error) {
       console.error('加载签到记录失败:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const calculateAchievements = (records: CheckInRecord[]) => {
+    const totalCheckIns = records.length
+    const unlocked: string[] = []
+
+    // 初次签到
+    if (totalCheckIns >= 1) unlocked.push('first')
+
+    // 累计100天
+    if (totalCheckIns >= 100) unlocked.push('hundred')
+
+    // 连续签到成就（基于当前连续天数）
+    const streak = calculateCurrentStreak(records)
+    if (streak >= 7) unlocked.push('week')
+    if (streak >= 14) unlocked.push('twoweeks')
+    if (streak >= 30) unlocked.push('month')
+
+    // 探索者（完成10个不同的挑战日）
+    const uniqueDays = new Set(records.map((r) => new Date(r.check_in_date).getDate() % 30))
+    if (uniqueDays.size >= 10) unlocked.push('explorer')
+
+    setAchievements(unlocked)
+  }
+
+  const calculateCurrentStreak = (records: CheckInRecord[]): number => {
+    if (records.length === 0) return 0
+
+    let streak = 0
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    for (let i = 0; i < records.length; i++) {
+      const recordDate = new Date(records[i].check_in_date)
+      recordDate.setHours(0, 0, 0, 0)
+
+      const expectedDate = new Date(today)
+      expectedDate.setDate(today.getDate() - i)
+      expectedDate.setHours(0, 0, 0, 0)
+
+      if (recordDate.getTime() === expectedDate.getTime()) {
+        streak++
+      } else {
+        break
+      }
+    }
+
+    return streak
   }
 
   const checkTodayStatus = (records: CheckInRecord[]) => {

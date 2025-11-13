@@ -12,6 +12,12 @@ interface Stats {
   daysTogeth: number
 }
 
+interface NextAnniversary {
+  name: string
+  date: string
+  daysLeft: number
+}
+
 export default function Home() {
   const [stats, setStats] = useState<Stats>({
     photos: 0,
@@ -19,9 +25,13 @@ export default function Home() {
     checkIns: 0,
     daysTogeth: 0,
   })
+  const [dailyQuote, setDailyQuote] = useState('')
+  const [nextAnniversary, setNextAnniversary] = useState<NextAnniversary | null>(null)
 
   useEffect(() => {
     loadStats()
+    loadDailyQuote()
+    loadNextAnniversary()
   }, [])
 
   const loadStats = async () => {
@@ -54,6 +64,70 @@ export default function Home() {
       })
     } catch (error) {
       console.error('加载统计数据失败:', error)
+    }
+  }
+
+  const loadDailyQuote = async () => {
+    try {
+      // 从 love_quotes 表随机获取一条情话
+      const { data, error } = await supabase.from('love_quotes').select('quote').limit(50)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        // 客户端随机选择一条
+        const randomQuote = data[Math.floor(Math.random() * data.length)]
+        setDailyQuote(randomQuote.quote)
+      }
+    } catch (error) {
+      console.error('加载每日情话失败:', error)
+      setDailyQuote('爱你，是我做过最好的决定 💕')
+    }
+  }
+
+  const loadNextAnniversary = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('anniversaries')
+        .select('*')
+        .order('date', { ascending: true })
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        // 找到下一个即将到来的纪念日
+        for (const anniversary of data) {
+          const anniversaryDate = new Date(anniversary.date)
+          const currentYearDate = new Date(
+            today.getFullYear(),
+            anniversaryDate.getMonth(),
+            anniversaryDate.getDate()
+          )
+
+          // 如果今年的日期已经过了，看明年的
+          if (currentYearDate < today) {
+            currentYearDate.setFullYear(today.getFullYear() + 1)
+          }
+
+          const daysLeft = Math.ceil(
+            (currentYearDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          )
+
+          if (daysLeft >= 0) {
+            setNextAnniversary({
+              name: anniversary.name,
+              date: currentYearDate.toLocaleDateString('zh-CN'),
+              daysLeft: daysLeft,
+            })
+            break
+          }
+        }
+      }
+    } catch (error) {
+      console.error('加载纪念日失败:', error)
     }
   }
   return (
@@ -90,6 +164,32 @@ export default function Home() {
             <div className="text-2xl mt-1">✨</div>
           </div>
         </div>
+
+        {/* Next Anniversary Countdown */}
+        {nextAnniversary && (
+          <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 rounded-2xl p-6 shadow-xl mb-6 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="text-sm opacity-90 mb-1">即将到来 💝</div>
+                <h3 className="text-2xl font-bold mb-1">{nextAnniversary.name}</h3>
+                <p className="text-sm opacity-90">{nextAnniversary.date}</p>
+              </div>
+              <div className="text-center">
+                <div className="text-5xl font-bold">{nextAnniversary.daysLeft}</div>
+                <div className="text-sm mt-1">天后</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Daily Love Quote */}
+        {dailyQuote && (
+          <div className="bg-gradient-to-r from-pink-400 via-rose-400 to-red-400 rounded-2xl p-6 shadow-xl mb-8 text-white text-center">
+            <div className="text-4xl mb-3">💝</div>
+            <p className="text-lg md:text-xl font-medium italic">&ldquo;{dailyQuote}&rdquo;</p>
+            <p className="text-sm mt-2 opacity-80">今日情话</p>
+          </div>
+        )}
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">

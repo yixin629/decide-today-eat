@@ -9,6 +9,7 @@ interface UploadFile {
   preview: string
   title: string
   description: string
+  tag?: string
   compressed?: boolean
   originalSize?: number
   compressedSize?: number
@@ -48,6 +49,7 @@ export default function BatchUploadDialog({
           preview: URL.createObjectURL(file),
           title: '',
           description: '',
+          tag: '日常',
           compressed: true,
           originalSize: newFiles[index].size,
           compressedSize: file.size,
@@ -109,7 +111,7 @@ export default function BatchUploadDialog({
     })
   }
 
-  const updateFile = (index: number, field: 'title' | 'description', value: string) => {
+  const updateFile = (index: number, field: 'title' | 'description' | 'tag', value: string) => {
     setFiles((prev) => {
       const newFiles = [...prev]
       newFiles[index][field] = value
@@ -226,6 +228,20 @@ export default function BatchUploadDialog({
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-primary focus:outline-none"
                         disabled={uploading}
                       />
+                      <select
+                        value={file.tag || '日常'}
+                        onChange={(e) => updateFile(index, 'tag', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-primary focus:outline-none bg-white"
+                        disabled={uploading}
+                      >
+                        <option value="约会">💕 约会</option>
+                        <option value="美食">🍔 美食</option>
+                        <option value="旅行">✈️ 旅行</option>
+                        <option value="自拍">📷 自拍</option>
+                        <option value="风景">🌄 风景</option>
+                        <option value="日常">📅 日常</option>
+                        <option value="节日">🎉 节日</option>
+                      </select>
                       <textarea
                         placeholder="照片描述（可选）"
                         value={file.description}
