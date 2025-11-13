@@ -274,6 +274,121 @@ export default function CheckInPage() {
           <p className="text-lg opacity-95">{todayChallenge.description}</p>
         </div>
 
+        {/* 成就徽章展示 */}
+        {achievements.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-xl mb-6">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">🏆 已获得的成就</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {achievementsList.map((achievement) => {
+                const isUnlocked = achievements.includes(achievement.id)
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      isUnlocked
+                        ? 'border-pink-500 bg-gradient-to-br from-pink-50 to-purple-50'
+                        : 'border-gray-200 bg-gray-50 opacity-50'
+                    }`}
+                  >
+                    <div className="text-4xl mb-2 text-center">{achievement.emoji}</div>
+                    <div className="text-center">
+                      <div className="font-bold text-gray-800">{achievement.name}</div>
+                      <div className="text-xs text-gray-600 mt-1">{achievement.desc}</div>
+                      {isUnlocked && (
+                        <div className="text-xs text-green-600 mt-2 font-semibold">✓ 已解锁</div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 签到日历视图 */}
+        <div className="bg-white rounded-2xl p-6 shadow-xl mb-6">
+          <h3 className="text-xl font-bold mb-4 text-gray-800">📅 本月签到日历</h3>
+          <div className="grid grid-cols-7 gap-2">
+            {/* 星期标题 */}
+            {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
+              <div key={day} className="text-center text-sm font-semibold text-gray-600 py-2">
+                {day}
+              </div>
+            ))}
+            
+            {/* 日期格子 */}
+            {(() => {
+              const today = new Date()
+              const year = today.getFullYear()
+              const month = today.getMonth()
+              const firstDay = new Date(year, month, 1).getDay()
+              const daysInMonth = new Date(year, month + 1, 0).getDate()
+              
+              const checkInDates = new Set(
+                checkIns.map((record) => {
+                  const date = new Date(record.check_in_date)
+                  if (date.getMonth() === month && date.getFullYear() === year) {
+                    return date.getDate()
+                  }
+                  return null
+                }).filter(Boolean)
+              )
+
+              const days = []
+              
+              // 前面的空格
+              for (let i = 0; i < firstDay; i++) {
+                days.push(
+                  <div key={`empty-${i}`} className="aspect-square"></div>
+                )
+              }
+              
+              // 实际日期
+              for (let day = 1; day <= daysInMonth; day++) {
+                const isChecked = checkInDates.has(day)
+                const isToday = day === today.getDate()
+                const checkInRecord = checkIns.find((record) => {
+                  const date = new Date(record.check_in_date)
+                  return date.getDate() === day && date.getMonth() === month && date.getFullYear() === year
+                })
+                
+                days.push(
+                  <div
+                    key={day}
+                    className={`aspect-square rounded-lg flex items-center justify-center text-sm font-semibold cursor-pointer transition-all ${
+                      isChecked
+                        ? 'bg-gradient-to-br from-pink-400 to-purple-400 text-white hover:shadow-lg scale-105'
+                        : isToday
+                        ? 'bg-blue-100 text-blue-600 border-2 border-blue-400'
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                    title={checkInRecord ? checkInRecord.message : isToday ? '今天' : ''}
+                  >
+                    {day}
+                    {isChecked && <div className="absolute text-xs">✓</div>}
+                  </div>
+                )
+              }
+              
+              return days
+            })()}
+          </div>
+          <div className="flex gap-4 mt-4 text-xs text-gray-600">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-gradient-to-br from-pink-400 to-purple-400"></div>
+              <span>已签到</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-blue-100 border-2 border-blue-400"></div>
+              <span>今天</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-gray-50"></div>
+              <span>未签到</span>
+            </div>
+          </div>
+        </div>
+
         {/* 签到表单 */}
         {!todayChecked ? (
           <div className="bg-white rounded-2xl p-6 shadow-xl mb-6">
