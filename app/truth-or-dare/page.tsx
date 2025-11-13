@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import BackButton from '../components/BackButton'
+import { useToast } from '../components/ToastProvider'
 
 interface TruthOrDare {
   id: number
@@ -15,6 +16,7 @@ interface TruthOrDare {
 }
 
 export default function TruthOrDarePage() {
+  const toast = useToast()
   const [items, setItems] = useState<TruthOrDare[]>([])
   const [currentItem, setCurrentItem] = useState<TruthOrDare | null>(null)
   const [loading, setLoading] = useState(true)
@@ -65,7 +67,7 @@ export default function TruthOrDarePage() {
     }
 
     if (filtered.length === 0) {
-      alert('没有符合条件的题目，请调整筛选条件')
+      toast.warning('没有符合条件的题目，请调整筛选条件')
       return
     }
 
@@ -96,7 +98,7 @@ export default function TruthOrDarePage() {
       loadItems()
     } catch (error) {
       console.error('添加失败:', error)
-      alert('添加失败，请重试')
+      toast.error('添加失败，请重试')
     }
   }
 

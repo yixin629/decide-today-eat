@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface Wish {
   id: string
@@ -179,9 +180,7 @@ export default function WishlistPage() {
           <h1 className="text-4xl font-bold text-primary mb-8 text-center">✨ 心愿清单 ✨</h1>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="text-2xl">加载中... ⏳</div>
-            </div>
+            <LoadingSkeleton type="list" count={4} />
           ) : (
             <>
               {/* Add Button */}

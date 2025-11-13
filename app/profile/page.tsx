@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import BackButton from '../components/BackButton'
+import { useToast } from '../components/ToastProvider'
 
 interface UserProfile {
   id: string
@@ -27,6 +28,7 @@ interface Reminder {
 }
 
 export default function ProfilePage() {
+  const toast = useToast()
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,7 +141,7 @@ export default function ProfilePage() {
 
   const handleAddProfile = async () => {
     if (!newProfile.name || !newProfile.birthday) {
-      alert('请填写姓名和生日')
+      toast.warning('请填写姓名和生日')
       return
     }
 
@@ -160,13 +162,13 @@ export default function ProfilePage() {
       checkBirthdayReminders()
     } catch (error) {
       console.error('添加资料失败:', error)
-      alert('添加失败')
+      toast.error('添加失败')
     }
   }
 
   const handleAddReminder = async () => {
     if (!newReminder.title || !newReminder.remind_date || !newReminder.remind_to) {
-      alert('请填写提醒标题、日期和提醒对象')
+      toast.warning('请填写提醒标题、日期和提醒对象')
       return
     }
 
@@ -189,10 +191,10 @@ export default function ProfilePage() {
       })
       setShowAddReminder(false)
       loadData()
-      alert('提醒创建成功！')
+      toast.success('提醒创建成功！')
     } catch (error) {
       console.error('创建提醒失败:', error)
-      alert('创建失败')
+      toast.error('创建失败')
     }
   }
 
@@ -204,9 +206,10 @@ export default function ProfilePage() {
 
       if (error) throw error
       loadData()
+      toast.success('提醒已删除')
     } catch (error) {
       console.error('删除提醒失败:', error)
-      alert('删除失败')
+      toast.error('删除失败')
     }
   }
 

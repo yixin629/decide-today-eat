@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useToast } from '@/app/components/ToastProvider'
 import BackButton from '@/app/components/BackButton'
 import { PhotoGridSkeleton } from '@/app/components/LoadingSkeleton'
+import BatchUploadDialog from '@/app/components/BatchUploadDialog'
 
 interface Photo {
   id: string
@@ -25,9 +26,7 @@ export default function PhotosPage() {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadTitle, setUploadTitle] = useState('')
-  const [uploadDescription, setUploadDescription] = useState('')
+  const [batchUploading, setBatchUploading] = useState(false)
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -195,75 +194,46 @@ export default function PhotosPage() {
   }
 
   // 上传照片到 Supabase Storage
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBatchFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
-
-    const file = files[0]
-    setUploadFile(file)
-    setUploadTitle(file.name.replace(/\.[^/.]+$/, '')) // 默认使用文件名（去掉扩展名）
-    setUploadDescription('')
     setShowUploadDialog(true)
-
-    // 重置input，允许重复选择同一文件
+    // BatchUploadDialog 会处理文件
     e.target.value = ''
   }
 
-  const handleUploadConfirm = async () => {
-    if (!uploadFile) return
-
-    setUploading(true)
-
+  const handleBatchUpload = async (files: { file: File; title: string; description: string }[]) => {
+    setBatchUploading(true)
     try {
-      const fileExt = uploadFile.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `${fileName}`
-
-      // 上传到 Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, uploadFile)
-
-      if (uploadError) throw uploadError
-
-      // 获取公开 URL
-      const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filePath)
-
-      // 保存到数据库
-      const { data, error: dbError } = await supabase
-        .from('photos')
-        .insert([
+      for (const f of files) {
+        // 上传到 Supabase Storage
+        const fileExt = f.file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `${fileName}`
+        const { error: uploadError } = await supabase.storage
+          .from('photos')
+          .upload(filePath, f.file)
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filePath)
+        // 保存到数据库
+        await supabase.from('photos').insert([
           {
-            title: uploadTitle || uploadFile.name,
-            description: uploadDescription,
+            title: f.title || f.file.name,
+            description: f.description,
             image_url: urlData.publicUrl,
-            uploaded_by: 'zyx', // 可以改成动态输入
+            uploaded_by: 'zyx',
             likes: 0,
           },
         ])
-        .select()
-
-      if (dbError) throw dbError
-
-      // 关闭对话框并重置状态
+      }
+      success('批量照片上传成功！')
       setShowUploadDialog(false)
-      setUploadFile(null)
-      setUploadTitle('')
-      setUploadDescription('')
-      success('照片上传成功！')
     } catch (error) {
-      console.error('上传失败:', error)
-      showError('上传失败，请检查网络连接和 Storage 配置')
+      console.error('批量上传失败:', error)
+      showError('批量上传失败，请检查网络连接和 Storage 配置')
     } finally {
-      setUploading(false)
+      setBatchUploading(false)
     }
-  }
-
-  const handleUploadCancel = () => {
-    setShowUploadDialog(false)
-    setUploadFile(null)
-    setUploadTitle('')
-    setUploadDescription('')
   }
 
   const likePhoto = async (id: string) => {
@@ -383,16 +353,19 @@ export default function PhotosPage() {
               {/* Upload Section */}
               <div className="mb-8 text-center">
                 <label className="btn-primary cursor-pointer inline-block">
-                  {uploading ? '上传中...' : '+ 上传照片'}
+                  {batchUploading ? '上传中...' : '+ 批量上传照片'}
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleFileSelect}
+                    multiple
+                    onChange={handleBatchFileSelect}
                     className="hidden"
-                    disabled={uploading}
+                    disabled={batchUploading}
                   />
                 </label>
-                <p className="text-gray-500 text-sm mt-2">支持 JPG, PNG, GIF 格式</p>
+                <p className="text-gray-500 text-sm mt-2">
+                  支持 JPG, PNG, GIF 格式，最多 10 张，自动压缩
+                </p>
               </div>
 
               {/* Photos Grid */}
@@ -405,10 +378,13 @@ export default function PhotosPage() {
                       onClick={() => openPhotoViewer(photo)}
                     >
                       <div className="relative h-64 bg-gray-200">
-                        <img
+                        <Image
                           src={photo.url}
                           alt={photo.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover rounded-xl"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          priority={true}
                         />
                       </div>
                       <div className="p-4">
@@ -457,10 +433,14 @@ export default function PhotosPage() {
             >
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={selectedPhoto.url}
                   alt={selectedPhoto.title}
-                  className="w-full max-h-[70vh] object-contain bg-gray-100"
+                  width={1200}
+                  height={700}
+                  className="w-full max-h-[70vh] object-contain bg-gray-100 rounded-xl"
+                  style={{ objectFit: 'contain' }}
+                  priority={true}
                 />
 
                 {/* 关闭按钮 */}
@@ -544,64 +524,13 @@ export default function PhotosPage() {
           </div>
         )}
 
-        {/* Upload Dialog */}
+        {/* Batch Upload Dialog */}
         {showUploadDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold text-primary mb-4">上传照片</h2>
-
-              {uploadFile && (
-                <div className="mb-4">
-                  <img
-                    src={URL.createObjectURL(uploadFile)}
-                    alt="预览"
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">照片标题 *</label>
-                  <input
-                    type="text"
-                    value={uploadTitle}
-                    onChange={(e) => setUploadTitle(e.target.value)}
-                    placeholder="给这张照片起个名字"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">照片描述</label>
-                  <textarea
-                    value={uploadDescription}
-                    onChange={(e) => setUploadDescription(e.target.value)}
-                    placeholder="记录这一刻的故事..."
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleUploadCancel}
-                  className="btn-secondary flex-1"
-                  disabled={uploading}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleUploadConfirm}
-                  className="btn-primary flex-1"
-                  disabled={uploading || !uploadTitle.trim()}
-                >
-                  {uploading ? '上传中...' : '确认上传'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <BatchUploadDialog
+            onClose={() => setShowUploadDialog(false)}
+            onUpload={handleBatchUpload}
+            uploading={batchUploading}
+          />
         )}
 
         {/* Edit Photo Dialog */}
@@ -611,10 +540,14 @@ export default function PhotosPage() {
               <h2 className="text-2xl font-bold text-primary mb-4">编辑照片信息</h2>
 
               <div className="mb-4">
-                <img
+                <Image
                   src={editingPhoto.url}
                   alt={editingPhoto.title}
+                  width={600}
+                  height={192}
                   className="w-full h-48 object-cover rounded-lg"
+                  style={{ objectFit: 'cover' }}
+                  priority={true}
                 />
               </div>
 

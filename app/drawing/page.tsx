@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import BackButton from '../components/BackButton'
+import { useToast } from '../components/ToastProvider'
 
 export default function DrawingPage() {
+  const toast = useToast()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#ff6b9d')
@@ -136,7 +138,7 @@ export default function DrawingPage() {
     if (!canvas) return
 
     if (!prompt.trim()) {
-      alert('请输入你画的是什么')
+      toast.warning('请输入你画的是什么')
       return
     }
 
@@ -153,13 +155,13 @@ export default function DrawingPage() {
 
       if (error) throw error
 
-      alert('作品已保存！')
+      toast.success('作品已保存！')
       clearCanvas()
       setPrompt('')
       loadDrawings()
     } catch (error) {
       console.error('保存失败:', error)
-      alert('保存失败，请重试')
+      toast.error('保存失败，请重试')
     }
   }
 

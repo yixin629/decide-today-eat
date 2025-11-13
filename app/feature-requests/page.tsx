@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface FeatureRequest {
   id: number
@@ -35,11 +36,7 @@ export default function FeatureRequestsPage() {
     priority: 'medium' as 'low' | 'medium' | 'high',
   })
 
-  useEffect(() => {
-    loadRequests()
-  }, [filterStatus])
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       let query = supabase
         .from('feature_requests')
@@ -59,7 +56,11 @@ export default function FeatureRequestsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterStatus])
+
+  useEffect(() => {
+    loadRequests()
+  }, [loadRequests])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -210,9 +211,7 @@ export default function FeatureRequestsPage() {
         <BackButton href="/" text="返回首页" />
 
         {loading ? (
-          <div className="card text-center">
-            <div className="text-2xl">加载中...</div>
-          </div>
+          <LoadingSkeleton type="list" count={4} />
         ) : (
           <>
             <div className="card">

@@ -30,6 +30,40 @@ export default function BatchUploadDialog({
   const [compressing, setCompressing] = useState(false)
   const { info, warning } = useToast()
 
+  const addFiles = useCallback(
+    async (newFiles: File[]) => {
+      if (files.length + newFiles.length > 10) {
+        warning('最多只能同时上传 10 张照片')
+        newFiles = newFiles.slice(0, 10 - files.length)
+      }
+
+      setCompressing(true)
+      info('正在压缩图片...')
+
+      try {
+        const compressedFiles = await compressImages(newFiles)
+
+        const uploadFiles: UploadFile[] = compressedFiles.map((file, index) => ({
+          file,
+          preview: URL.createObjectURL(file),
+          title: '',
+          description: '',
+          compressed: true,
+          originalSize: newFiles[index].size,
+          compressedSize: file.size,
+        }))
+
+        setFiles((prev) => [...prev, ...uploadFiles])
+        info(`已添加 ${uploadFiles.length} 张照片`)
+      } catch (error) {
+        warning('部分图片压缩失败')
+      } finally {
+        setCompressing(false)
+      }
+    },
+    [files.length, warning, info]
+  )
+
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -56,44 +90,13 @@ export default function BatchUploadDialog({
         warning('请只拖入图片文件')
       }
     },
-    [warning]
+    [warning, addFiles]
   )
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files
     if (selectedFiles) {
       addFiles(Array.from(selectedFiles))
-    }
-  }
-
-  const addFiles = async (newFiles: File[]) => {
-    if (files.length + newFiles.length > 10) {
-      warning('最多只能同时上传 10 张照片')
-      newFiles = newFiles.slice(0, 10 - files.length)
-    }
-
-    setCompressing(true)
-    info('正在压缩图片...')
-
-    try {
-      const compressedFiles = await compressImages(newFiles)
-
-      const uploadFiles: UploadFile[] = compressedFiles.map((file, index) => ({
-        file,
-        preview: URL.createObjectURL(file),
-        title: '',
-        description: '',
-        compressed: true,
-        originalSize: newFiles[index].size,
-        compressedSize: file.size,
-      }))
-
-      setFiles((prev) => [...prev, ...uploadFiles])
-      info(`已添加 ${uploadFiles.length} 张照片`)
-    } catch (error) {
-      warning('部分图片压缩失败')
-    } finally {
-      setCompressing(false)
     }
   }
 

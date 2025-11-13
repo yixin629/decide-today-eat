@@ -30,6 +30,8 @@ export default function DiaryPage() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [previewMode, setPreviewMode] = useState(false) // 新增：预览模式
   const [editPreviewMode, setEditPreviewMode] = useState(false) // 新增：编辑预览模式
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null)
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split('T')[0],
     title: '',
@@ -57,9 +59,83 @@ export default function DiaryPage() {
     }
   }, [selectedDate])
 
+  // 自动保存草稿到 localStorage
+  const saveDraft = useCallback(() => {
+    const draft = {
+      date: newEntry.date,
+      title: newEntry.title,
+      content: newEntry.content,
+      mood: newEntry.mood,
+      author: newEntry.author,
+      timestamp: Date.now(),
+    }
+    localStorage.setItem('diary-draft', JSON.stringify(draft))
+    setSaveStatus('saved')
+  }, [newEntry])
+
+  // 从 localStorage 恢复草稿
+  const loadDraft = useCallback(() => {
+    const draft = localStorage.getItem('diary-draft')
+    if (draft) {
+      try {
+        const parsedDraft = JSON.parse(draft)
+        // 只在草稿不超过24小时时恢复
+        if (Date.now() - parsedDraft.timestamp < 24 * 60 * 60 * 1000) {
+          setNewEntry({
+            date: parsedDraft.date || new Date().toISOString().split('T')[0],
+            title: parsedDraft.title || '',
+            content: parsedDraft.content || '',
+            mood: parsedDraft.mood || '😊',
+            author: parsedDraft.author || '',
+          })
+        } else {
+          // 清除过期的草稿
+          localStorage.removeItem('diary-draft')
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error)
+        localStorage.removeItem('diary-draft')
+      }
+    }
+  }, [])
+
+  // 清除草稿
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem('diary-draft')
+    setSaveStatus('saved')
+  }, [])
+
   useEffect(() => {
     loadEntries()
-  }, [loadEntries])
+    loadDraft()
+  }, [loadEntries, loadDraft])
+
+  // 自动保存逻辑
+  useEffect(() => {
+    if (showAddForm && (newEntry.title || newEntry.content || newEntry.author)) {
+      setSaveStatus('unsaved')
+
+      // 清除之前的定时器
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer)
+      }
+
+      // 设置新的定时器，30秒后自动保存
+      const timer = setTimeout(() => {
+        setSaveStatus('saving')
+        saveDraft()
+      }, 30000)
+
+      setAutoSaveTimer(timer)
+    }
+
+    // 清理定时器
+    return () => {
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer)
+      }
+    }
+  }, [newEntry, showAddForm, autoSaveTimer, saveDraft])
 
   const handleAddEntry = async () => {
     if (!newEntry.title || !newEntry.content || !newEntry.author) {
@@ -80,6 +156,7 @@ export default function DiaryPage() {
         author: '',
       })
       setShowAddForm(false)
+      clearDraft()
       toast.success('日记添加成功！')
       loadEntries()
     } catch (error) {
@@ -190,7 +267,31 @@ export default function DiaryPage() {
 
           {showAddForm && (
             <div className="mb-8 p-6 bg-pink-50 rounded-xl border border-pink-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">写下今天的故事</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">写下今天的故事</h3>
+                {showAddForm && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {saveStatus === 'saving' && (
+                      <span className="text-blue-600 flex items-center gap-1">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        保存中...
+                      </span>
+                    )}
+                    {saveStatus === 'saved' && (
+                      <span className="text-green-600 flex items-center gap-1">
+                        <span className="text-lg">💾</span>
+                        已自动保存
+                      </span>
+                    )}
+                    {saveStatus === 'unsaved' && (
+                      <span className="text-orange-600 flex items-center gap-1">
+                        <span className="text-lg">📝</span>
+                        未保存
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>

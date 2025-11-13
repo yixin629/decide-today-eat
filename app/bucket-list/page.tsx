@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface BucketItem {
   id: number
@@ -128,8 +129,8 @@ export default function BucketListPage() {
         <BackButton href="/" text="返回首页" />
 
         {loading ? (
-          <div className="card text-center">
-            <div className="text-2xl">加载中...</div>
+          <div className="min-h-screen flex items-center justify-center">
+            <LoadingSkeleton type="list" count={4} />
           </div>
         ) : (
           <>

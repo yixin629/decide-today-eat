@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow, differenceInDays, format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
+import AnniversaryReminders from '../components/AnniversaryReminders'
 
 interface Anniversary {
   id: string
@@ -25,11 +27,7 @@ export default function AnniversariesPage() {
   const [editForm, setEditForm] = useState<Anniversary | null>(null)
 
   // 加载数据
-  useEffect(() => {
-    loadAnniversaries()
-  }, [])
-
-  const loadAnniversaries = async () => {
+  const loadAnniversaries = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('anniversaries')
@@ -50,7 +48,11 @@ export default function AnniversariesPage() {
       console.error('加载纪念日失败:', error)
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadAnniversaries()
+  }, [loadAnniversaries])
 
   // 插入默认数据
   const insertDefaultData = async () => {
@@ -207,10 +209,11 @@ export default function AnniversariesPage() {
         <div className="card">
           <h1 className="text-4xl font-bold text-primary mb-8 text-center">💝 重要纪念日 💝</h1>
 
+          {/* Anniversary Reminders */}
+          <AnniversaryReminders />
+
           {loading ? (
-            <div className="text-center py-12">
-              <div className="text-2xl">加载中... ⏳</div>
-            </div>
+            <LoadingSkeleton type="list" count={3} />
           ) : (
             <>
               {/* Add Button */}

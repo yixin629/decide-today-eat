@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import BackButton from '../components/BackButton'
+import { useToast } from '../components/ToastProvider'
 
 type Choice = 'rock' | 'paper' | 'scissors'
 
@@ -29,6 +30,7 @@ const choices: { value: Choice; emoji: string; label: string }[] = [
 ]
 
 export default function RPSPage() {
+  const toast = useToast()
   const [playerName, setPlayerName] = useState('')
   const [showNameInput, setShowNameInput] = useState(true)
   const [currentGame, setCurrentGame] = useState<Game | null>(null)
@@ -82,7 +84,7 @@ export default function RPSPage() {
 
   const startGame = () => {
     if (!playerName) {
-      alert('请选择玩家')
+      toast.warning('请选择玩家')
       return
     }
     setShowNameInput(false)

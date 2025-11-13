@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import BackButton from '../components/BackButton'
+import { useToast } from '../components/ToastProvider'
 
 interface LoveQuote {
   id: number
@@ -14,6 +15,7 @@ interface LoveQuote {
 }
 
 export default function LoveQuotesPage() {
+  const toast = useToast()
   const [quotes, setQuotes] = useState<LoveQuote[]>([])
   const [currentQuote, setCurrentQuote] = useState<LoveQuote | null>(null)
   const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export default function LoveQuotesPage() {
       loadQuotes()
     } catch (error) {
       console.error('添加失败:', error)
-      alert('添加失败，请重试')
+      toast.error('添加失败，请重试')
     }
   }
 
@@ -99,7 +101,7 @@ export default function LoveQuotesPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    alert('已复制到剪贴板！')
+    toast.success('已复制到剪贴板！')
   }
 
   return (

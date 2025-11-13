@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useToast } from '../components/ToastProvider'
@@ -28,11 +28,7 @@ export default function FoodPage() {
   const [newFood, setNewFood] = useState('')
 
   // 加载食物选项
-  useEffect(() => {
-    loadFoodOptions()
-  }, [])
-
-  const loadFoodOptions = async () => {
+  const loadFoodOptions = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('food_options')
@@ -54,7 +50,11 @@ export default function FoodPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadFoodOptions()
+  }, [loadFoodOptions])
 
   // 插入默认食物数据
   const insertDefaultFoods = async () => {

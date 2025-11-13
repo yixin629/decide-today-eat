@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface Schedule {
   id: string
@@ -135,8 +136,13 @@ export default function SchedulePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">加载中...</div>
+      <div className="min-h-screen p-8">
+        <div className="max-w-4xl mx-auto">
+          <BackButton href="/" text="返回首页" />
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">恋爱日程</h1>
+          <p className="text-gray-600 mb-8">安排我们的每一天</p>
+          <LoadingSkeleton type="list" count={3} />
+        </div>
       </div>
     )
   }

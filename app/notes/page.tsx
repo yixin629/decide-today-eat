@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface Note {
   id: string
@@ -138,9 +139,7 @@ export default function NotesPage() {
           </h1>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="text-2xl">加载中... ⏳</div>
-            </div>
+            <LoadingSkeleton type="list" count={4} />
           ) : (
             <>
               {/* New Note Form */}
