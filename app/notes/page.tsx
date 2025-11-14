@@ -14,6 +14,9 @@ interface Note {
   toPerson: string
   createdAt: string
   isRead: boolean
+  letterStyle?: string
+  isSealed?: boolean
+  emojis?: string[]
 }
 
 export default function NotesPage() {
@@ -24,6 +27,8 @@ export default function NotesPage() {
     author: '',
     content: '',
     toPerson: '',
+    letterStyle: 'classic',
+    emojis: [] as string[],
   })
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
 
@@ -50,6 +55,9 @@ export default function NotesPage() {
             toPerson: item.to_person,
             createdAt: item.created_at,
             isRead: item.is_read,
+            letterStyle: item.letter_style || 'classic',
+            isSealed: item.is_sealed !== false,
+            emojis: item.emojis || [],
           }))
         )
       }
@@ -57,6 +65,74 @@ export default function NotesPage() {
       console.error('加载留言失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 信纸样式定义
+  const letterStyles = [
+    { id: 'classic', name: '经典', bg: 'bg-amber-50', border: 'border-amber-200', icon: '📜' },
+    { id: 'love', name: '爱心', bg: 'bg-pink-50', border: 'border-pink-200', icon: '💕' },
+    { id: 'cute', name: '可爱', bg: 'bg-purple-50', border: 'border-purple-200', icon: '🎀' },
+    { id: 'elegant', name: '优雅', bg: 'bg-blue-50', border: 'border-blue-200', icon: '🌸' },
+  ]
+
+  // 表情包选项
+  const emojiOptions = [
+    '❤️',
+    '💕',
+    '💖',
+    '💗',
+    '💝',
+    '💘',
+    '💞',
+    '💓',
+    '😘',
+    '😍',
+    '🥰',
+    '😊',
+    '🤗',
+    '🥳',
+    '😂',
+    '🤣',
+    '🌹',
+    '🌸',
+    '🌺',
+    '🌻',
+    '🌼',
+    '🌷',
+    '⭐',
+    '✨',
+  ]
+
+  const handleEmojiToggle = (emoji: string) => {
+    const currentEmojis = newNote.emojis || []
+    if (currentEmojis.includes(emoji)) {
+      setNewNote({
+        ...newNote,
+        emojis: currentEmojis.filter((e) => e !== emoji),
+      })
+    } else if (currentEmojis.length < 5) {
+      setNewNote({
+        ...newNote,
+        emojis: [...currentEmojis, emoji],
+      })
+    }
+  }
+
+  const handleUnseal = async (noteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('love_notes')
+        .update({ is_sealed: false })
+        .eq('id', noteId)
+
+      if (error) throw error
+
+      setNotes(notes.map((note) => (note.id === noteId ? { ...note, isSealed: false } : note)))
+      toast.success('信件已拆封！')
+    } catch (error) {
+      console.error('拆封失败:', error)
+      toast.error('拆封失败')
     }
   }
 
@@ -73,6 +149,9 @@ export default function NotesPage() {
             content: newNote.content,
             to_person: newNote.toPerson,
             is_read: false,
+            letter_style: newNote.letterStyle,
+            is_sealed: true,
+            emojis: newNote.emojis,
           },
         ])
         .select()
@@ -87,9 +166,12 @@ export default function NotesPage() {
           toPerson: data[0].to_person,
           createdAt: data[0].created_at,
           isRead: data[0].is_read,
+          letterStyle: data[0].letter_style,
+          isSealed: data[0].is_sealed,
+          emojis: data[0].emojis,
         }
         setNotes([newNoteData, ...notes])
-        setNewNote({ author: '', content: '', toPerson: '' })
+        setNewNote({ author: '', content: '', toPerson: '', letterStyle: 'classic', emojis: [] })
         toast.success('留言发送成功！')
       }
     } catch (error) {
@@ -212,6 +294,56 @@ export default function NotesPage() {
                       required
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">选择信纸样式</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {letterStyles.map((style) => (
+                        <button
+                          key={style.id}
+                          type="button"
+                          onClick={() => setNewNote({ ...newNote, letterStyle: style.id })}
+                          className={`p-4 rounded-lg border-2 transition-all ${
+                            newNote.letterStyle === style.id
+                              ? `${style.bg} ${style.border} scale-105 shadow-lg`
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-3xl mb-1">{style.icon}</div>
+                          <div className="text-sm font-medium">{style.name}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">
+                      添加表情包 (最多5个){' '}
+                      {newNote.emojis &&
+                        newNote.emojis.length > 0 &&
+                        `(已选${newNote.emojis.length})`}
+                    </label>
+                    <div className="grid grid-cols-8 md:grid-cols-12 gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                      {emojiOptions.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleEmojiToggle(emoji)}
+                          disabled={
+                            (newNote.emojis?.length || 0) >= 5 && !newNote.emojis?.includes(emoji)
+                          }
+                          className={`p-2 rounded-lg transition-all text-2xl ${
+                            newNote.emojis?.includes(emoji)
+                              ? 'bg-pink-200 scale-110 ring-2 ring-pink-400'
+                              : 'bg-white hover:bg-gray-100'
+                          } disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button type="submit" className="btn-primary w-full">
                     💌 发送留言
                   </button>
@@ -244,55 +376,104 @@ export default function NotesPage() {
 
               {/* Notes List */}
               <div className="space-y-4">
-                {filteredNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className={`p-4 md:p-6 rounded-xl shadow transition-all ${
-                      note.isRead ? 'bg-gray-50' : 'bg-gradient-to-r from-pink-50 to-purple-50'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row items-start md:items-start justify-between mb-4 gap-2">
-                      <div className="w-full md:w-auto">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-primary text-base md:text-lg">
-                            {note.author}
-                          </span>
-                          <span className="text-gray-500">→</span>
-                          <span className="font-bold text-secondary text-base md:text-lg">
-                            {note.toPerson}
+                {filteredNotes.map((note) => {
+                  const currentStyle =
+                    letterStyles.find((s) => s.id === note.letterStyle) || letterStyles[0]
+                  return (
+                    <div
+                      key={note.id}
+                      className={`relative p-4 md:p-6 rounded-xl shadow transition-all border-2 ${
+                        note.isSealed
+                          ? 'bg-gradient-to-br from-amber-100 to-amber-50 border-amber-300'
+                          : `${currentStyle.bg} ${currentStyle.border}`
+                      } ${!note.isRead && 'ring-2 ring-pink-400'}`}
+                    >
+                      {/* 封口状态显示 */}
+                      {note.isSealed && (
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                          <div className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
+                            🔒 密封信件
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 信纸样式图标 */}
+                      {!note.isSealed && (
+                        <div className="absolute top-2 right-2 text-2xl">{currentStyle.icon}</div>
+                      )}
+
+                      <div className="flex flex-col md:flex-row items-start md:items-start justify-between mb-4 gap-2 mt-4">
+                        <div className="w-full md:w-auto">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-bold text-primary text-base md:text-lg">
+                              {note.author}
+                            </span>
+                            <span className="text-gray-500">→</span>
+                            <span className="font-bold text-secondary text-base md:text-lg">
+                              {note.toPerson}
+                            </span>
+                          </div>
+                          <span className="text-xs md:text-sm text-gray-500">
+                            {new Date(note.createdAt).toLocaleString('zh-CN')}
                           </span>
                         </div>
-                        <span className="text-xs md:text-sm text-gray-500">
-                          {new Date(note.createdAt).toLocaleString('zh-CN')}
-                        </span>
+                        {!note.isRead && (
+                          <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full self-start">
+                            NEW
+                          </span>
+                        )}
                       </div>
-                      {!note.isRead && (
-                        <span className="bg-red-500 text-white text-xs px-3 py-1 rounded-full self-start">
-                          NEW
-                        </span>
+
+                      {note.isSealed ? (
+                        <div className="text-center py-8">
+                          <div className="text-6xl mb-4">💌</div>
+                          <p className="text-gray-600 mb-4">这是一封密封的信件</p>
+                          <button onClick={() => handleUnseal(note.id)} className="btn-primary">
+                            🔓 拆封阅读
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-gray-800 text-base md:text-lg mb-4 whitespace-pre-wrap break-words">
+                            {note.content}
+                          </p>
+
+                          {/* 表情包显示 */}
+                          {note.emojis && note.emojis.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-4 p-3 bg-white/50 rounded-lg">
+                              {note.emojis.map((emoji, i) => (
+                                <span
+                                  key={i}
+                                  className="text-3xl animate-bounce"
+                                  style={{ animationDelay: `${i * 0.1}s` }}
+                                >
+                                  {emoji}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            {!note.isRead && (
+                              <button
+                                onClick={() => markAsRead(note.id)}
+                                className="btn-primary text-xs md:text-sm py-2 px-3 md:px-4"
+                              >
+                                ✓ 标记已读
+                              </button>
+                            )}
+                            <button
+                              onClick={() => deleteNote(note.id)}
+                              className="text-red-500 hover:text-red-700 text-xs md:text-sm px-3 md:px-4 py-2"
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
-                    <p className="text-gray-800 text-base md:text-lg mb-4 whitespace-pre-wrap break-words">
-                      {note.content}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {!note.isRead && (
-                        <button
-                          onClick={() => markAsRead(note.id)}
-                          className="btn-primary text-xs md:text-sm py-2 px-3 md:px-4"
-                        >
-                          ✓ 标记已读
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteNote(note.id)}
-                        className="text-red-500 hover:text-red-700 text-xs md:text-sm px-3 md:px-4 py-2"
-                      >
-                        删除
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {filteredNotes.length === 0 && (

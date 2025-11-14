@@ -82,7 +82,7 @@ export default function ThemeSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-24 z-50">
       {/* 主题面板 */}
       {isOpen && (
         <div className="absolute bottom-16 right-0 bg-white rounded-2xl shadow-2xl p-4 w-64 animate-fade-in">

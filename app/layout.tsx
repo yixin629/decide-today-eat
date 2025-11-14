@@ -7,6 +7,10 @@ import AuthProvider from './components/AuthProvider'
 import { ToastProvider } from './components/ToastProvider'
 import AIChatbot from './components/AIChatbot'
 import ThemeSwitcher from './components/ThemeSwitcher'
+import ThemeSettings from './components/ThemeSettings'
+import HeartParticles from './components/HeartParticles'
+import PageLoadingEffect from './components/PageLoadingEffect'
+import RandomSurprise from './components/RandomSurprise'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -21,11 +25,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <ToastProvider>
           <AuthProvider>
+            <PageLoadingEffect />
+            <RandomSurprise />
             <Navigation />
             <UserAvatar />
             {children}
             <AIChatbot />
             <ThemeSwitcher />
+            <ThemeSettings />
+            <HeartParticles />
           </AuthProvider>
         </ToastProvider>
       </body>

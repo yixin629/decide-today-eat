@@ -15,6 +15,8 @@ interface DiaryEntry {
   title: string
   content: string
   mood: string
+  weather?: string
+  stickers?: string[]
   author: string
   photos?: string[]
   created_at: string
@@ -37,6 +39,8 @@ export default function DiaryPage() {
     title: '',
     content: '',
     mood: '😊',
+    weather: '☀️',
+    stickers: [] as string[],
     author: '',
   })
 
@@ -86,6 +90,8 @@ export default function DiaryPage() {
             title: parsedDraft.title || '',
             content: parsedDraft.content || '',
             mood: parsedDraft.mood || '😊',
+            weather: parsedDraft.weather || '☀️',
+            stickers: parsedDraft.stickers || [],
             author: parsedDraft.author || '',
           })
         } else {
@@ -153,6 +159,8 @@ export default function DiaryPage() {
         title: '',
         content: '',
         mood: '😊',
+        weather: '☀️',
+        stickers: [],
         author: '',
       })
       setShowAddForm(false)
@@ -216,7 +224,91 @@ export default function DiaryPage() {
     { emoji: '😭', label: '难过' },
     { emoji: '😤', label: '生气' },
     { emoji: '🤔', label: '思考' },
+    { emoji: '😴', label: '困倦' },
+    { emoji: '🤒', label: '生病' },
+    { emoji: '💪', label: '充满力量' },
+    { emoji: '🎉', label: '庆祝' },
+    { emoji: '💖', label: '恋爱中' },
   ]
+
+  const weatherOptions = [
+    { emoji: '☀️', label: '晴天' },
+    { emoji: '⛅', label: '多云' },
+    { emoji: '☁️', label: '阴天' },
+    { emoji: '🌧️', label: '下雨' },
+    { emoji: '⛈️', label: '雷雨' },
+    { emoji: '🌨️', label: '下雪' },
+    { emoji: '🌈', label: '彩虹' },
+    { emoji: '🌙', label: '夜晚' },
+    { emoji: '⭐', label: '星空' },
+    { emoji: '🌤️', label: '晴转多云' },
+  ]
+
+  const stickerOptions = [
+    '❤️',
+    '💕',
+    '💖',
+    '💗',
+    '💝',
+    '💘',
+    '💞',
+    '💓',
+    '🌹',
+    '🌸',
+    '🌺',
+    '🌻',
+    '🌼',
+    '🌷',
+    '🪻',
+    '🏵️',
+    '✨',
+    '💫',
+    '⭐',
+    '🌟',
+    '💥',
+    '🎊',
+    '🎉',
+    '🎈',
+    '🍰',
+    '🍮',
+    '🍪',
+    '🍩',
+    '🧁',
+    '🍫',
+    '🍬',
+    '🍭',
+    '🎵',
+    '🎶',
+    '🎸',
+    '🎹',
+    '🎤',
+    '🎧',
+    '🎬',
+    '📷',
+    '🌈',
+    '☀️',
+    '🌙',
+    '☁️',
+    '🌟',
+    '💫',
+    '✨',
+    '⚡',
+  ]
+
+  const handleStickerToggle = (sticker: string) => {
+    const currentStickers = newEntry.stickers || []
+    if (currentStickers.includes(sticker)) {
+      setNewEntry({
+        ...newEntry,
+        stickers: currentStickers.filter((s) => s !== sticker),
+      })
+    } else {
+      setNewEntry({
+        ...newEntry,
+        stickers: [...currentStickers, sticker],
+      })
+    }
+  }
 
   if (loading) {
     return (
@@ -345,6 +437,59 @@ export default function DiaryPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-800 mb-2">今天的天气</label>
+                  <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
+                    {weatherOptions.map((weather) => (
+                      <button
+                        key={weather.emoji}
+                        onClick={() => setNewEntry({ ...newEntry, weather: weather.emoji })}
+                        className={`p-3 rounded-lg transition-all ${
+                          newEntry.weather === weather.emoji
+                            ? 'bg-white/30 scale-110'
+                            : 'bg-white/10 hover:bg-white/20'
+                        }`}
+                        title={weather.label}
+                      >
+                        <span className="text-3xl">{weather.emoji}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-800 mb-2">添加贴纸装饰 (最多选5个)</label>
+                  <div className="grid grid-cols-8 md:grid-cols-12 gap-2 max-h-40 overflow-y-auto p-2 bg-white/10 rounded-lg">
+                    {stickerOptions.map((sticker) => (
+                      <button
+                        key={sticker}
+                        onClick={() => handleStickerToggle(sticker)}
+                        disabled={
+                          (newEntry.stickers?.length || 0) >= 5 &&
+                          !newEntry.stickers?.includes(sticker)
+                        }
+                        className={`p-2 rounded-lg transition-all ${
+                          newEntry.stickers?.includes(sticker)
+                            ? 'bg-white/40 scale-110 ring-2 ring-pink-400'
+                            : 'bg-white/10 hover:bg-white/20'
+                        } disabled:opacity-30 disabled:cursor-not-allowed`}
+                      >
+                        <span className="text-2xl">{sticker}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {newEntry.stickers && newEntry.stickers.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="text-sm text-gray-700">已选贴纸：</span>
+                      {newEntry.stickers.map((sticker, i) => (
+                        <span key={i} className="text-2xl">
+                          {sticker}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -478,7 +623,10 @@ export default function DiaryPage() {
                     <>
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-4">
-                          <span className="text-5xl">{entry.mood}</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="text-5xl">{entry.mood}</span>
+                            {entry.weather && <span className="text-3xl">{entry.weather}</span>}
+                          </div>
                           <div>
                             <h3 className="text-2xl font-bold text-gray-800 mb-1">{entry.title}</h3>
                             <div className="flex items-center gap-3 text-sm text-gray-600">
@@ -516,6 +664,20 @@ export default function DiaryPage() {
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{entry.content}</ReactMarkdown>
                         </div>
                       </div>
+
+                      {entry.stickers && entry.stickers.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-white/10 rounded-lg">
+                          {entry.stickers.map((sticker, i) => (
+                            <span
+                              key={i}
+                              className="text-3xl animate-pulse"
+                              style={{ animationDelay: `${i * 0.1}s` }}
+                            >
+                              {sticker}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <div className="text-xs text-gray-500">
                         {entry.updated_at !== entry.created_at && (

@@ -14,6 +14,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   // 功能页面
   { name: '个人资料', path: '/profile', icon: '👤', category: 'feature' },
+  { name: '每日签到', path: '/check-in', icon: '💖', category: 'feature' },
   { name: '倒计时/正计时', path: '/countdown', icon: '⏰', category: 'feature' },
   { name: '共享日程', path: '/schedule', icon: '📅', category: 'feature' },
   { name: '时光胶囊', path: '/time-capsule', icon: '🎁', category: 'feature' },
@@ -26,6 +27,9 @@ const navItems: NavItem[] = [
   { name: '留言板', path: '/notes', icon: '💌', category: 'feature' },
   { name: '情话生成器', path: '/love-quotes', icon: '💕', category: 'feature' },
   { name: '愿望桶', path: '/bucket-list', icon: '🪣', category: 'feature' },
+  { name: '塔罗牌占卜', path: '/tarot', icon: '🔮', category: 'feature' },
+  { name: '星座运势', path: '/horoscope', icon: '⭐', category: 'feature' },
+  { name: '穿搭记录', path: '/outfit-records', icon: '👔', category: 'feature' },
   { name: '功能需求', path: '/feature-requests', icon: '💡', category: 'feature' },
 
   // 游戏页面
@@ -34,6 +38,10 @@ const navItems: NavItem[] = [
   { name: '真心话大冒险', path: '/truth-or-dare', icon: '🎲', category: 'game' },
   { name: '涂鸦板', path: '/drawing', icon: '🎨', category: 'game' },
   { name: '记忆翻牌', path: '/memory-game', icon: '🃏', category: 'game' },
+  { name: '配对游戏', path: '/matching-game', icon: '🧩', category: 'game' },
+  { name: '装扮小人', path: '/dress-up', icon: '🎀', category: 'game' },
+  { name: '制作情书', path: '/love-letter', icon: '💌', category: 'game' },
+  { name: '颜色测试', path: '/color-test', icon: '🌈', category: 'game' },
 ]
 
 export default function Navigation() {

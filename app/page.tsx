@@ -36,8 +36,8 @@ export default function Home() {
 
   const loadStats = async () => {
     try {
-      // 恋爱天数（假设从2024年1月1日开始）
-      const startDate = new Date('2024-01-01')
+      // 恋爱天数（从2025年9月12日开始）
+      const startDate = new Date('2025-09-12')
       const today = new Date()
       const days = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
@@ -165,18 +165,64 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Next Anniversary Countdown */}
+        {/* Next Anniversary Countdown - Enhanced */}
         {nextAnniversary && (
-          <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 rounded-2xl p-6 shadow-xl mb-6 text-white">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-sm opacity-90 mb-1">即将到来 💝</div>
-                <h3 className="text-2xl font-bold mb-1">{nextAnniversary.name}</h3>
+          <div className="relative bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 rounded-2xl p-6 shadow-xl mb-6 text-white overflow-hidden">
+            {/* Floating hearts animation */}
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute text-4xl animate-float"
+                  style={{
+                    left: `${i * 20}%`,
+                    animationDelay: `${i * 0.5}s`,
+                    opacity: 0.2,
+                  }}
+                >
+                  💝
+                </div>
+              ))}
+            </div>
+
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex-1 text-center md:text-left">
+                <div className="text-sm opacity-90 mb-1 flex items-center justify-center md:justify-start gap-2">
+                  <span className="animate-pulse">💝</span>
+                  <span>即将到来</span>
+                </div>
+                <h3 className="text-2xl md:text-3xl font-bold mb-1 animate-bounce">
+                  {nextAnniversary.name}
+                </h3>
                 <p className="text-sm opacity-90">{nextAnniversary.date}</p>
               </div>
-              <div className="text-center">
-                <div className="text-5xl font-bold">{nextAnniversary.daysLeft}</div>
-                <div className="text-sm mt-1">天后</div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-center bg-white/20 rounded-xl p-4 backdrop-blur-sm">
+                  <div className="text-5xl md:text-6xl font-bold animate-pulse">
+                    {nextAnniversary.daysLeft}
+                  </div>
+                  <div className="text-sm mt-1">天后</div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    // 生成海报逻辑（简化版，实际可以用canvas生成图片）
+                    const posterText = `
+${nextAnniversary.name}
+距离这个特殊的日子还有 ${nextAnniversary.daysLeft} 天
+${nextAnniversary.date}
+💕 zyx和zly的小世界 💕
+                    `.trim()
+
+                    navigator.clipboard.writeText(posterText)
+                    alert('纪念日海报文案已复制到剪贴板！')
+                  }}
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-3 transition-all transform hover:scale-110"
+                  title="生成海报"
+                >
+                  <span className="text-2xl">📋</span>
+                </button>
               </div>
             </div>
           </div>
@@ -392,6 +438,78 @@ export default function Home() {
                 恋爱日记
               </h2>
               <p className="text-sm sm:text-base text-gray-600 text-center">记录每天的甜蜜瞬间</p>
+            </div>
+          </Link>
+
+          {/* Matching Game */}
+          <Link href="/matching-game">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🧩</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣配对游戏
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                找到所有配对的情侣物品
+              </p>
+            </div>
+          </Link>
+
+          {/* Dress Up */}
+          <Link href="/dress-up">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎀</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                装扮小人游戏
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">打扮你的虚拟形象</p>
+            </div>
+          </Link>
+
+          {/* Love Letter */}
+          <Link href="/love-letter">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💌</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                制作情书游戏
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">创作专属浪漫情书</p>
+            </div>
+          </Link>
+
+          {/* Color Test */}
+          <Link href="/color-test">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🌈</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                颜色性格测试
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                测测你的性格和恋爱风格
+              </p>
+            </div>
+          </Link>
+
+          {/* Tarot */}
+          <Link href="/tarot">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🔮</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                塔罗牌占卜
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                每日一卦，探索恋爱运势
+              </p>
+            </div>
+          </Link>
+
+          {/* Horoscope */}
+          <Link href="/horoscope">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⭐</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                星座运势
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">查看双人每日运势</p>
             </div>
           </Link>
 

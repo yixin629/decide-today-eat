@@ -94,6 +94,70 @@ body {
     }
   }
 
+  /* 漂浮动画 */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-20px) rotate(5deg);
+    }
+    50% {
+      transform: translateY(-40px) rotate(-5deg);
+    }
+    75% {
+      transform: translateY(-20px) rotate(3deg);
+    }
+  }
+
+  /* 加载条动画 */
+  .animate-loading-bar {
+    animation: loading-bar 1.5s ease-in-out forwards;
+  }
+
+  @keyframes loading-bar {
+    0% {
+      width: 0%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  /* 慢速跳动 */
+  .animate-bounce-slow {
+    animation: bounce-slow 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce-slow {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* 慢速旋转 */
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   /* Markdown样式 */
   .prose {
     @apply text-gray-800;
@@ -147,4 +211,67 @@ body {
   .prose blockquote {
     @apply border-l-4 border-primary pl-4 italic my-2;
   }
+}
+
+/* 暗黑模式 */
+.dark-mode {
+  --bg-gradient: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  --card-bg: rgba(31, 41, 55, 0.9);
+}
+
+.dark-mode body {
+  background: var(--bg-gradient);
+  color: #f3f4f6;
+}
+
+.dark-mode .card {
+  @apply bg-gray-800 bg-opacity-95 text-gray-100;
+}
+
+.dark-mode .text-gray-600 {
+  @apply text-gray-400;
+}
+
+.dark-mode .text-gray-700 {
+  @apply text-gray-300;
+}
+
+.dark-mode .text-gray-800 {
+  @apply text-gray-200;
+}
+
+.dark-mode .bg-white {
+  @apply bg-gray-800;
+}
+
+.dark-mode .bg-gray-50 {
+  @apply bg-gray-900;
+}
+
+.dark-mode .bg-gray-100 {
+  @apply bg-gray-700;
+}
+
+/* 护眼模式 */
+.eye-care-mode {
+  --bg-gradient: linear-gradient(135deg, #f5f3e8 0%, #e8e6d0 100%);
+  --card-bg: rgba(250, 248, 240, 0.95);
+  --color-primary: #8b7355;
+}
+
+.eye-care-mode body {
+  background: var(--bg-gradient);
+  color: #4a4a4a;
+}
+
+.eye-care-mode .card {
+  @apply bg-amber-50 bg-opacity-95;
+}
+
+.eye-care-mode .text-primary {
+  color: var(--color-primary);
+}
+
+.eye-care-mode .bg-primary {
+  background-color: var(--color-primary);
 }
