@@ -81,7 +81,8 @@ export default function ThemeSettings() {
       {/* 设置按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 bg-white text-gray-700 p-4 rounded-full shadow-lg hover:shadow-xl transition-all z-40 hover:scale-110"
+        // move settings button left to avoid overlapping other fixed action buttons (chatbot/theme)
+        className="fixed bottom-6 right-40 bg-white text-gray-700 p-4 rounded-full shadow-lg hover:shadow-xl transition-all z-40 hover:scale-110"
         aria-label="主题设置"
       >
         <span className="text-2xl">⚙️</span>
@@ -94,7 +95,8 @@ export default function ThemeSettings() {
             className="fixed inset-0 bg-black bg-opacity-30 z-40"
             onClick={() => setIsOpen(false)}
           />
-          <div className="fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 p-6 w-80 animate-slide-up">
+          {/* panel position updated to match the new button position */}
+          <div className="fixed bottom-24 right-40 bg-white rounded-2xl shadow-2xl z-50 p-6 w-80 animate-slide-up">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
               <span>⚙️</span>
               <span>显示设置</span>

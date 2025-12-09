@@ -513,6 +513,50 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
+          {/* Compatibility Test */}
+          <Link href="/compatibility-test">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💕</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                默契度测试
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">测测你们有多默契</p>
+            </div>
+          </Link>
+
+          {/* Sweet Words */}
+          <Link href="/sweet-words">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💝</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                土味情话
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">甜到齁的情话大全</p>
+            </div>
+          </Link>
+
+          {/* Catch Heart Game */}
+          <Link href="/catch-heart">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💗</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                接住爱心
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">接住从天而降的爱心</p>
+            </div>
+          </Link>
+
+          {/* Mood Tracker */}
+          <Link href="/mood-tracker">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">😊</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                心情追踪
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">记录每天的心情变化</p>
+            </div>
+          </Link>
+
           {/* Feature Requests */}
           <Link href="/feature-requests">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
