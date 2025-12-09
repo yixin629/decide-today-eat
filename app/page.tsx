@@ -546,6 +546,19 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
+          {/* Love Survivor Game */}
+          <Link href="/love-survivor">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🚀</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                爱心大作战
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                射击游戏，收集道具变强！
+              </p>
+            </div>
+          </Link>
+
           {/* Mood Tracker */}
           <Link href="/mood-tracker">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">

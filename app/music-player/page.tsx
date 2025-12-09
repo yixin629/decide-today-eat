@@ -16,6 +16,99 @@ interface Song {
 
 // 预设歌曲列表（免费音乐）
 const PRESET_SONGS: Omit<Song, 'id' | 'addedBy' | 'createdAt'>[] = [
+  // 林俊杰 - Always Online 设为默认第一首
+  {
+    title: 'Always Online',
+    artist: '林俊杰',
+    url: 'https://music.163.com/song/media/outer/url?id=188175.mp3',
+    cover: '💻',
+  },
+  {
+    title: '小酒窝',
+    artist: '林俊杰/蔡卓妍',
+    url: 'https://music.163.com/song/media/outer/url?id=188204.mp3',
+    cover: '😊',
+  },
+  {
+    title: '江南',
+    artist: '林俊杰',
+    url: 'https://music.163.com/song/media/outer/url?id=108242.mp3',
+    cover: '🌊',
+  },
+  {
+    title: '她说',
+    artist: '林俊杰',
+    url: 'https://music.163.com/song/media/outer/url?id=287682.mp3',
+    cover: '💬',
+  },
+  {
+    title: '可惜没如果',
+    artist: '林俊杰',
+    url: 'https://music.163.com/song/media/outer/url?id=31654343.mp3',
+    cover: '😢',
+  },
+  {
+    title: '修炼爱情',
+    artist: '林俊杰',
+    url: 'https://music.163.com/song/media/outer/url?id=27876224.mp3',
+    cover: '❤️‍🔥',
+  },
+  // 曹格
+  {
+    title: '背叛',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185809.mp3',
+    cover: '💔',
+  },
+  {
+    title: '梁山伯与朱丽叶',
+    artist: '曹格/卓文萱',
+    url: 'https://music.163.com/song/media/outer/url?id=185820.mp3',
+    cover: '🦋',
+  },
+  {
+    title: '世界唯一的你',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185807.mp3',
+    cover: '🌟',
+  },
+  {
+    title: '寂寞先生',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185816.mp3',
+    cover: '😔',
+  },
+  {
+    title: '超级爆',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185819.mp3',
+    cover: '💥',
+  },
+  {
+    title: '两只恋人',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185806.mp3',
+    cover: '👫',
+  },
+  {
+    title: 'Superman',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185810.mp3',
+    cover: '🦸',
+  },
+  {
+    title: '魔鬼中的天使',
+    artist: '曹格/田馥甄',
+    url: 'https://music.163.com/song/media/outer/url?id=287020.mp3',
+    cover: '😇',
+  },
+  {
+    title: '数到五答应我',
+    artist: '曹格',
+    url: 'https://music.163.com/song/media/outer/url?id=185818.mp3',
+    cover: '🖐️',
+  },
+  // 其他经典情歌
   {
     title: '小幸运',
     artist: '田馥甄',
