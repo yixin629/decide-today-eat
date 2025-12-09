@@ -557,6 +557,91 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
+          {/* Emoji Battle */}
+          <Link href="/emoji-battle">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎴</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                表情包大乱斗
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                选卡对战，谁的表情更厉害
+              </p>
+            </div>
+          </Link>
+
+          {/* Board Game */}
+          <Link href="/board-game">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎲</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣飞行棋
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">一起掷骰子玩飞行棋</p>
+            </div>
+          </Link>
+
+          {/* Love Dice */}
+          <Link href="/love-dice">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎯</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                爱情骰子
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                选择困难？让骰子来决定
+              </p>
+            </div>
+          </Link>
+
+          {/* Daily Challenge */}
+          <Link href="/daily-challenge">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📋</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                每日挑战
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">每天一个爱的小任务</p>
+            </div>
+          </Link>
+
+          {/* Love Contract */}
+          <Link href="/love-contract">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📜</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣契约书
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                创建属于你们的爱情约定
+              </p>
+            </div>
+          </Link>
+
+          {/* Couple Chat */}
+          <Link href="/chat">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-pink-500/10 to-red-500/10">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💬</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣聊天室
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">实时聊天，随时传情</p>
+            </div>
+          </Link>
+
+          {/* Music Player */}
+          <Link href="/music-player">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎵</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                共享音乐播放器
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                一起听歌，分享浪漫时刻
+              </p>
+            </div>
+          </Link>
+
           {/* Feature Requests */}
           <Link href="/feature-requests">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
