@@ -665,6 +665,19 @@ ${nextAnniversary.date}
               <p className="text-sm sm:text-base text-gray-600 text-center">提出你的想法和建议</p>
             </div>
           </Link>
+
+          {/* Settings */}
+          <Link href="/settings">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⚙️</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                个人设置
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                自定义头像、昵称和签名
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* Random Memory Section */}
