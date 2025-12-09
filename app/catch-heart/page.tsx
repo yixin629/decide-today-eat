@@ -149,20 +149,23 @@ export default function CatchHeartPage() {
     setPosition({ x: 50, y: 80 })
   }
 
-  const endGame = () => {
-    setGameOver(true)
-    if (score > highScore) {
-      setHighScore(score)
-      localStorage.setItem('catchHeartHighScore', score.toString())
-      toast.success('🎉 新纪录！')
-    }
-  }
+  const endGame = useCallback(
+    (finalScore: number) => {
+      setGameOver(true)
+      if (finalScore > highScore) {
+        setHighScore(finalScore)
+        localStorage.setItem('catchHeartHighScore', finalScore.toString())
+        toast.success('🎉 新纪录！')
+      }
+    },
+    [highScore, toast]
+  )
 
   useEffect(() => {
     if (gameOver && score > 0) {
-      endGame()
+      endGame(score)
     }
-  }, [gameOver])
+  }, [gameOver, score, endGame])
 
   return (
     <div className="min-h-screen p-4 md:p-8">

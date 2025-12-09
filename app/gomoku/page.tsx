@@ -220,7 +220,7 @@ export default function GomokuPage() {
               <li>在棋盘上点击放置棋子</li>
               <li>横向、纵向或斜向连成5个即获胜</li>
               <li>红色边框标记上一步落子位置</li>
-              <li>点击"悔棋"可撤销上一步</li>
+              <li>点击「悔棋」可撤销上一步</li>
             </ul>
           </div>
         </div>

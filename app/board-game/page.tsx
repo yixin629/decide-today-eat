@@ -66,6 +66,54 @@ export default function BoardGamePage() {
   const [winner, setWinner] = useState<Player | null>(null)
   const [message, setMessage] = useState('点击骰子开始游戏！')
 
+  // 移动玩家
+  const movePlayer = useCallback(
+    (steps: number) => {
+      const player = players[currentPlayer]
+      let newPosition = Math.min(player.position + steps, BOARD_SIZE - 1)
+
+      setMessage(`${player.name}掷出了 ${steps}！`)
+
+      // 更新位置
+      setTimeout(() => {
+        const cell = CELLS[newPosition]
+
+        // 处理特殊格子
+        if (cell.type !== 'normal') {
+          const cellMessage = CELL_MESSAGES[cell.type]
+          if (cellMessage) {
+            toast.info(cellMessage)
+          }
+
+          if (cell.type !== 'star') {
+            newPosition = Math.max(0, Math.min(newPosition + cell.value, BOARD_SIZE - 1))
+          }
+        }
+
+        // 检查是否到达终点
+        if (newPosition >= BOARD_SIZE - 1) {
+          setGameOver(true)
+          setWinner(player)
+          setMessage(`🎉 ${player.name}获胜！`)
+        }
+
+        setPlayers((prev) => {
+          const updated = [...prev]
+          updated[currentPlayer] = { ...player, position: newPosition }
+          return updated
+        })
+
+        if (!gameOver && newPosition < BOARD_SIZE - 1) {
+          setCurrentPlayer((prev) => (prev + 1) % 2)
+          setMessage(`轮到${players[(currentPlayer + 1) % 2].name}了！`)
+        }
+
+        setIsRolling(false)
+      }, 500)
+    },
+    [currentPlayer, gameOver, players, toast]
+  )
+
   // 掷骰子
   const rollDice = useCallback(() => {
     if (isRolling || gameOver) return
@@ -85,52 +133,7 @@ export default function BoardGamePage() {
         movePlayer(finalValue)
       }
     }, 100)
-  }, [isRolling, gameOver, currentPlayer, players])
-
-  // 移动玩家
-  const movePlayer = (steps: number) => {
-    const player = players[currentPlayer]
-    let newPosition = Math.min(player.position + steps, BOARD_SIZE - 1)
-
-    setMessage(`${player.name}掷出了 ${steps}！`)
-
-    // 更新位置
-    setTimeout(() => {
-      const cell = CELLS[newPosition]
-
-      // 处理特殊格子
-      if (cell.type !== 'normal') {
-        const cellMessage = CELL_MESSAGES[cell.type]
-        if (cellMessage) {
-          toast.info(cellMessage)
-        }
-
-        if (cell.type !== 'star') {
-          newPosition = Math.max(0, Math.min(newPosition + cell.value, BOARD_SIZE - 1))
-        }
-      }
-
-      // 检查是否到达终点
-      if (newPosition >= BOARD_SIZE - 1) {
-        setGameOver(true)
-        setWinner(player)
-        setMessage(`🎉 ${player.name}获胜！`)
-      }
-
-      setPlayers((prev) => {
-        const updated = [...prev]
-        updated[currentPlayer] = { ...player, position: newPosition }
-        return updated
-      })
-
-      if (!gameOver && newPosition < BOARD_SIZE - 1) {
-        setCurrentPlayer((prev) => (prev + 1) % 2)
-        setMessage(`轮到${players[(currentPlayer + 1) % 2].name}了！`)
-      }
-
-      setIsRolling(false)
-    }, 500)
-  }
+  }, [isRolling, gameOver, movePlayer])
 
   // 重置游戏
   const resetGame = () => {

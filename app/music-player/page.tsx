@@ -174,7 +174,7 @@ export default function MusicPlayerPage() {
       audioRef.current.load()
       audioRef.current.play().catch(() => {})
     }
-  }, [currentSongIndex, currentSong])
+  }, [currentSongIndex, currentSong, isPlaying])
 
   // 设置初始音量
   useEffect(() => {
