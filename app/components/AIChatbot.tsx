@@ -40,13 +40,16 @@ const QUICK_QUESTIONS = [
 // 使用免费的 AI API (通过代理)
 async function callAI(messages: { role: string; content: string }[]): Promise<string> {
   // 使用多个免费 API 作为备选
+  const CHATANYWHERE_KEY = process.env.NEXT_PUBLIC_CHATANYWHERE_KEY || ''
+  const GROQ_KEY = process.env.NEXT_PUBLIC_GROQ_KEY || ''
+
   const APIs = [
     {
       // 免费的 GPT API 代理
       url: 'https://api.chatanywhere.tech/v1/chat/completions',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer sk-free-api-key',
+        Authorization: `Bearer ${CHATANYWHERE_KEY || 'sk-free-api-key'}`,
       },
       body: {
         model: 'gpt-3.5-turbo',
@@ -60,7 +63,7 @@ async function callAI(messages: { role: string; content: string }[]): Promise<st
       url: 'https://api.groq.com/openai/v1/chat/completions',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer gsk_free',
+        Authorization: `Bearer ${GROQ_KEY || 'gsk_free'}`,
       },
       body: {
         model: 'mixtral-8x7b-32768',
@@ -85,6 +88,11 @@ async function callAI(messages: { role: string; content: string }[]): Promise<st
       })
 
       clearTimeout(timeoutId)
+
+      if (response.status === 401) {
+        console.error('AI API unauthorized:', api.url)
+        continue
+      }
 
       if (response.ok) {
         const data = await response.json()
