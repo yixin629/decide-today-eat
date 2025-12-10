@@ -57,6 +57,9 @@ export default function Navigation() {
   const features = filteredItems.filter((item) => item.category === 'feature')
   const games = filteredItems.filter((item) => item.category === 'game')
 
+  // Hide navigation button on chat page to prevent overlap
+  if (pathname === '/chat') return null
+
   return (
     <>
       {/* 汉堡菜单按钮 - 固定在左上角 */}

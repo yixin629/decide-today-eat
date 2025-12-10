@@ -341,8 +341,8 @@ export default function ChatPage() {
       <div className="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-20 border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-2 flex items-center justify-between h-[60px]">
           {/* Left Side */}
-          <div className="flex items-center gap-3 overflow-hidden">
-            <BackButton href="/" text="首页" className="!mb-0 !px-3 !py-1 text-sm shrink-0" />
+          <div className="flex items-center gap-3 overflow-hidden pl-12 md:pl-0">
+            <BackButton href="/" text="返回首页" className="!mb-0 !px-3 !py-1 text-sm shrink-0" />
 
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-9 h-9 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-lg shadow-sm shrink-0 text-white">
@@ -363,7 +363,7 @@ export default function ChatPage() {
           {/* Right Side */}
           <button
             onClick={clearChat}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0 ml-2"
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0 ml-2 pr-12 md:pr-0"
             title="清空聊天"
           >
             <span className="text-xl">🗑️</span>

@@ -68,6 +68,9 @@ export default function UserAvatar() {
 
   if (!currentUser) return null
 
+  // Chat page has its own header with avatar, so hide this global one to prevent overlap
+  if (pathname === '/chat') return null
+
   return (
     <div className="fixed top-4 right-4 z-50">
       <div className="relative">

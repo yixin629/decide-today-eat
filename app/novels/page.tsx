@@ -51,17 +51,6 @@ export default function NovelsPage() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    // Check login
-    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
-    setCurrentUser(user)
-    if (user) {
-      loadNovels()
-    } else {
-      setIsLoading(false)
-    }
-  }, [loadNovels])
-
   const loadNovels = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -85,6 +74,17 @@ export default function NovelsPage() {
       setIsLoading(false)
     }
   }, [showToast])
+
+  useEffect(() => {
+    // Check login
+    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
+    setCurrentUser(user)
+    if (user) {
+      loadNovels()
+    } else {
+      setIsLoading(false)
+    }
+  }, [loadNovels])
 
   const handleAdd = async () => {
     if (!newNovel.title || !newNovel.author) {
