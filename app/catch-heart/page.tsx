@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 
@@ -186,7 +187,7 @@ export default function CatchHeartPage() {
   }, [gameOver, score, endGame])
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8 pt-20 md:pt-24">
       <div className="max-w-lg mx-auto">
         <BackButton href="/" text="返回首页" />
 
@@ -287,15 +288,26 @@ export default function CatchHeartPage() {
                     <div className="bg-white rounded-2xl p-8 text-center shadow-xl animate-scale-in">
                       <h2 className="text-3xl font-bold mb-6 text-primary">已暂停</h2>
                       <div className="flex flex-col gap-3">
-                        <button onClick={resumeGame} className="btn-primary w-full py-3 text-lg">
+                        <button
+                          onClick={resumeGame}
+                          className="btn-primary w-full py-3 text-lg shadow-lg"
+                        >
                           ▶️ 继续游戏
                         </button>
-                        <button
-                          onClick={exitGame}
-                          className="px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
-                        >
-                          🚪 退出游戏
-                        </button>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={exitGame}
+                            className="flex-1 px-4 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
+                          >
+                            🚪 结束本局
+                          </button>
+                          <Link
+                            href="/"
+                            className="flex-1 px-4 py-3 rounded-xl bg-pink-100 hover:bg-pink-200 text-pink-700 font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            🏠 返回首页
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>

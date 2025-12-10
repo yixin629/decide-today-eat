@@ -100,7 +100,7 @@ export default function Navigation() {
       >
         <div className="flex flex-col h-full">
           {/* 头部 */}
-          <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="p-4 sm:p-6 pl-20 sm:pl-20 border-b border-gray-200 relative">
             <h2 className="text-xl sm:text-2xl font-bold text-primary mb-1">功能导航</h2>
             <p className="text-xs sm:text-sm text-gray-600">快速找到你需要的功能</p>
           </div>
