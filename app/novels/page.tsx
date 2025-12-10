@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import { supabase } from '@/lib/supabase'
@@ -60,9 +60,9 @@ export default function NovelsPage() {
     } else {
       setIsLoading(false)
     }
-  }, [])
+  }, [loadNovels])
 
-  const loadNovels = async () => {
+  const loadNovels = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('novels')
@@ -84,7 +84,7 @@ export default function NovelsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [showToast])
 
   const handleAdd = async () => {
     if (!newNovel.title || !newNovel.author) {
