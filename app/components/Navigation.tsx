@@ -62,25 +62,15 @@ export default function Navigation() {
       {/* 汉堡菜单按钮 - 固定在左上角 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 p-3 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105"
+        className={`fixed top-4 left-4 z-50 p-3 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105 ${
+          isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
         aria-label="打开导航菜单"
       >
         <div className="w-6 h-6 flex flex-col justify-center items-center">
-          <span
-            className={`bg-primary block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${
-              isOpen ? 'rotate-45 translate-y-1' : '-translate-y-0.5'
-            }`}
-          ></span>
-          <span
-            className={`bg-primary block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm my-0.5 ${
-              isOpen ? 'opacity-0' : 'opacity-100'
-            }`}
-          ></span>
-          <span
-            className={`bg-primary block transition-all duration-300 ease-out h-0.5 w-6 rounded-sm ${
-              isOpen ? '-rotate-45 -translate-y-1' : 'translate-y-0.5'
-            }`}
-          ></span>
+          <span className="bg-primary block h-0.5 w-6 rounded-sm mb-1"></span>
+          <span className="bg-primary block h-0.5 w-6 rounded-sm mb-1"></span>
+          <span className="bg-primary block h-0.5 w-6 rounded-sm"></span>
         </div>
       </button>
 
@@ -94,15 +84,24 @@ export default function Navigation() {
 
       {/* 侧边导航栏 */}
       <div
-        className={`fixed top-0 left-0 h-full w-[85vw] max-w-[280px] sm:max-w-[320px] md:w-80 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out overflow-hidden ${
+        className={`fixed top-0 left-0 h-full w-[85vw] max-w-[280px] sm:max-w-[320px] md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* 头部 */}
-          <div className="p-4 sm:p-6 pl-20 sm:pl-20 border-b border-gray-200 relative">
-            <h2 className="text-xl sm:text-2xl font-bold text-primary mb-1">功能导航</h2>
-            <p className="text-xs sm:text-sm text-gray-600">快速找到你需要的功能</p>
+          <div className="p-4 sm:p-6 border-b border-gray-200 relative flex justify-between items-start">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-primary mb-1">功能导航</h2>
+              <p className="text-xs sm:text-sm text-gray-600">快速找到你需要的功能</p>
+            </div>
+            {/* 关闭按钮 */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <span className="text-2xl">✕</span>
+            </button>
           </div>
 
           {/* 搜索框 */}
