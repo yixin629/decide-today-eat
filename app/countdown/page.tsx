@@ -76,8 +76,14 @@ export default function CountdownPage() {
       return
     }
 
+    // target_date 转为 Date 对象，确保 Supabase 类型正确
+    const payload = {
+      ...newCountdown,
+      target_date: new Date(newCountdown.target_date),
+    }
+
     try {
-      const { error } = await supabase.from('countdowns').insert([newCountdown])
+      const { error } = await supabase.from('countdowns').insert([payload])
 
       if (error) throw error
 

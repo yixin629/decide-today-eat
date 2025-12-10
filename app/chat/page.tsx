@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 interface ChatMessage {
   id: string
@@ -15,10 +16,36 @@ interface ChatMessage {
 }
 
 // 快捷表情
-const QUICK_EMOJIS = ['❤️', '😘', '🥰', '😍', '💕', '💗', '🤗', '😊', '😂', '🥺', '😭', '👍']
+const QUICK_EMOJIS = [
+  '❤️',
+  '😘',
+  '🥰',
+  '😍',
+  '💕',
+  '💗',
+  '🤗',
+  '😊',
+  '😂',
+  '🥺',
+  '😭',
+  '👍',
+  '🎉',
+  '🌹',
+  '💋',
+  '🤭',
+]
 
 // 快捷消息
-const QUICK_MESSAGES = ['想你了 💕', '在干嘛呀？', '吃饭了吗？', '爱你哦 ❤️', '晚安 🌙', '早安 ☀️']
+const QUICK_MESSAGES = [
+  '想你了 💕',
+  '在干嘛呀？',
+  '吃饭了吗？',
+  '爱你哦 ❤️',
+  '晚安 🌙',
+  '早安 ☀️',
+  '抱抱 🤗',
+  '么么哒 😘',
+]
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -29,6 +56,7 @@ export default function ChatPage() {
   const [showEmojis, setShowEmojis] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { showToast } = useToast()
@@ -236,21 +264,25 @@ export default function ChatPage() {
 
   if (!currentUser) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100 flex items-center justify-center">
-        <div className="text-xl">加载中...</div>
-      </main>
+      <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="card text-center">
+            <LoadingSkeleton type="list" count={3} />
+          </div>
+        </div>
+      </div>
     )
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100 flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-sm shadow-md sticky top-0 z-10">
+      <div className="bg-white/95 backdrop-blur-sm shadow-md sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <BackButton />
+            <BackButton href="/" text="" />
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-xl">
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-xl shadow-md">
                 {getAvatar(getPartnerName())}
               </div>
               <div>
@@ -264,7 +296,7 @@ export default function ChatPage() {
           </div>
           <button
             onClick={clearChat}
-            className="text-gray-500 hover:text-red-500 transition-colors p-2"
+            className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
             title="清空聊天"
           >
             🗑️
@@ -275,14 +307,14 @@ export default function ChatPage() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 max-w-2xl mx-auto w-full">
         {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+          <div className="flex justify-center items-center h-full py-20">
+            <LoadingSkeleton type="list" count={5} />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <div className="text-6xl mb-4">💬</div>
-            <p>还没有消息</p>
-            <p className="text-sm">发送第一条消息开始聊天吧！</p>
+          <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
+            <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
+            <p className="text-lg font-medium">还没有消息</p>
+            <p className="text-sm text-gray-400 mt-1">发送第一条消息开始聊天吧！</p>
           </div>
         ) : (
           <>
@@ -301,10 +333,10 @@ export default function ChatPage() {
                     {/* Avatar */}
                     {showAvatar ? (
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 shadow-md ${
                           isMe
-                            ? 'bg-gradient-to-br from-blue-400 to-purple-500'
-                            : 'bg-gradient-to-br from-pink-400 to-purple-500'
+                            ? 'bg-gradient-to-br from-pink-400 to-purple-500'
+                            : 'bg-gradient-to-br from-purple-400 to-pink-500'
                         }`}
                       >
                         {getAvatar(message.sender)}
@@ -315,10 +347,10 @@ export default function ChatPage() {
 
                     {/* Message Bubble */}
                     <div
-                      className={`rounded-2xl px-4 py-2 ${
+                      className={`rounded-2xl px-4 py-2 shadow-sm ${
                         isMe
-                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-br-sm'
-                          : 'bg-white shadow-md text-gray-800 rounded-bl-sm'
+                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-br-sm'
+                          : 'bg-white shadow-md text-gray-800 rounded-bl-sm border border-pink-100'
                       }`}
                     >
                       <p className="break-words whitespace-pre-wrap">{message.content}</p>
@@ -338,13 +370,13 @@ export default function ChatPage() {
 
       {/* Quick Messages Panel */}
       {showQuickMessages && (
-        <div className="bg-white border-t border-gray-200 p-3 max-w-2xl mx-auto w-full">
+        <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-3 max-w-2xl mx-auto w-full animate-fade-in">
           <div className="flex flex-wrap gap-2">
             {QUICK_MESSAGES.map((msg, i) => (
               <button
                 key={i}
                 onClick={() => sendMessage(msg)}
-                className="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 rounded-full text-sm text-pink-600 transition-colors"
+                className="px-3 py-1.5 bg-gradient-to-r from-pink-50 to-purple-50 hover:from-pink-100 hover:to-purple-100 rounded-full text-sm text-primary transition-all hover:shadow-md"
               >
                 {msg}
               </button>
@@ -355,13 +387,13 @@ export default function ChatPage() {
 
       {/* Emoji Panel */}
       {showEmojis && (
-        <div className="bg-white border-t border-gray-200 p-3 max-w-2xl mx-auto w-full">
+        <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-3 max-w-2xl mx-auto w-full animate-fade-in">
           <div className="flex flex-wrap gap-2">
             {QUICK_EMOJIS.map((emoji, i) => (
               <button
                 key={i}
                 onClick={() => setNewMessage((prev) => prev + emoji)}
-                className="w-10 h-10 text-2xl hover:bg-gray-100 rounded-lg transition-colors"
+                className="w-10 h-10 text-2xl hover:bg-pink-50 rounded-lg transition-all hover:scale-110"
               >
                 {emoji}
               </button>
@@ -371,7 +403,7 @@ export default function ChatPage() {
       )}
 
       {/* Input Area */}
-      <div className="bg-white/90 backdrop-blur-sm border-t border-gray-200 p-3 sticky bottom-0">
+      <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-3 sticky bottom-0">
         <div className="max-w-2xl mx-auto flex items-center gap-2">
           {/* Quick Actions */}
           <button
@@ -379,9 +411,10 @@ export default function ChatPage() {
               setShowEmojis(!showEmojis)
               setShowQuickMessages(false)
             }}
-            className={`p-2 rounded-full transition-colors ${
-              showEmojis ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'
+            className={`p-2 rounded-full transition-all ${
+              showEmojis ? 'bg-pink-100 text-pink-600 scale-110' : 'hover:bg-gray-100'
             }`}
+            title="表情"
           >
             😊
           </button>
@@ -390,9 +423,10 @@ export default function ChatPage() {
               setShowQuickMessages(!showQuickMessages)
               setShowEmojis(false)
             }}
-            className={`p-2 rounded-full transition-colors ${
-              showQuickMessages ? 'bg-pink-100 text-pink-600' : 'hover:bg-gray-100'
+            className={`p-2 rounded-full transition-all ${
+              showQuickMessages ? 'bg-pink-100 text-pink-600 scale-110' : 'hover:bg-gray-100'
             }`}
+            title="快捷消息"
           >
             ⚡
           </button>
@@ -405,7 +439,7 @@ export default function ChatPage() {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="输入消息..."
-            className="flex-1 px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all"
+            className="flex-1 px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 focus:bg-white transition-all"
             disabled={isSending}
           />
 
@@ -413,7 +447,7 @@ export default function ChatPage() {
           <button
             onClick={() => sendMessage()}
             disabled={!newMessage.trim() || isSending}
-            className="px-5 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             {isSending ? <span className="animate-spin">⏳</span> : '发送'}
           </button>
@@ -424,11 +458,11 @@ export default function ChatPage() {
       {unreadCount > 0 && (
         <button
           onClick={scrollToBottom}
-          className="fixed bottom-24 right-4 bg-pink-500 text-white px-3 py-1 rounded-full text-sm shadow-lg animate-bounce"
+          className="fixed bottom-24 right-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-full text-sm shadow-lg animate-bounce hover:shadow-xl transition-all"
         >
           {unreadCount} 条新消息 ↓
         </button>
       )}
-    </main>
+    </div>
   )
 }
