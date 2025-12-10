@@ -153,3 +153,22 @@ CREATE INDEX IF NOT EXISTS diary_entries_date_idx ON diary_entries(date DESC);
 CREATE INDEX IF NOT EXISTS diary_entries_author_idx ON diary_entries(author);
 CREATE INDEX IF NOT EXISTS mood_records_user_id_idx ON mood_records(user_id);
 CREATE INDEX IF NOT EXISTS novels_created_at_idx ON novels(created_at DESC);
+
+-----------------------------------------------------------------------------
+-- 7. Food Options (Missing Table)
+-----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS food_options (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL,
+  name TEXT NOT NULL,
+  emoji TEXT DEFAULT '🍱',
+  category TEXT DEFAULT '默认',
+  is_favorite BOOLEAN DEFAULT false
+);
+
+ALTER TABLE food_options ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access" ON food_options;
+CREATE POLICY "Allow public access" ON food_options FOR ALL USING (true) WITH CHECK (true);
+
+-- Enhance Novels table with status
+ALTER TABLE novels ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'want_to_read' CHECK (status IN ('want_to_read', 'reading', 'read'));

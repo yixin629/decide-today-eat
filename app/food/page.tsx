@@ -127,6 +127,8 @@ export default function FoodPage() {
   const [loading, setLoading] = useState(true)
   const [newFood, setNewFood] = useState('')
 
+  const [selectedCategory, setSelectedCategory] = useState('全部')
+
   // 加载食物选项
   const loadFoodOptions = useCallback(async () => {
     try {
@@ -180,8 +182,17 @@ export default function FoodPage() {
     }
   }
 
+  // 获取所有类别
+  const categories = ['全部', ...Array.from(new Set(foodOptions.map((f) => f.category || '默认')))]
+
+  // 筛选食物
+  const filteredFoods =
+    selectedCategory === '全部'
+      ? foodOptions
+      : foodOptions.filter((f) => (f.category || '默认') === selectedCategory)
+
   const spinWheel = () => {
-    if (isSpinning || foodOptions.length === 0) return
+    if (isSpinning || filteredFoods.length === 0) return
 
     setIsSpinning(true)
     setSelectedFood(null)
@@ -189,8 +200,8 @@ export default function FoodPage() {
     // 模拟转盘动画
     let count = 0
     const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * foodOptions.length)
-      setSelectedFood(foodOptions[randomIndex])
+      const randomIndex = Math.floor(Math.random() * filteredFoods.length)
+      setSelectedFood(filteredFoods[randomIndex])
       count++
 
       if (count > 20) {
@@ -238,6 +249,13 @@ export default function FoodPage() {
       setFoodOptions(foodOptions.filter((food) => food.id !== id))
       toast.success('删除成功')
     } catch (error) {
+      // If it's a default food that hasn't been persisted properly, just remove from local state
+      if (!id) {
+        setFoodOptions(
+          foodOptions.filter((food) => food.name !== foodOptions.find((f) => f.id === id)?.name)
+        )
+        return
+      }
       console.error('删除食物失败:', error)
       toast.error('删除失败，请重试')
     }
@@ -257,32 +275,53 @@ export default function FoodPage() {
             <h1 className="text-4xl font-bold text-primary mb-8">🍱 今晚吃什么？ 🍱</h1>
 
             {/* Result Display */}
-            <div className="mb-8">
+            <div className="mb-8 min-h-[160px] flex items-center justify-center">
               {selectedFood ? (
-                <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl p-8 transform scale-110 transition-all">
+                <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl p-8 transform scale-110 transition-all animate-bounce">
                   <div className="text-8xl mb-4">{selectedFood.emoji}</div>
                   <div className="text-4xl font-bold text-primary">{selectedFood.name}</div>
                 </div>
               ) : (
-                <div className="text-6xl mb-4">❓</div>
+                <div className="text-gray-400">
+                  <div className="text-6xl mb-4">❓</div>
+                  <p>点击下方按钮开始决定</p>
+                </div>
               )}
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 justify-center mb-6">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm transition-all ${
+                    selectedCategory === category
+                      ? 'bg-primary text-white shadow-md transform scale-105'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
 
             {/* Spin Button */}
             <button
               onClick={spinWheel}
-              disabled={isSpinning || foodOptions.length === 0}
-              className="btn-primary text-xl px-12 py-4 mb-8 disabled:opacity-50"
+              disabled={isSpinning || filteredFoods.length === 0}
+              className="btn-primary text-xl px-12 py-4 mb-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all w-full md:w-auto"
             >
-              {isSpinning ? '转转转... 🎰' : '点击决定 ✨'}
+              {isSpinning ? '正在随机选餐... 🎰' : '帮我决定！✨'}
             </button>
+            <p className="text-sm text-gray-400 mb-8">当前候选：{filteredFoods.length} 个选项</p>
 
             {/* Food Grid */}
-            <div className="grid grid-cols-5 gap-4 mb-8">
-              {foodOptions.map((food) => (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
+              {filteredFoods.map((food, index) => (
                 <div
-                  key={food.id}
-                  className="bg-white rounded-lg p-4 shadow hover:shadow-lg transition-all relative group cursor-pointer"
+                  key={food.id || index}
+                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all relative group cursor-pointer border border-gray-100 hover:border-primary/30"
                 >
                   {food.category === '自定义' && (
                     <button
@@ -290,13 +329,15 @@ export default function FoodPage() {
                         e.stopPropagation()
                         deleteFood(food.id)
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 flex items-center justify-center"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 flex items-center justify-center shadow-md z-10"
                     >
                       ×
                     </button>
                   )}
-                  <div className="text-4xl mb-2">{food.emoji}</div>
-                  <div className="text-sm font-semibold">{food.name}</div>
+                  <div className="text-4xl mb-2 transform group-hover:scale-110 transition-transform">
+                    {food.emoji}
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700">{food.name}</div>
                 </div>
               ))}
             </div>
