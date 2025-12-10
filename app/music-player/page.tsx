@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
+import { supabase } from '@/lib/supabase'
 
 interface Song {
   id: string
@@ -10,221 +11,282 @@ interface Song {
   artist: string
   url: string
   cover?: string
-  addedBy: string
-  createdAt: string
+  source: 'file' | 'spotify' | 'youtube'
+  added_by?: string
+  created_at?: string
 }
-
-// 预设歌曲列表
-const PRESET_SONGS: Omit<Song, 'id' | 'addedBy' | 'createdAt'>[] = [
-  {
-    title: 'Sweet Love (Demo)',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    cover: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
-  },
-  {
-    title: 'Dreaming (Demo)',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    cover: 'https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=400&h=400&fit=crop',
-  },
-  {
-    title: 'Summer Vibes (Demo)',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-    cover: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop',
-  },
-  {
-    title: 'Piano Moment',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
-    cover: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&h=400&fit=crop',
-  },
-]
 
 export default function MusicPlayerPage() {
   const toast = useToast()
   const audioRef = useRef<HTMLAudioElement>(null)
-  const [playlist, setPlaylist] = useState<Song[]>([])
+
+  // State
+  const [songs, setSongs] = useState<Song[]>([])
   const [currentSongIndex, setCurrentSongIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.7)
+
+  // Playback Modes
   const [isRepeat, setIsRepeat] = useState(false)
   const [isShuffle, setIsShuffle] = useState(false)
+
+  // UI State
   const [showAddSong, setShowAddSong] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Form State
   const [newSongUrl, setNewSongUrl] = useState('')
   const [newSongTitle, setNewSongTitle] = useState('')
   const [newSongArtist, setNewSongArtist] = useState('')
+  const [detectedSource, setDetectedSource] = useState<'file' | 'spotify' | 'youtube'>('file')
 
-  // 加载播放列表
-  useEffect(() => {
-    const saved = localStorage.getItem('couplePlaylist')
-    if (saved) {
-      setPlaylist(JSON.parse(saved))
-    } else {
-      // 初始化预设歌曲
-      const initialPlaylist = PRESET_SONGS.map((song, i) => ({
-        ...song,
-        id: `preset-${i}`,
-        addedBy: '系统',
-        createdAt: new Date().toISOString(),
-      }))
-      setPlaylist(initialPlaylist)
-      localStorage.setItem('couplePlaylist', JSON.stringify(initialPlaylist))
+  // Load songs from Supabase
+  const loadSongs = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      setSongs(data || [])
+    } catch (error) {
+      console.error('Failed to load songs:', error)
+      toast.error('加载歌单失败')
+    } finally {
+      setIsLoading(false)
     }
-  }, [])
+  }, [toast])
 
-  // 保存播放列表
-  const savePlaylist = (newPlaylist: Song[]) => {
-    setPlaylist(newPlaylist)
-    localStorage.setItem('couplePlaylist', JSON.stringify(newPlaylist))
-  }
+  // Initial Load & Realtime Subscription
+  useEffect(() => {
+    loadSongs()
 
-  // 当前歌曲
-  const currentSong = playlist[currentSongIndex]
-
-  // 播放/暂停
-  const togglePlay = () => {
-    if (!audioRef.current || !currentSong) return
-
-    if (isPlaying) {
-      audioRef.current.pause()
-    } else {
-      audioRef.current.play().catch(() => {
-        toast.error('播放失败，请检查音频链接')
+    const channel = supabase
+      .channel('songs_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, () => {
+        loadSongs()
       })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
-    setIsPlaying(!isPlaying)
-  }
+  }, [loadSongs])
 
-  // 上一首
-  const playPrev = () => {
-    if (playlist.length === 0) return
-    let newIndex = currentSongIndex - 1
-    if (newIndex < 0) newIndex = playlist.length - 1
-    setCurrentSongIndex(newIndex)
-    setIsPlaying(true)
-  }
-
-  // 下一首
-  const playNext = () => {
-    if (playlist.length === 0) return
-    let newIndex: number
-    if (isShuffle) {
-      newIndex = Math.floor(Math.random() * playlist.length)
-    } else {
-      newIndex = (currentSongIndex + 1) % playlist.length
-    }
-    setCurrentSongIndex(newIndex)
-    setIsPlaying(true)
-  }
-
-  // 歌曲结束
-  const handleEnded = () => {
-    if (isRepeat) {
-      audioRef.current?.play()
-    } else {
-      playNext()
-    }
-  }
-
-  // 更新播放进度
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime)
-    }
-  }
-
-  // 加载歌曲元数据
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration)
-    }
-  }
-
-  // 跳转进度
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value)
-    if (audioRef.current) {
-      audioRef.current.currentTime = time
-      setCurrentTime(time)
-    }
-  }
-
-  // 调整音量
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vol = parseFloat(e.target.value)
-    setVolume(vol)
-    if (audioRef.current) {
-      audioRef.current.volume = vol
-    }
-  }
-
-  // 当歌曲索引变化时，自动播放
+  // Detect Source when URL changes
   useEffect(() => {
-    if (audioRef.current && currentSong && isPlaying) {
-      audioRef.current.load()
-      audioRef.current.play().catch(() => {})
-    }
-  }, [currentSongIndex, currentSong, isPlaying])
+    if (!newSongUrl) return
 
-  // 设置初始音量
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume
+    if (newSongUrl.includes('spotify.com')) {
+      setDetectedSource('spotify')
+    } else if (newSongUrl.includes('youtube.com') || newSongUrl.includes('youtu.be')) {
+      setDetectedSource('youtube')
+    } else {
+      setDetectedSource('file')
     }
-  }, [volume])
+  }, [newSongUrl])
 
-  // 添加歌曲
-  const addSong = () => {
-    if (!newSongUrl.trim()) {
-      toast.error('请输入歌曲链接')
+  // Current Song
+  const currentSong = songs[currentSongIndex]
+
+  // Add Song
+  const handleAddSong = async () => {
+    if (!newSongUrl) {
+      toast.error('请输入链接')
       return
     }
 
-    const newSong: Song = {
-      id: Date.now().toString(),
-      title: newSongTitle || '未知歌曲',
-      artist: newSongArtist || '未知歌手',
-      url: newSongUrl,
-      cover: '🎵',
-      addedBy: 'zyx', // 可以根据登录用户变化
-      createdAt: new Date().toISOString(),
-    }
+    try {
+      let finalUrl = newSongUrl
+      let finalCover = '🎵'
 
-    const newPlaylist = [...playlist, newSong]
-    savePlaylist(newPlaylist)
-    setNewSongUrl('')
-    setNewSongTitle('')
-    setNewSongArtist('')
-    setShowAddSong(false)
-    toast.success('歌曲添加成功！')
+      // Process Links
+      if (detectedSource === 'spotify') {
+        finalCover = '🟢' // Spotify Icon
+        // Extract Track ID if needed, or store full URL.
+        // Spotify Embed works with full URL usually.
+      } else if (detectedSource === 'youtube') {
+        finalCover = '🔴' // YouTube Icon
+        // Convert watch URL to embed URL if necessary, but we can do it at render time.
+      }
+
+      const { error } = await supabase.from('songs').insert({
+        title: newSongTitle || '未知歌曲',
+        artist: newSongArtist || '未知歌手',
+        url: finalUrl,
+        source: detectedSource,
+        cover: finalCover,
+        added_by: 'user', // In real app, get current user
+      })
+
+      if (error) throw error
+
+      toast.success('添加成功！')
+      setNewSongUrl('')
+      setNewSongTitle('')
+      setNewSongArtist('')
+      setShowAddSong(false)
+    } catch (error) {
+      console.error('Add song failed:', error)
+      toast.error('添加失败')
+    }
   }
 
-  // 删除歌曲
-  const removeSong = (id: string) => {
-    const index = playlist.findIndex((s) => s.id === id)
-    const newPlaylist = playlist.filter((s) => s.id !== id)
-    savePlaylist(newPlaylist)
+  // Remove Song
+  const removeSong = async (id: string) => {
+    try {
+      const { error } = await supabase.from('songs').delete().eq('id', id)
+      if (error) throw error
+      toast.success('已移除')
 
-    // 调整当前索引
-    if (index < currentSongIndex) {
-      setCurrentSongIndex(currentSongIndex - 1)
-    } else if (index === currentSongIndex) {
-      setCurrentSongIndex(0)
-      setIsPlaying(false)
+      // Adjust index
+      if (currentSongIndex >= songs.length - 1) {
+        setCurrentSongIndex(Math.max(0, songs.length - 2))
+      }
+    } catch (error) {
+      toast.error('移除失败')
     }
-    toast.info('歌曲已移除')
   }
 
-  // 格式化时间
-  const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00'
-    const minutes = Math.floor(time / 60)
-    const seconds = Math.floor(time % 60)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  // Play Controls
+  const togglePlay = () => {
+    if (currentSong?.source === 'file' && audioRef.current) {
+      if (isPlaying) audioRef.current.pause()
+      else audioRef.current.play()
+      setIsPlaying(!isPlaying)
+    } else {
+      // For Iframe players, we can't easily control play/pause from outside without API
+      // So we just toggle state to update UI, but user has to click the iframe usually.
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const playNext = () => {
+    if (songs.length === 0) return
+    let nextIndex = isShuffle
+      ? Math.floor(Math.random() * songs.length)
+      : (currentSongIndex + 1) % songs.length
+    setCurrentSongIndex(nextIndex)
+    setIsPlaying(true)
+  }
+
+  const playPrev = () => {
+    if (songs.length === 0) return
+    let prevIndex = currentSongIndex - 1
+    if (prevIndex < 0) prevIndex = songs.length - 1
+    setCurrentSongIndex(prevIndex)
+    setIsPlaying(true)
+  }
+
+  // Helper to render Player
+  const renderPlayer = () => {
+    if (!currentSong) return null
+
+    if (currentSong.source === 'spotify') {
+      // Convert URL to Embed URL
+      // https://open.spotify.com/track/ID?si=... -> https://open.spotify.com/embed/track/ID
+      let embedUrl = currentSong.url
+      if (!embedUrl.includes('/embed/')) {
+        embedUrl = embedUrl.replace('spotify.com/', 'spotify.com/embed/')
+      }
+      return (
+        <iframe
+          className="w-full h-80 rounded-xl"
+          src={embedUrl}
+          allow="encrypted-media"
+          title="Spotify"
+        />
+      )
+    }
+
+    if (currentSong.source === 'youtube') {
+      // https://www.youtube.com/watch?v=ID -> https://www.youtube.com/embed/ID
+      // https://youtu.be/ID -> https://www.youtube.com/embed/ID
+      let embedUrl = currentSong.url
+      let videoId = ''
+
+      if (embedUrl.includes('v=')) {
+        videoId = embedUrl.split('v=')[1]?.split('&')[0]
+      } else if (embedUrl.includes('youtu.be/')) {
+        videoId = embedUrl.split('youtu.be/')[1]?.split('?')[0]
+      }
+
+      if (videoId) {
+        return (
+          <iframe
+            className="w-full h-60 rounded-xl"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            title="YouTube"
+          />
+        )
+      } else {
+        return <div className="text-red-500">无法解析 YouTube 链接</div>
+      }
+    }
+
+    // Default File Player
+    return (
+      <div className="text-center">
+        <div className="text-6xl mb-4 animate-pulse">{currentSong.cover || '🎵'}</div>
+        <h2 className="text-xl font-bold text-gray-800">{currentSong.title}</h2>
+        <p className="text-gray-600 mb-6">{currentSong.artist}</p>
+
+        {/* Audio Element */}
+        <audio
+          ref={audioRef}
+          src={currentSong.url}
+          onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
+          onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+          onEnded={() => {
+            if (isRepeat) audioRef.current?.play()
+            else playNext()
+          }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          autoPlay={isPlaying}
+        />
+
+        {/* Simple Progress (Visual Only for now as customizing range is verbose) */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+          <div
+            className="bg-pink-500 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-gray-500 mb-6">
+          <span>
+            {Math.floor(currentTime / 60)}:
+            {Math.floor(currentTime % 60)
+              .toString()
+              .padStart(2, '0')}
+          </span>
+          <span>
+            {Math.floor(duration / 60)}:
+            {Math.floor(duration % 60)
+              .toString()
+              .padStart(2, '0')}
+          </span>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center justify-center gap-6">
+          <button onClick={playPrev} className="text-3xl hover:text-primary transition-colors">
+            ⏮️
+          </button>
+          <button onClick={togglePlay} className="text-5xl hover:scale-105 transition-transform">
+            {isPlaying ? '⏸️' : '▶️'}
+          </button>
+          <button onClick={playNext} className="text-3xl hover:text-primary transition-colors">
+            ⏭️
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -234,209 +296,116 @@ export default function MusicPlayerPage() {
 
         <div className="card">
           <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-2">
-            🎵 共享音乐播放器
+            🎵 共享音乐播放器 (Online)
           </h1>
-          <p className="text-gray-600 text-center mb-6">一起听歌，分享浪漫时刻</p>
+          <p className="text-gray-600 text-center mb-6">支持 MP3 / Spotify / YouTube • 实时同步</p>
 
-          {/* 当前播放 */}
-          <div className="bg-gradient-to-br from-pink-100 to-purple-100 rounded-2xl p-6 mb-6">
-            {currentSong ? (
-              <>
-                <div className="text-center mb-4">
-                  <div className="text-6xl mb-3 animate-pulse">{currentSong.cover || '🎵'}</div>
-                  <h2 className="text-xl font-bold text-gray-800">{currentSong.title}</h2>
-                  <p className="text-gray-600">{currentSong.artist}</p>
-                </div>
-
-                {/* 进度条 */}
-                <div className="mb-4">
-                  <input
-                    type="range"
-                    min={0}
-                    max={duration || 100}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
-                  </div>
-                </div>
-
-                {/* 控制按钮 */}
-                <div className="flex items-center justify-center gap-4 mb-4">
-                  <button
-                    onClick={() => setIsShuffle(!isShuffle)}
-                    className={`text-2xl transition-all ${
-                      isShuffle ? 'text-pink-500' : 'text-gray-400'
-                    }`}
-                    title="随机播放"
-                  >
-                    🔀
-                  </button>
-                  <button
-                    onClick={playPrev}
-                    className="text-3xl hover:scale-110 transition-transform"
-                  >
-                    ⏮️
-                  </button>
-                  <button
-                    onClick={togglePlay}
-                    className="text-5xl hover:scale-110 transition-transform"
-                  >
-                    {isPlaying ? '⏸️' : '▶️'}
-                  </button>
-                  <button
-                    onClick={playNext}
-                    className="text-3xl hover:scale-110 transition-transform"
-                  >
-                    ⏭️
-                  </button>
-                  <button
-                    onClick={() => setIsRepeat(!isRepeat)}
-                    className={`text-2xl transition-all ${
-                      isRepeat ? 'text-pink-500' : 'text-gray-400'
-                    }`}
-                    title="单曲循环"
-                  >
-                    🔁
-                  </button>
-                </div>
-
-                {/* 音量控制 */}
-                <div className="flex items-center justify-center gap-2">
-                  <span className="text-lg">🔈</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.1}
-                    value={volume}
-                    onChange={handleVolumeChange}
-                    className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                  />
-                  <span className="text-lg">🔊</span>
-                </div>
-              </>
+          {/* Player Display */}
+          <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-6 mb-6 shadow-inner min-h-[300px] flex flex-col justify-center">
+            {songs.length > 0 ? (
+              renderPlayer()
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <div className="text-4xl mb-2">🎵</div>
-                <p>播放列表为空，添加一些歌曲吧！</p>
+              <div className="text-center text-gray-400">
+                <p className="text-4xl mb-2">☁️</p>
+                <p>播放列表为空，快添加一首吧！</p>
               </div>
             )}
           </div>
 
-          {/* 隐藏的audio元素 */}
-          <audio
-            ref={audioRef}
-            src={currentSong?.url}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onEnded={handleEnded}
-            onError={() => {
-              if (isPlaying) {
-                toast.error(`"${currentSong?.title}" 播放失败，自动播放下一首`)
-                playNext()
-              }
-            }}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
+          {/* Playlist Controls */}
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-gray-700">播放列表 ({songs.length})</h3>
+            <button
+              onClick={() => setShowAddSong(!showAddSong)}
+              className="px-4 py-2 bg-pink-100 text-pink-600 rounded-full text-sm font-medium hover:bg-pink-200 transition-colors"
+            >
+              + 添加歌曲
+            </button>
+          </div>
 
-          {/* 播放列表 */}
-          <div className="border-t pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-gray-700">📋 播放列表 ({playlist.length})</h3>
-              <button
-                onClick={() => setShowAddSong(!showAddSong)}
-                className="text-pink-500 hover:text-pink-600 text-sm font-medium"
-              >
-                + 添加歌曲
-              </button>
-            </div>
-
-            {/* 添加歌曲表单 */}
-            {showAddSong && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+          {/* Add Song Form */}
+          {showAddSong && (
+            <div className="bg-gray-50 p-4 rounded-xl mb-6 animate-fade-in border border-gray-100">
+              <div className="space-y-3">
                 <input
                   type="text"
-                  placeholder="歌曲链接 (mp3 URL)"
+                  placeholder="链接 (MP3 / Spotify / YouTube)"
                   value={newSongUrl}
                   onChange={(e) => setNewSongUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                  className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary outline-none"
                 />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="text-xs text-gray-500 text-right">
+                  已识别来源:{' '}
+                  <span className="font-bold uppercase text-primary">{detectedSource}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <input
                     type="text"
-                    placeholder="歌曲名称"
+                    placeholder="歌曲名"
                     value={newSongTitle}
                     onChange={(e) => setNewSongTitle(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary outline-none"
                   />
                   <input
                     type="text"
                     placeholder="歌手"
                     value={newSongArtist}
                     onChange={(e) => setNewSongArtist(e.target.value)}
-                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm"
+                    className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary outline-none"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={addSong} className="btn-primary text-sm flex-1">
-                    添加
-                  </button>
-                  <button
-                    onClick={() => setShowAddSong(false)}
-                    className="btn-secondary text-sm flex-1"
-                  >
-                    取消
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 歌曲列表 */}
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {playlist.map((song, index) => (
-                <div
-                  key={song.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${
-                    index === currentSongIndex
-                      ? 'bg-pink-100 border-2 border-pink-300'
-                      : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
-                  onClick={() => {
-                    setCurrentSongIndex(index)
-                    setIsPlaying(true)
-                  }}
+                <button
+                  onClick={handleAddSong}
+                  className="w-full py-2 bg-primary text-white rounded-lg hover:bg-pink-600 transition-colors"
                 >
-                  <span className="text-2xl">{song.cover || '🎵'}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{song.title}</div>
-                    <div className="text-xs text-gray-500 truncate">{song.artist}</div>
-                  </div>
-                  {index === currentSongIndex && isPlaying && (
-                    <span className="text-pink-500 animate-pulse">♪</span>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeSong(song.id)
-                    }}
-                    className="text-gray-400 hover:text-red-500 text-sm"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                  确认添加
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* 使用提示 */}
-          <div className="mt-6 text-center text-xs text-gray-400">
-            <p>💡 提示：可以添加网易云、QQ音乐等平台的歌曲外链</p>
-            <p>🔗 格式：https://xxx.mp3</p>
+          {/* Song List */}
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            {songs.map((song, index) => (
+              <div
+                key={song.id}
+                onClick={() => {
+                  setCurrentSongIndex(index)
+                  setIsPlaying(true)
+                }}
+                className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all border ${
+                  index === currentSongIndex
+                    ? 'bg-white border-primary shadow-md transform scale-[1.02]'
+                    : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
+                }`}
+              >
+                <span className="text-xl">{song.cover}</span>
+                <div className="flex-1 min-w-0">
+                  <div
+                    className={`font-bold truncate ${
+                      index === currentSongIndex ? 'text-primary' : 'text-gray-800'
+                    }`}
+                  >
+                    {song.title}
+                  </div>
+                  <div className="text-xs text-gray-400 flex items-center gap-2">
+                    <span className="uppercase bg-gray-100 px-1 rounded text-[10px]">
+                      {song.source}
+                    </span>
+                    {song.artist}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeSong(song.id)
+                  }}
+                  className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </div>
