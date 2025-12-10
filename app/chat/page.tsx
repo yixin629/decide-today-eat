@@ -175,16 +175,22 @@ export default function ChatPage() {
     setShowQuickMessages(false)
 
     try {
-      const { error } = await supabase.from('chat_messages').insert({
+      const { data, error } = await supabase.from('chat_messages').insert({
         sender: currentUser,
         content: messageContent,
         message_type: 'text',
       })
 
-      if (error) throw error
-    } catch (error) {
+      if (error) {
+        showToast('发送失败: ' + (error.message || JSON.stringify(error)), 'error')
+        throw error
+      }
+      if (!data) {
+        showToast('发送失败: 没有返回数据', 'error')
+      }
+    } catch (error: any) {
       console.error('发送失败:', error)
-      showToast('发送失败，请重试', 'error')
+      showToast('发送失败: ' + (error?.message || JSON.stringify(error)), 'error')
       setNewMessage(messageContent)
     } finally {
       setIsSending(false)
