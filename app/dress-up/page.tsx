@@ -25,21 +25,21 @@ interface SavedOutfit {
 const SKIN_TONES = ['#FFDFC4', '#F0D5BE', '#D1A684', '#A67C52', '#8D5524', '#614335']
 
 // 发型名称
-const HAIR_STYLES_MALE = ['短发', '寸头', '背头', '中分', '偏分', '卷发']
-const HAIR_STYLES_FEMALE = ['长发', '短发', '马尾', '双马尾', '丸子头', '波浪卷']
+const HAIR_STYLES_MALE = ['短发', '寸头', '背头', '中分', '偏分', '卷发', '莫西干', '扎发']
+const HAIR_STYLES_FEMALE = ['长发', '短发', '马尾', '双马尾', '丸子头', '波浪卷', '编发', '直发']
 
 // 上装名称
-const TOP_STYLES_MALE = ['T恤', '衬衫', '卫衣', '西装', '夹克', '毛衣']
-const TOP_STYLES_FEMALE = ['T恤', '衬衫', '连衣裙', '吊带', '卫衣', '毛衣']
+const TOP_STYLES_MALE = ['T恤', '衬衫', '卫衣', '西装', '夹克', '毛衣', '运动背心', '风衣']
+const TOP_STYLES_FEMALE = ['T恤', '衬衫', '连衣裙', '吊带', '卫衣', '毛衣', '礼服', '运动装']
 
 // 下装名称
-const BOTTOM_STYLES = ['长裤', '短裤', '牛仔裤', '运动裤', '裙子', '西裤']
+const BOTTOM_STYLES = ['长裤', '短裤', '牛仔裤', '运动裤', '裙子', '西裤', '百褶裙', '工装裤']
 
 // 鞋子名称
-const SHOES_STYLES = ['运动鞋', '皮鞋', '高跟鞋', '靴子', '凉鞋', '拖鞋']
+const SHOES_STYLES = ['运动鞋', '皮鞋', '高跟鞋', '靴子', '凉鞋', '拖鞋', '帆布鞋', '马丁靴']
 
 // 配饰名称
-const ACCESSORIES = ['无', '眼镜', '墨镜', '帽子', '耳环', '项链']
+const ACCESSORIES = ['无', '眼镜', '墨镜', '帽子', '耳环', '项链', '围巾', '领结']
 
 export default function DressUpPage() {
   const toast = useToast()
@@ -123,31 +123,31 @@ export default function DressUpPage() {
 
   const randomize = () => {
     setSkinTone(Math.floor(Math.random() * SKIN_TONES.length))
-    setHairStyle(Math.floor(Math.random() * 6))
+    setHairStyle(Math.floor(Math.random() * 8))
     setHairColor(
       ['#2C1810', '#8B4513', '#FFD700', '#FF4500', '#000000', '#A0522D'][
         Math.floor(Math.random() * 6)
       ]
     )
-    setTopStyle(Math.floor(Math.random() * 6))
+    setTopStyle(Math.floor(Math.random() * 8))
     setTopColor(
       ['#FF69B4', '#87CEEB', '#98FB98', '#DDA0DD', '#F0E68C', '#FF6347'][
         Math.floor(Math.random() * 6)
       ]
     )
-    setBottomStyle(Math.floor(Math.random() * 6))
+    setBottomStyle(Math.floor(Math.random() * 8))
     setBottomColor(
       ['#4169E1', '#2F4F4F', '#8B4513', '#000080', '#800000', '#556B2F'][
         Math.floor(Math.random() * 6)
       ]
     )
-    setShoesStyle(Math.floor(Math.random() * 6))
+    setShoesStyle(Math.floor(Math.random() * 8))
     setShoesColor(
       ['#8B4513', '#000000', '#FFFFFF', '#FF69B4', '#4169E1', '#FFD700'][
         Math.floor(Math.random() * 6)
       ]
     )
-    setAccessory(Math.floor(Math.random() * 6))
+    setAccessory(Math.floor(Math.random() * 8))
     toast.success('随机搭配完成！')
   }
 
@@ -234,6 +234,33 @@ export default function DressUpPage() {
               />
             </g>
           )
+        case 6: // 编发
+          return (
+            <g>
+              <path
+                d="M50 45 Q30 50 35 150 Q40 160 50 150 Q55 140 50 45 Z" // Left braid
+                fill={hairColor}
+              />
+              <path
+                d="M150 45 Q170 50 165 150 Q160 160 150 150 Q145 140 150 45 Z" // Right braid
+                fill={hairColor}
+              />
+              <path
+                d="M50 45 Q45 20 100 15 Q155 20 150 45 L150 70 Q100 60 50 70 Z" // Top
+                fill={hairColor}
+              />
+            </g>
+          )
+        case 7: // 直发
+          return (
+            <g>
+              <path
+                d="M50 45 Q45 20 100 15 Q155 20 150 45 L155 160 L135 160 L135 80 L65 80 L65 160 L45 160 L50 45 Z"
+                fill={hairColor}
+              />
+              <path d="M50 50 Q50 20 100 15 Q150 20 150 50" fill={hairColor} />
+            </g>
+          )
         default:
           return null
       }
@@ -291,6 +318,23 @@ export default function DressUpPage() {
             <g>
               <path
                 d="M55 50 Q50 25 100 20 Q150 25 145 50 L145 80 Q150 85 145 90 Q140 85 138 92 Q130 85 128 92 Q120 88 100 90 Q80 88 72 92 Q70 85 62 92 Q60 85 55 90 Q50 85 55 80 Z"
+                fill={hairColor}
+              />
+            </g>
+          )
+        case 6: // 莫西干
+          return (
+            <g>
+              <path d="M80 50 Q80 10 100 5 Q120 10 120 50 L120 70 L80 70 Z" fill={hairColor} />
+              <path d="M70 70 L70 80 Q100 85 130 80 L130 70" fill={hairColor} opacity="0.5" />
+            </g>
+          )
+        case 7: // 扎发
+          return (
+            <g>
+              <circle cx="100" cy="20" r="15" fill={hairColor} />
+              <path
+                d="M60 50 Q55 25 100 20 Q145 25 140 50 L140 70 Q140 80 125 82 L75 82 Q60 80 60 70 Z"
                 fill={hairColor}
               />
             </g>
@@ -397,6 +441,39 @@ export default function DressUpPage() {
                 stroke="#FFFFFF"
                 strokeWidth="2"
                 opacity="0.3"
+              />
+            </g>
+          )
+        case 6: // 礼服
+          return (
+            <g>
+              <path
+                d="M55 140 L45 160 L20 280 L180 280 L155 160 L145 140 Q100 150 55 140 Z"
+                fill={topColor}
+              />
+              <path d="M55 140 L55 130 Q100 120 145 130 L145 140" fill={topColor} opacity="0.7" />
+              <line x1="55" y1="130" x2="55" y2="110" stroke={topColor} strokeWidth="2" />
+              <line x1="145" y1="130" x2="145" y2="110" stroke={topColor} strokeWidth="2" />
+            </g>
+          )
+        case 7: // 运动装
+          return (
+            <g>
+              <path
+                d="M65 130 L60 150 L60 210 L140 210 L140 150 L135 130 Q120 125 100 130 Q80 125 65 130 Z"
+                fill={topColor}
+              />
+              <path d="M60 150 L40 160 L45 180 L60 175" fill={topColor} />
+              <path d="M140 150 L160 160 L155 180 L140 175" fill={topColor} />
+              <line x1="75" y1="130" x2="75" y2="210" stroke="#FFF" strokeWidth="2" opacity="0.5" />
+              <line
+                x1="125"
+                y1="130"
+                x2="125"
+                y2="210"
+                stroke="#FFF"
+                strokeWidth="2"
+                opacity="0.5"
               />
             </g>
           )
@@ -527,6 +604,37 @@ export default function DressUpPage() {
               />
             </g>
           )
+        case 6: // 运动背心
+          return (
+            <g>
+              <path
+                d="M65 130 L60 150 L60 220 L140 220 L140 150 L135 130 Q120 125 100 130 Q80 125 65 130 Z"
+                fill={topColor}
+              />
+              <path d="M65 130 Q80 160 100 160 Q120 160 135 130" fill="#FFF" opacity="0.2" />
+            </g>
+          )
+        case 7: // 风衣
+          return (
+            <g>
+              <path
+                d="M50 130 L40 150 L35 250 L165 250 L160 150 L150 130 Q125 120 100 125 Q75 120 50 130 Z"
+                fill={topColor}
+              />
+              <path d="M40 150 L20 165 L25 205 L45 200" fill={topColor} />
+              <path d="M160 150 L180 165 L175 205 L155 200" fill={topColor} />
+              <line
+                x1="100"
+                y1="125"
+                x2="100"
+                y2="250"
+                stroke="#000"
+                strokeWidth="1"
+                opacity="0.3"
+              />
+              <path d="M85 125 L100 150 L115 125" fill={topColor} stroke="#000" strokeWidth="0.5" />
+            </g>
+          )
         default:
           return null
       }
@@ -598,6 +706,45 @@ export default function DressUpPage() {
             />
             <line x1="75" y1="220" x2="75" y2="340" stroke="#333" strokeWidth="1" opacity="0.3" />
             <line x1="125" y1="220" x2="125" y2="340" stroke="#333" strokeWidth="1" opacity="0.3" />
+          </g>
+        )
+      case 6: // 百褶裙
+        return (
+          <g>
+            <path d="M55 220 L45 290 L155 290 L145 220 Z" fill={bottomColor} />
+            <path
+              d="M65 220 L60 290 M75 220 L75 290 M85 220 L90 290 M100 220 L100 290 M115 220 L110 290 M125 220 L125 290 M135 220 L140 290"
+              stroke="#000"
+              strokeWidth="1"
+              opacity="0.1"
+            />
+          </g>
+        )
+      case 7: // 工装裤
+        return (
+          <g>
+            <path
+              d="M55 220 L50 340 L95 340 L100 260 L105 340 L150 340 L145 220 Z"
+              fill={bottomColor}
+            />
+            <rect
+              x="50"
+              y="270"
+              width="10"
+              height="20"
+              fill={bottomColor}
+              stroke="#000"
+              strokeWidth="0.5"
+            />
+            <rect
+              x="140"
+              y="270"
+              width="10"
+              height="20"
+              fill={bottomColor}
+              stroke="#000"
+              strokeWidth="0.5"
+            />
           </g>
         )
       default:
@@ -680,6 +827,68 @@ export default function DressUpPage() {
             <path d={`M115 ${y + 3} L135 ${y + 3}`} stroke="#FFFFFF" strokeWidth="4" />
           </g>
         )
+      case 6: // 帆布鞋
+        return (
+          <g>
+            <path d={`M60 ${y} L60 ${y + 12} L90 ${y + 12} L90 ${y} Z`} fill={shoesColor} />
+            <path d={`M110 ${y} L110 ${y + 12} L140 ${y + 12} L140 ${y} Z`} fill={shoesColor} />
+            <circle cx="75" cy={y + 6} r="3" fill="#FFF" />
+            <circle cx="125" cy={y + 6} r="3" fill="#FFF" />
+            <path d={`M60 ${y + 12} L90 ${y + 12}`} stroke="#FFF" strokeWidth="4" />
+            <path d={`M110 ${y + 12} L140 ${y + 12}`} stroke="#FFF" strokeWidth="4" />
+          </g>
+        )
+      case 7: // 马丁靴
+        return (
+          <g>
+            <path
+              d={`M60 ${y - 10} L60 ${y + 12} L90 ${y + 12} L90 ${y - 10} Z`}
+              fill={shoesColor}
+            />
+            <path
+              d={`M110 ${y - 10} L110 ${y + 12} L140 ${y + 12} L140 ${y - 10} Z`}
+              fill={shoesColor}
+            />
+            <line
+              x1="65"
+              y1={y - 5}
+              x2="85"
+              y2={y - 5}
+              stroke="#FFF"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+            <line x1="65" y1={y} x2="85" y2={y} stroke="#FFF" strokeWidth="1" opacity="0.5" />
+            <line
+              x1="65"
+              y1={y + 5}
+              x2="85"
+              y2={y + 5}
+              stroke="#FFF"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+            <line
+              x1="115"
+              y1={y - 5}
+              x2="135"
+              y2={y - 5}
+              stroke="#FFF"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+            <line x1="115" y1={y} x2="135" y2={y} stroke="#FFF" strokeWidth="1" opacity="0.5" />
+            <line
+              x1="115"
+              y1={y + 5}
+              x2="135"
+              y2={y + 5}
+              stroke="#FFF"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+          </g>
+        )
       default:
         return null
     }
@@ -729,6 +938,20 @@ export default function DressUpPage() {
           <g>
             <path d="M75 115 Q100 135 125 115" stroke="#FFD700" strokeWidth="2" fill="none" />
             <circle cx="100" cy="130" r="6" fill="#FFD700" />
+          </g>
+        )
+      case 6: // 围巾
+        return (
+          <g>
+            <path d="M70 125 Q100 145 130 125 L130 145 Q100 165 70 145 Z" fill="#D32F2F" />
+            <rect x="90" y="145" width="20" height="40" fill="#D32F2F" />
+          </g>
+        )
+      case 7: // 领结
+        return (
+          <g>
+            <path d="M85 125 L115 125 L125 115 L75 115 Z" fill="#000" />
+            <circle cx="100" cy="125" r="5" fill="#000" />
           </g>
         )
       default:

@@ -34,6 +34,22 @@ const QUICK_EMOJIS = [
   '🌹',
   '💋',
   '🤭',
+  '🐷',
+  '🐰',
+  '🐱',
+  '🐶',
+  '🧸',
+  '🎈',
+  '✨',
+  '🌟',
+  '🌙',
+  '☀️',
+  '🌈',
+  '💍',
+  '🍫',
+  '🍬',
+  '🌸',
+  '🍉',
 ]
 
 // 快捷消息
@@ -325,7 +341,7 @@ export default function ChatPage() {
       <div className="bg-white/95 backdrop-blur-sm shadow-md sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <BackButton href="/" text="返回" className="mb-0" />
+            <BackButton href="/" text="返回首页" className="!mb-0" />
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-xl shadow-md">
                 {getAvatar(getPartnerName())}
