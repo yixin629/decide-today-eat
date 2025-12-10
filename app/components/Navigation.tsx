@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { name: '星座运势', path: '/horoscope', icon: '⭐', category: 'feature' },
   { name: '穿搭记录', path: '/outfit-records', icon: '👔', category: 'feature' },
   { name: '功能需求', path: '/feature-requests', icon: '💡', category: 'feature' },
+  { name: '情侣书架', path: '/novels', icon: '📚', category: 'feature' },
 
   // 游戏页面
   { name: '五子棋', path: '/gomoku', icon: '⚫', category: 'game' },

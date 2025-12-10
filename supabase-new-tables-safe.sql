@@ -122,6 +122,25 @@ DROP POLICY IF EXISTS "Allow public access" ON mood_records;
 CREATE POLICY "Allow public access" ON mood_records FOR ALL USING (true) WITH CHECK (true);
 
 -----------------------------------------------------------------------------
+-- 6. Novels (New Feature)
+-----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS novels (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, NOW()) NOT NULL,
+  title TEXT NOT NULL,
+  author TEXT NOT NULL,
+  cover_url TEXT,
+  description TEXT,
+  link TEXT,
+  added_by TEXT NOT NULL,
+  likes TEXT[] DEFAULT array[]::TEXT[]
+);
+
+ALTER TABLE novels ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public access" ON novels;
+CREATE POLICY "Allow public access" ON novels FOR ALL USING (true) WITH CHECK (true);
+
+-----------------------------------------------------------------------------
 -- Indexes (Safe creation)
 -----------------------------------------------------------------------------
 -- Indexes will fail if the column doesn't exist, but we just added them above.
@@ -133,3 +152,4 @@ CREATE INDEX IF NOT EXISTS time_capsules_is_opened_idx ON time_capsules(is_opene
 CREATE INDEX IF NOT EXISTS diary_entries_date_idx ON diary_entries(date DESC);
 CREATE INDEX IF NOT EXISTS diary_entries_author_idx ON diary_entries(author);
 CREATE INDEX IF NOT EXISTS mood_records_user_id_idx ON mood_records(user_id);
+CREATE INDEX IF NOT EXISTS novels_created_at_idx ON novels(created_at DESC);

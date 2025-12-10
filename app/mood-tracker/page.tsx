@@ -73,7 +73,7 @@ export default function MoodTrackerPage() {
   )
 
   useEffect(() => {
-    const user = localStorage.getItem('currentUser')
+    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
     setCurrentUser(user)
     if (user) {
       loadRecords(user)

@@ -63,10 +63,22 @@ export default function ChatPage() {
 
   // 获取当前用户
   useEffect(() => {
-    const user = localStorage.getItem('currentUser')
-    setCurrentUser(user)
-    // If no user, we just stop loading so the UI can show the login prompt
-    if (!user) {
+    // Try both keys
+    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
+    console.log('Chat Page Login Check:', {
+      user,
+      currentUser: localStorage.getItem('currentUser'),
+      loggedInUser: localStorage.getItem('loggedInUser'),
+    })
+
+    if (user) {
+      setCurrentUser(user)
+      // If we found a user, we must ensure isLoading is handled.
+      // Usually loadMessages handles it, but if loadMessages fails or we want immediate feedback:
+      // We don't set isLoading(false) here, we let the loadMessages flow handle it
+      // OR we rely on the fact that useEffect below will run.
+    } else {
+      // Only stop loading if we definitely didn't find a user
       setIsLoading(false)
     }
   }, [])
