@@ -16,8 +16,30 @@ interface Song {
 
 // 预设歌曲列表
 const PRESET_SONGS: Omit<Song, 'id' | 'addedBy' | 'createdAt'>[] = [
-  // 网易云音乐链接可能会因为防盗链而失效
-  // 建议用户自行添加有效的 MP3 链接
+  {
+    title: 'Sweet Love (Demo)',
+    artist: 'SoundHelix',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    cover: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&h=400&fit=crop',
+  },
+  {
+    title: 'Dreaming (Demo)',
+    artist: 'SoundHelix',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    cover: 'https://images.unsplash.com/photo-1516280440614-6697288d5d38?w=400&h=400&fit=crop',
+  },
+  {
+    title: 'Summer Vibes (Demo)',
+    artist: 'SoundHelix',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
+    cover: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop',
+  },
+  {
+    title: 'Piano Moment',
+    artist: 'SoundHelix',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',
+    cover: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400&h=400&fit=crop',
+  },
 ]
 
 export default function MusicPlayerPage() {

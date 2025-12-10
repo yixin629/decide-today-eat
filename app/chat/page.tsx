@@ -338,29 +338,35 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white/95 backdrop-blur-sm shadow-md sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BackButton href="/" text="返回首页" className="!mb-0" />
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-xl shadow-md">
+      <div className="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-20 border-b border-gray-100">
+        <div className="max-w-2xl mx-auto px-4 py-2 flex items-center justify-between h-[60px]">
+          {/* Left Side */}
+          <div className="flex items-center gap-3 overflow-hidden">
+            <BackButton href="/" text="首页" className="!mb-0 !px-3 !py-1 text-sm shrink-0" />
+
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-9 h-9 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center text-lg shadow-sm shrink-0 text-white">
                 {getAvatar(getPartnerName())}
               </div>
-              <div>
-                <h1 className="font-bold text-gray-800">{getPartnerName()}</h1>
-                <p className="text-xs text-green-500 flex items-center gap-1">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  在线
-                </p>
+              <div className="min-w-0">
+                <h1 className="font-bold text-gray-800 text-sm md:text-base truncate leading-tight">
+                  {getPartnerName()}
+                </h1>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shrink-0"></span>
+                  <p className="text-[10px] md:text-xs text-green-600 truncate">在线</p>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Right Side */}
           <button
             onClick={clearChat}
-            className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all shrink-0 ml-2"
             title="清空聊天"
           >
-            🗑️
+            <span className="text-xl">🗑️</span>
           </button>
         </div>
       </div>
