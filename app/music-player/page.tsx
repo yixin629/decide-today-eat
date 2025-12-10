@@ -433,6 +433,12 @@ export default function MusicPlayerPage() {
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={handleEnded}
+            onError={() => {
+              if (isPlaying) {
+                toast.error(`"${currentSong?.title}" 播放失败，自动播放下一首`)
+                playNext()
+              }
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           />

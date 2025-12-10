@@ -64,11 +64,11 @@ export default function ChatPage() {
   // 获取当前用户
   useEffect(() => {
     const user = localStorage.getItem('currentUser')
-    if (!user) {
-      window.location.href = '/login'
-      return
-    }
     setCurrentUser(user)
+    // If no user, we just stop loading so the UI can show the login prompt
+    if (!user) {
+      setIsLoading(false)
+    }
   }, [])
 
   // 滚动到底部
@@ -269,11 +269,31 @@ export default function ChatPage() {
   }
 
   if (!currentUser) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen p-4 md:p-8">
+          <div className="max-w-2xl mx-auto">
+            <div className="card text-center">
+              <LoadingSkeleton type="list" count={3} />
+            </div>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-screen p-4 md:p-8">
         <div className="max-w-2xl mx-auto">
-          <div className="card text-center">
-            <LoadingSkeleton type="list" count={3} />
+          <BackButton href="/" text="返回首页" />
+          <div className="card text-center py-12">
+            <h1 className="text-3xl font-bold text-primary mb-4">💬 甜蜜聊天室</h1>
+            <p className="text-gray-600 mb-6">请先登录后再使用聊天功能</p>
+            <a
+              href="/login"
+              className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all"
+            >
+              去登录
+            </a>
           </div>
         </div>
       </div>

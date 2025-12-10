@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import { supabase } from '@/lib/supabase'
@@ -39,6 +39,39 @@ export default function MoodTrackerPage() {
   const [currentUser, setCurrentUser] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'record' | 'history' | 'stats'>('record')
 
+  const loadRecords = useCallback(
+    async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('mood_records')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(30)
+
+        if (error) {
+          if (error.code === '42P01') {
+            console.error('Mood table missing:', error)
+            toast.warning('心情追踪数据库未初始化，将使用本地存储。如有需要请联系管理员。')
+            throw error // Throw to trigger catch block for local storage fallback
+          }
+          throw error
+        }
+        setRecords(data || [])
+      } catch (error) {
+        console.error('加载心情记录失败:', error)
+        // 使用本地存储作为备选
+        const localRecords = localStorage.getItem(`moodRecords_${userId}`)
+        if (localRecords) {
+          setRecords(JSON.parse(localRecords))
+        }
+      } finally {
+        setLoading(false)
+      }
+    },
+    [toast]
+  )
+
   useEffect(() => {
     const user = localStorage.getItem('currentUser')
     setCurrentUser(user)
@@ -47,30 +80,7 @@ export default function MoodTrackerPage() {
     } else {
       setLoading(false)
     }
-  }, [])
-
-  const loadRecords = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('mood_records')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(30)
-
-      if (error) throw error
-      setRecords(data || [])
-    } catch (error) {
-      console.error('加载心情记录失败:', error)
-      // 使用本地存储作为备选
-      const localRecords = localStorage.getItem(`moodRecords_${userId}`)
-      if (localRecords) {
-        setRecords(JSON.parse(localRecords))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [loadRecords])
 
   const submitMood = async () => {
     if (!selectedMood || !currentUser) {
@@ -94,13 +104,19 @@ export default function MoodTrackerPage() {
 
       setRecords([newRecord, ...records])
       toast.success('心情已记录！' + getRandomTip(selectedMood))
-    } catch (error) {
+    } catch (error: any) {
       console.error('保存失败:', error)
+
+      let errorMessage = '保存至云端失败，已保存至本地'
+      if (error?.code === '42P01') {
+        errorMessage = '数据库表未创建，已保存至本地'
+      }
+
       // 本地存储备选
       const updatedRecords = [newRecord, ...records]
       setRecords(updatedRecords)
       localStorage.setItem(`moodRecords_${currentUser}`, JSON.stringify(updatedRecords))
-      toast.success('心情已记录！')
+      toast.success(errorMessage)
     } finally {
       setSubmitting(false)
       setSelectedMood(null)
