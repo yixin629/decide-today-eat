@@ -39,6 +39,7 @@ export default function LoginPage() {
     }
 
     localStorage.setItem('loggedInUser', selectedUser)
+    localStorage.setItem('currentUser', selectedUser)
     success('登录成功！')
     setTimeout(() => {
       router.push('/')
