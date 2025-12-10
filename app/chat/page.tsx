@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useAuth } from '@/hooks/useAuth'
 
 interface ChatMessage {
   id: string
@@ -50,38 +51,18 @@ const QUICK_MESSAGES = [
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [currentUser, setCurrentUser] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [showEmojis, setShowEmojis] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { showToast } = useToast()
 
-  // 获取当前用户
-  useEffect(() => {
-    // Try both keys
-    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
-    console.log('Chat Page Login Check:', {
-      user,
-      currentUser: localStorage.getItem('currentUser'),
-      loggedInUser: localStorage.getItem('loggedInUser'),
-    })
-
-    if (user) {
-      setCurrentUser(user)
-      // If we found a user, we must ensure isLoading is handled.
-      // Usually loadMessages handles it, but if loadMessages fails or we want immediate feedback:
-      // We don't set isLoading(false) here, we let the loadMessages flow handle it
-      // OR we rely on the fact that useEffect below will run.
-    } else {
-      // Only stop loading if we definitely didn't find a user
-      setIsLoading(false)
-    }
-  }, [])
+  const { user: currentUser, loading: authLoading } = useAuth()
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -91,20 +72,36 @@ export default function ChatPage() {
   // 加载消息
   const loadMessages = useCallback(async () => {
     try {
+      if (!currentUser) return // Wait for user
+
+      setIsLoading(true)
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .order('created_at', { ascending: true })
-        .limit(100)
+        .limit(50)
 
-      if (error) throw error
-      setMessages(data || [])
+      if (error) {
+        // Check if error is due to missing table
+        if (error.code === '42P01') {
+          console.error('Chat table missing:', error)
+          showToast('聊天功能未初始化，请联系管理员运行数据库脚本 (chat-table.sql)', 'error')
+          return
+        }
+        throw error
+      }
+
+      if (data) {
+        setMessages(data)
+        setTimeout(scrollToBottom, 500) // Delay scroll to ensure render
+      }
     } catch (error) {
       console.error('加载消息失败:', error)
+      showToast('加载消息失败', 'error')
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [currentUser, scrollToBottom, showToast])
 
   // 标记消息为已读
   const markAsRead = useCallback(async () => {
@@ -121,15 +118,14 @@ export default function ChatPage() {
     }
   }, [currentUser])
 
-  // 初始加载和实时订阅
+  // 监听实时消息
   useEffect(() => {
     if (!currentUser) return
 
     loadMessages()
 
-    // 订阅实时消息
     const channel = supabase
-      .channel('chat_messages_channel')
+      .channel('chat_room')
       .on(
         'postgres_changes',
         {
@@ -138,20 +134,13 @@ export default function ChatPage() {
           table: 'chat_messages',
         },
         (payload) => {
-          const newMsg = payload.new as ChatMessage
-          setMessages((prev) => [...prev, newMsg])
-
-          // 如果不是自己发的消息，显示通知
-          if (newMsg.sender !== currentUser) {
-            // 播放提示音
-            try {
-              const audio = new Audio('/notification.mp3')
-              audio.volume = 0.5
-              audio.play().catch(() => {})
-            } catch {}
-
-            showToast(`${newMsg.sender}: ${newMsg.content.slice(0, 20)}...`, 'info')
-          }
+          const newMessage = payload.new as ChatMessage
+          setMessages((prev) => [...prev, newMessage])
+          // 如果也是自己发的，可能会重复显示（如果本地已经optimistic update了）
+          // 但这里我们简单处理，filter distinct ids?
+          // 或者 relies on React key uniqueness if ID matches?
+          // To be safe, wait for real ID.
+          setTimeout(scrollToBottom, 100)
         }
       )
       .subscribe()
@@ -162,7 +151,7 @@ export default function ChatPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser, loadMessages, markAsRead, showToast])
+  }, [currentUser, loadMessages, scrollToBottom, markAsRead])
 
   // 消息更新后滚动到底部
   useEffect(() => {
@@ -179,34 +168,52 @@ export default function ChatPage() {
   // 发送消息
   const sendMessage = async (content?: string) => {
     const messageContent = content || newMessage.trim()
-    if (!messageContent || !currentUser || isSending) return
+
+    // Check login
+    if (!currentUser) {
+      showToast('请先登录', 'warning')
+      return
+    }
+
+    if (!messageContent && !selectedImage) return
 
     setIsSending(true)
-    setNewMessage('')
+    setNewMessage('') // Optimistic clear
     setShowEmojis(false)
     setShowQuickMessages(false)
 
     try {
-      const { data, error } = await supabase.from('chat_messages').insert({
+      console.log('Attempting to send message:', {
         sender: currentUser,
         content: messageContent,
-        message_type: 'text',
       })
 
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert([
+          {
+            sender: currentUser,
+            content: messageContent,
+            message_type: 'text',
+            is_read: false,
+          },
+        ])
+        .select()
+
       if (error) {
-        showToast('发送失败: ' + (error.message || JSON.stringify(error)), 'error')
         throw error
       }
-      if (!data) {
-        showToast('发送失败: 没有返回数据', 'error')
-      }
+
+      console.log('Message sent successfully:', data)
+      // Realtime subscription will handle the UI update
     } catch (error: any) {
-      console.error('发送失败:', error)
-      showToast('发送失败: ' + (error?.message || JSON.stringify(error)), 'error')
-      setNewMessage(messageContent)
+      console.error('发送消息失败:', error)
+      showToast(`发送失败: ${error.message || '未知错误'}`, 'error')
+      // Restore message if failed
+      if (!content) setNewMessage(messageContent)
     } finally {
       setIsSending(false)
-      inputRef.current?.focus()
+      setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
 

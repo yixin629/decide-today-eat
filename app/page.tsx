@@ -655,6 +655,19 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
+          {/* Novels / Couple Bookshelf */}
+          <Link href="/novels">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-indigo-50 to-blue-50">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📚</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣书架
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                一起阅读，分享故事感动
+              </p>
+            </div>
+          </Link>
+
           {/* Feature Requests */}
           <Link href="/feature-requests">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">

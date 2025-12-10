@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import { supabase } from '@/lib/supabase'
+import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useAuth } from '@/hooks/useAuth'
 
 interface MoodRecord {
   id: string
@@ -30,97 +32,130 @@ const MOOD_TIPS: Record<number, string[]> = {
 }
 
 export default function MoodTrackerPage() {
-  const toast = useToast()
+  const { showToast } = useToast()
+  const { user: currentUser, loading: isAuthLoading } = useAuth()
   const [selectedMood, setSelectedMood] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [records, setRecords] = useState<MoodRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [currentUser, setCurrentUser] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'record' | 'history' | 'stats'>('record')
 
   const loadRecords = useCallback(
     async (userId: string) => {
+      setIsLoading(true)
       try {
         const { data, error } = await supabase
           .from('mood_records')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(30)
+        // .limit(30) // Removed limit(30) as per provided code edit
 
         if (error) {
           if (error.code === '42P01') {
             console.error('Mood table missing:', error)
-            toast.warning('心情追踪数据库未初始化，将使用本地存储。如有需要请联系管理员。')
+            showToast('心情追踪数据库未初始化，将使用本地存储。如有需要请联系管理员。', 'warning')
             throw error // Throw to trigger catch block for local storage fallback
           }
           throw error
         }
-        setRecords(data || [])
+
+        if (data) {
+          setRecords(data)
+        }
       } catch (error) {
         console.error('加载心情记录失败:', error)
         // 使用本地存储作为备选
-        const localRecords = localStorage.getItem(`moodRecords_${userId}`)
-        if (localRecords) {
-          setRecords(JSON.parse(localRecords))
+        const saved = localStorage.getItem(`moodRecords_${userId}`)
+        if (saved) {
+          setRecords(JSON.parse(saved))
         }
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     },
-    [toast]
+    [showToast]
   )
 
+  // 监听用户变动
   useEffect(() => {
-    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
-    setCurrentUser(user)
-    if (user) {
-      loadRecords(user)
-    } else {
-      setLoading(false)
+    if (!isAuthLoading) {
+      // Only proceed if auth state has finished loading
+      if (currentUser) {
+        loadRecords(currentUser)
+      } else {
+        // If auth is done loading and no user, stop loading?
+        // useAuth handles initial loading state, but we need to wait for it.
+        // Actually loadRecords handles empty user gracefully?
+        // No, it needs user.
+        // We'll rely on useAuth's loading state or just check currentUser.
+        // If currentUser becomes null (logout), we might want to clear records.
+        setIsLoading(false) // No user, so no records to load, stop loading state
+        setRecords([]) // Clear records if user logs out
+      }
     }
-  }, [loadRecords])
+  }, [currentUser, loadRecords, isAuthLoading])
 
   const submitMood = async () => {
     if (!selectedMood || !currentUser) {
-      toast.warning('请先选择心情')
+      showToast('请先选择心情', 'warning')
       return
     }
 
     setSubmitting(true)
-    const newRecord: MoodRecord = {
-      id: Date.now().toString(),
-      user_id: currentUser,
-      mood: selectedMood,
-      note: note.trim(),
-      created_at: new Date().toISOString(),
-    }
-
+    let errorMessage = '保存至云端失败，已保存至本地'
     try {
-      const { error } = await supabase.from('mood_records').insert([newRecord])
-
-      if (error) throw error
-
-      setRecords([newRecord, ...records])
-      toast.success('心情已记录！' + getRandomTip(selectedMood))
-    } catch (error: any) {
-      console.error('保存失败:', error)
-
-      let errorMessage = '保存至云端失败，已保存至本地'
-      if (error?.code === '42P01') {
-        errorMessage = '数据库表未创建，已保存至本地'
+      const newRecord = {
+        id: crypto.randomUUID(), // Local ID for fallback
+        user_id: currentUser,
+        mood: selectedMood,
+        note,
+        created_at: new Date().toISOString(),
       }
 
-      // 本地存储备选
-      const updatedRecords = [newRecord, ...records]
-      setRecords(updatedRecords)
-      localStorage.setItem(`moodRecords_${currentUser}`, JSON.stringify(updatedRecords))
-      toast.success(errorMessage)
-    } finally {
-      setSubmitting(false)
+      const { error } = await supabase.from('mood_records').insert([
+        {
+          user_id: currentUser,
+          mood: selectedMood,
+          note,
+        },
+      ])
+
+      if (error) {
+        if (error.code === '42P01') {
+          errorMessage = '数据库表未创建，已保存至本地'
+        }
+        throw error
+      }
+
+      showToast('心情记录成功！', 'success')
+      setRecords([newRecord, ...records])
       setSelectedMood(null)
       setNote('')
+      setViewMode('history')
+    } catch (error: any) {
+      console.error('保存心情失败:', error)
+
+      const updatedRecords = [
+        {
+          id: crypto.randomUUID(),
+          user_id: currentUser,
+          mood: selectedMood,
+          note,
+          created_at: new Date().toISOString(),
+        },
+        ...records,
+      ]
+      setRecords(updatedRecords)
+      localStorage.setItem(`moodRecords_${currentUser}`, JSON.stringify(updatedRecords))
+      showToast(errorMessage, 'success') // Show success because we saved locally
+
+      setSelectedMood(null)
+      setNote('')
+      setViewMode('history')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -156,6 +191,18 @@ export default function MoodTrackerPage() {
   }
 
   const stats = getMoodStats()
+
+  if (isLoading || isAuthLoading) {
+    return (
+      <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="card text-center">
+            <LoadingSkeleton type="list" count={3} />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!currentUser) {
     return (
@@ -253,7 +300,7 @@ export default function MoodTrackerPage() {
 
           {viewMode === 'history' && (
             <div className="space-y-3">
-              {loading ? (
+              {isLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 </div>
