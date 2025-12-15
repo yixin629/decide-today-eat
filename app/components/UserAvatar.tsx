@@ -52,7 +52,7 @@ export default function UserAvatar() {
         .from('user_profiles')
         .select('avatar_url, avatar_emoji')
         .eq('name', userName)
-        .single()
+        .maybeSingle()
 
       if (data) {
         setAvatarUrl(data.avatar_url || data.avatar_emoji || '')
