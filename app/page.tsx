@@ -272,6 +272,17 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
+          {/* Mahjong */}
+          <Link href="/mahjong">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🀄</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                欢乐麻将
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">国粹对局赚取欢乐豆</p>
+            </div>
+          </Link>
+
           {/* Anniversaries */}
           <Link href="/anniversaries">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
