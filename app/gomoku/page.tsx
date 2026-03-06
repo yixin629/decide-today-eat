@@ -1,229 +1,288 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { GomokuGameState, createEmptyBoard } from './engine/GomokuLogic'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
-type Player = 'black' | 'white'
-type Cell = Player | null
+export default function GomokuLobbyPage() {
+  const router = useRouter()
+  const { showToast } = useToast()
+  const { user: currentUser } = useAuth()
+  
+  const [waitingRooms, setWaitingRooms] = useState<any[]>([])
+  const [isCreating, setIsCreating] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-const BOARD_SIZE = 15
+  useEffect(() => {
+    if (!currentUser) {
+       router.push('/login?redirect=/gomoku')
+       return
+    }
 
-export default function GomokuPage() {
-  const toast = useToast()
-  const [board, setBoard] = useState<Cell[][]>(() =>
-    Array(BOARD_SIZE)
-      .fill(null)
-      .map(() => Array(BOARD_SIZE).fill(null))
-  )
-  const [currentPlayer, setCurrentPlayer] = useState<Player>('black')
-  const [winner, setWinner] = useState<Player | null>(null)
-  const [lastMove, setLastMove] = useState<[number, number] | null>(null)
-  const [history, setHistory] = useState<
-    { board: Cell[][]; player: Player; move: [number, number] }[]
-  >([])
+    fetchRooms()
 
-  const checkWinner = (boardState: Cell[][], row: number, col: number, player: Player): boolean => {
-    const directions = [
-      [0, 1], // horizontal
-      [1, 0], // vertical
-      [1, 1], // diagonal \
-      [1, -1], // diagonal /
-    ]
-
-    for (const [dx, dy] of directions) {
-      let count = 1
-      // Check positive direction
-      for (let i = 1; i < 5; i++) {
-        const newRow = row + dx * i
-        const newCol = col + dy * i
-        if (
-          newRow >= 0 &&
-          newRow < BOARD_SIZE &&
-          newCol >= 0 &&
-          newCol < BOARD_SIZE &&
-          boardState[newRow][newCol] === player
-        ) {
-          count++
-        } else {
-          break
+    const channel = supabase
+      .channel('gomoku_lobby')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'gomoku_games' },
+        () => {
+          fetchRooms()
         }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchRooms = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('gomoku_games')
+        .select(`
+          id,
+          created_at,
+          status,
+          players,
+          game_mode,
+          host_id
+        `)
+        .eq('status', 'waiting')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setWaitingRooms(data || [])
+    } catch (error) {
+      console.error('获取房间失败:', error)
+      showToast('获取房间列表失败', 'error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateRoom = async (mode: 'pvp' | 'pve') => {
+    if (!currentUser) {
+      showToast('请先登录', 'error')
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      // Get User Profile
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('name, avatar_url')
+        .eq('id', currentUser)
+        .single()
+
+      const hostPlayer = {
+         id: currentUser,
+         name: profileData?.name || 'Player 1',
+         avatar: profileData?.avatar_url || '👤',
+         color: 'black', // Creator is black (first move typically)
+         isBot: false
       }
-      // Check negative direction
-      for (let i = 1; i < 5; i++) {
-        const newRow = row - dx * i
-        const newCol = col - dy * i
-        if (
-          newRow >= 0 &&
-          newRow < BOARD_SIZE &&
-          newCol >= 0 &&
-          newCol < BOARD_SIZE &&
-          boardState[newRow][newCol] === player
-        ) {
-          count++
-        } else {
-          break
-        }
+
+      const initialState: Partial<GomokuGameState> = {
+         board: createEmptyBoard(),
+         currentPlayer: 'black',
+         status: mode === 'pve' ? 'playing' : 'waiting', // PvE starts immediately
+         winner: null,
+         lastMove: null,
+         history: [],
+         players: [hostPlayer],
+         gameMode: mode,
+         hostId: currentUser
       }
-      if (count >= 5) return true
+
+      if (mode === 'pve') {
+         // Auto-add bot
+         initialState.players!.push({
+            id: 'bot-1',
+            name: 'Gomoku Bot',
+            avatar: '🤖',
+            color: 'white',
+            isBot: true
+         })
+      }
+
+      const { data, error } = await supabase
+        .from('gomoku_games')
+        .insert([{
+          game_state: initialState,
+          status: initialState.status,
+          host_id: currentUser,
+          game_mode: mode,
+          players: initialState.players
+        }])
+        .select()
+        .single()
+
+      if (error) throw error
+
+      showToast(`已创建${mode === 'pve' ? '人机' : '对战'}房间`, 'success')
+      router.push(`/gomoku/${data.id}`)
+    } catch (error) {
+      console.error('创建房间失败:', error)
+      showToast('创建房间失败', 'error')
+    } finally {
+      setIsCreating(false)
     }
-    return false
   }
 
-  const handleCellClick = (row: number, col: number) => {
-    if (board[row][col] || winner) return
+  const handleJoinRoom = async (gameId: string, currentPlayers: any[]) => {
+    if (!currentUser) return
+    setIsCreating(true)
 
-    const newBoard = board.map((r) => [...r])
-    newBoard[row][col] = currentPlayer
+    try {
+      // Check if already in room
+      const existingPlayer = currentPlayers.find((p: any) => p.id === currentUser)
+      if (existingPlayer) {
+        router.push(`/gomoku/${gameId}`)
+        return
+      }
 
-    // 保存历史记录
-    setHistory([
-      ...history,
-      { board: board.map((r) => [...r]), player: currentPlayer, move: [row, col] },
-    ])
+      if (currentPlayers.length >= 2) {
+        showToast('房间已满', 'error')
+        setIsCreating(false)
+        return
+      }
 
-    setBoard(newBoard)
-    setLastMove([row, col])
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('name, avatar_url')
+        .eq('id', currentUser)
+        .single()
 
-    if (checkWinner(newBoard, row, col, currentPlayer)) {
-      setWinner(currentPlayer)
-      toast.success(`${currentPlayer === 'black' ? '⚫ 黑子' : '⚪ 白子'} 获胜！🎉`)
-    } else {
-      setCurrentPlayer(currentPlayer === 'black' ? 'white' : 'black')
+      const newPlayer = {
+        id: currentUser,
+        name: profile?.name || 'Player 2',
+        avatar: profile?.avatar_url || '👤',
+        color: 'white', // Second player is white
+        isBot: false
+      }
+
+      // We need to fetch the full game state to append the new player properly to the JSON
+      const { data: gameData, error: fetchErr } = await supabase
+         .from('gomoku_games')
+         .select('game_state')
+         .eq('id', gameId)
+         .single()
+
+      if (fetchErr) throw fetchErr
+
+      const nextState = { ...gameData.game_state, status: 'playing' }
+      nextState.players.push(newPlayer)
+
+      const { error } = await supabase
+        .from('gomoku_games')
+        .update({
+          game_state: nextState,
+          status: 'playing',
+          players: nextState.players
+        })
+        .eq('id', gameId)
+
+      if (error) throw error
+
+      showToast('成功加入房间', 'success')
+      router.push(`/gomoku/${gameId}`)
+    } catch (error) {
+      console.error('加入房间失败:', error)
+      showToast('加入房间失败', 'error')
+    } finally {
+      setIsCreating(false)
     }
   }
 
-  const undoMove = () => {
-    if (history.length === 0 || winner) return
-
-    const lastHistory = history[history.length - 1]
-    setBoard(lastHistory.board)
-    setCurrentPlayer(lastHistory.player)
-    setHistory(history.slice(0, -1))
-
-    // 找到倒数第二步的位置
-    if (history.length > 1) {
-      setLastMove(history[history.length - 2].move)
-    } else {
-      setLastMove(null)
-    }
-
-    toast.info('已撤销上一步')
+  if (isLoading) {
+      return (
+         <div className="min-h-screen p-4 md:p-8 flex flex-col justify-center max-w-4xl mx-auto">
+            <LoadingSkeleton type="card" count={3} />
+         </div>
+      )
   }
-
-  const resetGame = () => {
-    setBoard(
-      Array(BOARD_SIZE)
-        .fill(null)
-        .map(() => Array(BOARD_SIZE).fill(null))
-    )
-    setCurrentPlayer('black')
-    setWinner(null)
-    setLastMove(null)
-    setHistory([])
-  }
-
-  // 计算落子数
-  const moveCount = history.length
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         <BackButton href="/" text="返回首页" />
 
-        <div className="card text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">⚫⚪ 五子棋对战 ⚫⚪</h1>
+        <div className="card text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-2">⚫⚪ 五子棋大厅 ⚫⚪</h1>
+          <p className="text-gray-600 mb-6">在线实时对战，一决高下</p>
 
-          {/* Game Status */}
-          <div className="mb-4">
-            {winner ? (
-              <div className="text-2xl md:text-3xl font-bold text-primary">
-                {winner === 'black' ? '⚫ 黑子' : '⚪ 白子'} 获胜！🎉
-              </div>
-            ) : (
-              <div className="text-xl md:text-2xl">
-                当前回合: {currentPlayer === 'black' ? '⚫ 黑子' : '⚪ 白子'}
-                <span className="text-sm text-gray-500 ml-2">（第 {moveCount + 1} 步）</span>
-              </div>
-            )}
-          </div>
-
-          {/* Game Board */}
-          <div className="inline-block bg-yellow-700 p-2 md:p-4 rounded-lg shadow-2xl mb-4 overflow-x-auto">
-            <div
-              className="grid gap-0"
-              style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
-            >
-              {board.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                  <button
-                    key={`${rowIndex}-${colIndex}`}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    className={`w-6 h-6 md:w-8 md:h-8 border border-gray-800 flex items-center justify-center hover:bg-yellow-600 transition-colors ${
-                      lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex
-                        ? 'ring-2 ring-red-500'
-                        : ''
-                    }`}
-                    disabled={!!winner}
-                  >
-                    {cell && (
-                      <div
-                        className={`w-5 h-5 md:w-6 md:h-6 rounded-full ${
-                          cell === 'black' ? 'bg-black' : 'bg-white'
-                        } shadow-lg`}
-                      />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex gap-3 justify-center flex-wrap mb-6">
-            <button
-              onClick={undoMove}
-              disabled={history.length === 0 || !!winner}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ↩️ 悔棋
-            </button>
-            <button onClick={resetGame} className="btn-primary">
-              🔄 重新开始
-            </button>
-          </div>
-
-          {/* Move History */}
-          {history.length > 0 && (
-            <div className="mb-6 bg-gray-50 rounded-xl p-4">
-              <h3 className="font-semibold mb-2">📜 落子记录</h3>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-                {history.map((h, i) => (
-                  <span
-                    key={i}
-                    className={`text-xs px-2 py-1 rounded ${
-                      h.player === 'black' ? 'bg-gray-800 text-white' : 'bg-white border'
-                    }`}
-                  >
-                    {i + 1}. ({h.move[0]},{h.move[1]})
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Instructions */}
-          <div className="text-left bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-bold text-lg mb-2">游戏规则：</h3>
-            <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-              <li>黑子先手，白子后手</li>
-              <li>在棋盘上点击放置棋子</li>
-              <li>横向、纵向或斜向连成5个即获胜</li>
-              <li>红色边框标记上一步落子位置</li>
-              <li>点击「悔棋」可撤销上一步</li>
-            </ul>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <button
+               onClick={() => handleCreateRoom('pve')}
+               disabled={isCreating}
+               className="btn-secondary px-8 py-4 text-lg disabled:opacity-50"
+             >
+               🤖 单人挑战 (打电脑)
+             </button>
+             <button
+               onClick={() => handleCreateRoom('pvp')}
+               disabled={isCreating}
+               className="btn-primary px-8 py-4 text-lg disabled:opacity-50"
+             >
+               ⚔️ 创建双人对战
+             </button>
           </div>
         </div>
+
+        <div className="card">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <span>🎮</span> 等待中的对战
+          </h2>
+          
+          {waitingRooms.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <span className="text-4xl block mb-2">👻</span>
+              暂无等待中的房间，自己创建一个吧！
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {waitingRooms.map((room) => {
+                 const host = room.players[0]
+                 return (
+                  <div 
+                    key={room.id}
+                    className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border rounded-xl hover:shadow-md transition-shadow gap-4"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">
+                        {host?.avatar || '👤'}
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-lg">{host?.name || '未知玩家'}</div>
+                        <div className="text-sm text-gray-500">
+                           {room.game_mode === 'pvp' ? '双人在线对战' : '人机对战'} | 
+                           等待加入...
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleJoinRoom(room.id, room.players)}
+                      disabled={isCreating}
+                      className="w-full sm:w-auto px-6 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      加入对局
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )
