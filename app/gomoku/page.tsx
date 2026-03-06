@@ -6,7 +6,7 @@ import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { GomokuGameState, createEmptyBoard } from './engine/GomokuLogic'
+import { GomokuGameState, createEmptyBoard, Player } from './engine/GomokuLogic'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 
 export default function GomokuLobbyPage() {
@@ -86,7 +86,7 @@ export default function GomokuLobbyPage() {
          id: currentUser,
          name: profileData?.name || 'Player 1',
          avatar: profileData?.avatar_url || '👤',
-         color: 'black', // Creator is black (first move typically)
+         color: 'black' as Player, // Creator is black (first move typically)
          isBot: false
       }
 
@@ -108,7 +108,7 @@ export default function GomokuLobbyPage() {
             id: 'bot-1',
             name: 'Gomoku Bot',
             avatar: '🤖',
-            color: 'white',
+            color: 'white' as Player,
             isBot: true
          })
       }
@@ -120,7 +120,7 @@ export default function GomokuLobbyPage() {
           status: initialState.status,
           host_id: currentUser,
           game_mode: mode,
-          players: initialState.players
+          players: initialState.players!.map(p => p.id)
         }])
         .select()
         .single()
@@ -165,7 +165,7 @@ export default function GomokuLobbyPage() {
         id: currentUser,
         name: profile?.name || 'Player 2',
         avatar: profile?.avatar_url || '👤',
-        color: 'white', // Second player is white
+        color: 'white' as Player, // Second player is white
         isBot: false
       }
 
@@ -186,7 +186,7 @@ export default function GomokuLobbyPage() {
         .update({
           game_state: nextState,
           status: 'playing',
-          players: nextState.players
+          players: nextState.players.map((p: any) => p.id)
         })
         .eq('id', gameId)
 

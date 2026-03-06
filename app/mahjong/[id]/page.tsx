@@ -99,6 +99,19 @@ export default function MahjongGameRoom() {
 
     // 1. Handle Bot Pending Actions (Interruptions)
     if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) {
+       
+       // CRITICAL FIX: If ANY human player has pending actions, bots must wait!
+       const hasHumanPending = Object.keys(gameState.pendingActions).some(pId => {
+          const p = gameState.players.find(x => x.id === pId);
+          return p && !p.isBot;
+       });
+
+       if (hasHumanPending) {
+         // Wait for the human to make a decision (Pong/Hu/Pass). 
+         // The human's action will trigger a database update, which will rerun this effect.
+         return; 
+       }
+
        let botActionTaken = false;
        for (const [pId, actions] of Object.entries(gameState.pendingActions)) {
           const player = gameState.players.find(p => p.id === pId);

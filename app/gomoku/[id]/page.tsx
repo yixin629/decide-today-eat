@@ -221,41 +221,73 @@ export default function GomokuGameRoom() {
           </div>
 
           {/* Game Board */}
-          <div className="inline-block bg-yellow-700 p-2 md:p-4 rounded-lg shadow-2xl mb-4 overflow-x-auto relative">
+          <div className="inline-block bg-[#E3A869] p-2 md:p-6 rounded-lg shadow-2xl mb-4 relative ring-8 ring-[#8B5A2B]">
             
             {status === 'waiting' && (
-                <div className="absolute inset-0 bg-black/20 z-10 flex items-center justify-center rounded-lg backdrop-blur-sm">
-                   <div className="bg-white/90 px-6 py-3 rounded-xl shadow-lg font-bold text-lg">
-                      等待中...
+                <div className="absolute inset-0 bg-black/30 z-20 flex items-center justify-center rounded-lg backdrop-blur-sm">
+                   <div className="bg-white/90 px-6 py-3 rounded-xl shadow-lg font-bold text-lg text-black">
+                      等待对手加入...
                    </div>
                 </div>
             )}
 
             <div
-              className="grid gap-0"
-              style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))` }}
+              className="grid gap-0 relative"
+              style={{ 
+                 gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
+                 width: 'max-content' 
+              }}
             >
               {board.map((row, rowIndex) =>
-                row.map((cell, colIndex) => (
-                  <button
-                    key={`${rowIndex}-${colIndex}`}
-                    onClick={() => handleCellClick(rowIndex, colIndex)}
-                    className={`w-6 h-6 md:w-8 md:h-8 border border-gray-800 flex items-center justify-center hover:bg-yellow-600 transition-colors ${
-                      lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex
-                        ? 'ring-2 ring-red-500'
-                        : ''
-                    }`}
-                    disabled={!!winner || status !== 'playing'}
-                  >
-                    {cell && (
-                      <div
-                        className={`w-5 h-5 md:w-6 md:h-6 rounded-full ${
-                          cell === 'black' ? 'bg-black' : 'bg-white'
-                        } shadow-lg`}
+                row.map((cell, colIndex) => {
+                  const isTop = rowIndex === 0;
+                  const isBottom = rowIndex === BOARD_SIZE - 1;
+                  const isLeft = colIndex === 0;
+                  const isRight = colIndex === BOARD_SIZE - 1;
+                  const isCenter = rowIndex === 7 && colIndex === 7;
+                  const isStar = (rowIndex === 3 || rowIndex === 11) && (colIndex === 3 || colIndex === 11);
+
+                  return (
+                    <button
+                      key={`${rowIndex}-${colIndex}`}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      className="w-7 h-7 md:w-10 md:h-10 relative flex items-center justify-center group"
+                      disabled={!!winner || status !== 'playing'}
+                    >
+                      {/* Grid Lines */}
+                      <div className={`absolute bg-gray-800 pointer-events-none z-0
+                           ${isTop ? 'top-1/2 bottom-0' : isBottom ? 'top-0 bottom-1/2' : 'top-0 bottom-0'}
+                           w-[1.5px] left-1/2 -ml-[0.75px]`} 
                       />
-                    )}
-                  </button>
-                ))
+                      <div className={`absolute bg-gray-800 pointer-events-none z-0
+                           ${isLeft ? 'left-1/2 right-0' : isRight ? 'left-0 right-1/2' : 'left-0 right-0'}
+                           h-[1.5px] top-1/2 -mt-[0.75px]`} 
+                      />
+
+                      {/* Star Points (Tengen / Hoshi) */}
+                      {(isCenter || isStar) && (
+                         <div className="w-2 h-2 rounded-full leading-none bg-gray-800 absolute z-0 pointer-events-none shrink-0" />
+                      )}
+
+                      {/* Hover Indicator */}
+                      <div className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 bg-white/30 rounded-full transition-opacity m-1 md:m-1.5" />
+
+                      {/* Piece */}
+                      {cell && (
+                        <div
+                          className={`absolute z-20 w-6 h-6 md:w-8 md:h-8 rounded-full shadow-md ${
+                            cell === 'black' ? 'bg-gradient-to-br from-gray-700 to-black' : 'bg-gradient-to-br from-white to-gray-200 border border-gray-300'
+                          }`}
+                        />
+                      )}
+
+                      {/* Last Move Indicator */}
+                      {lastMove && lastMove[0] === rowIndex && lastMove[1] === colIndex && (
+                        <div className="absolute z-30 w-1.5 h-1.5 bg-red-500 rounded-full shadow-sm animate-pulse" />
+                      )}
+                    </button>
+                  )
+                })
               )}
             </div>
           </div>

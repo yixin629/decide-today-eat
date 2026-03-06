@@ -311,6 +311,7 @@ export function advanceTurn(state: GameState): GameState {
       newState.status = 'finished';
    }
    
+   nextPlayer.status = 'thinking';
    return newState;
 }
 
