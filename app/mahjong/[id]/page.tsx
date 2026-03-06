@@ -7,8 +7,10 @@ import { useAuth } from '@/hooks/useAuth'
 import BackButton from '../../components/BackButton'
 import { useToast } from '../../components/ToastProvider'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
-import { GameState, Player, Tile, getBotAction, getBotDiscard, applyDiscard, applyBotTurn } from '../engine/MahjongLogic'
+import { GameState, Player, Tile, getBotAction, getBotDiscard, applyDiscard, applyBotTurn, applyAction, ValidAction, ActionType } from '../engine/MahjongLogic'
 import PlayerHand from '../components/PlayerHand'
+import TileComponent from '../components/Tile'
+import GameEndModal from '../components/GameEndModal'
 
 export default function MahjongGameRoom() {
   const { id } = useParams()
@@ -92,14 +94,48 @@ export default function MahjongGameRoom() {
 
   // Bot Turn Automation (Host only)
   useEffect(() => {
-    if (!gameState || !currentUser || gameState.status !== 'playing') return
+    if (!gameState || !currentUser) return
     if (gameState.host_id !== currentUser) return // Only host drives bots
+
+    // 1. Handle Bot Pending Actions (Interruptions)
+    if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) {
+       let botActionTaken = false;
+       for (const [pId, actions] of Object.entries(gameState.pendingActions)) {
+          const player = gameState.players.find(p => p.id === pId);
+          if (player && player.isBot) {
+             botActionTaken = true;
+             const timer = setTimeout(async () => {
+                try {
+                  // Realistically the bot should decide. Given our simplistic `getBotAction`:
+                  // If it has 'hu', it does 'hu'. Else 'kong' > 'pong' > 'pass'.
+                  let chosenAction: ValidAction | undefined;
+                  chosenAction = actions.find(a => a.type === 'hu');
+                  if (!chosenAction) chosenAction = actions.find(a => a.type === 'kong');
+                  if (!chosenAction) chosenAction = actions.find(a => a.type === 'pong');
+                  
+                  const typeToTake = chosenAction ? chosenAction.type : 'pass';
+                  const nextState = applyAction(gameState, player.id, typeToTake);
+                  await supabase.from('mahjong_games').update({ game_state: nextState }).eq('id', id);
+                } catch (err) {
+                  console.error('Bot pending action error:', err);
+                }
+             }, 1000 + Math.random() * 1000); // Random delay 1-2s to feel human
+             return () => clearTimeout(timer);
+          }
+       }
+       if (botActionTaken) return; // Wait for bot to resolve before normal turns
+    }
+
+    // 2. Normal Bot Turn
+    if (gameState.status !== 'playing') return;
 
     const currentPlayerIndex = gameState.currentTurn
     const currentPlayer = gameState.players[currentPlayerIndex]
 
     if (currentPlayer && currentPlayer.isBot) {
-      // It's a bot's turn! The host calculates the move.
+      if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) return; // Waiting for someone else
+
+      // It's a bot's normal draw/discard turn!
       const timer = setTimeout(async () => {
         try {
            const nextState = applyBotTurn(gameState, currentPlayer.id)
@@ -114,7 +150,7 @@ export default function MahjongGameRoom() {
 
       return () => clearTimeout(timer)
     }
-  }, [gameState?.currentTurn, gameState?.status, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameState, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelfDiscard = async () => {
      if (selectedTileIndex === null || !gameState || !currentUser) return
@@ -138,6 +174,20 @@ export default function MahjongGameRoom() {
      }
   }
 
+  const handleAction = async (actionType: ActionType) => {
+     if (!gameState || !currentUser) return;
+     const nextState = applyAction(gameState, currentUser, actionType);
+     try {
+       await supabase
+         .from('mahjong_games')
+         .update({ game_state: nextState })
+         .eq('id', id)
+     } catch (err) {
+       console.error(err)
+       showToast('操作失败', 'error')
+     }
+  }
+
   if (isLoading || !currentUser) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
@@ -156,7 +206,20 @@ export default function MahjongGameRoom() {
   }
 
   const { bottom, right, top, left } = getRenderPositions()
+  
+  // Is it my normal turn?
   const isMyTurn = bottom ? gameState.currentTurn === gameState.players.findIndex(p => p.id === bottom.id) : false
+  const hasPendingActions = gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0;
+  
+  // Do I have an interruption choice to make?
+  const myPendingActions = gameState.pendingActions ? gameState.pendingActions[currentUser] : null;
+
+  const actionLabels: Record<string, string> = {
+     hu: '胡',
+     kong: '杠',
+     pong: '碰',
+     chow: '吃',
+  }
 
   return (
     <div className="min-h-screen bg-green-900 overflow-hidden flex flex-col">
@@ -207,14 +270,54 @@ export default function MahjongGameRoom() {
             </div>
          )}
 
-         {/* Center Action Area (Prompts) */}
-         {isMyTurn && (
-           <div className="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex gap-4">
-              <button onClick={handleSelfDiscard} disabled={selectedTileIndex === null} className="btn-primary px-8 py-3 text-xl disabled:bg-gray-400 disabled:opacity-50">
-                 出牌
-              </button>
-           </div>
-         )}
+         {/* Center Action Area (Prompts & Table) */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-8">
+            
+            {/* Last Discarded Tile Visualization */}
+            {gameState.lastAction && gameState.lastAction.tile && (
+               <div className="flex flex-col items-center bg-black/40 p-6 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10 animate-fade-in">
+                  <span className="text-white/80 text-sm mb-3">
+                     {gameState.players.find(p => p.id === gameState.lastAction!.playerId)?.name} 打出:
+                  </span>
+                  <TileComponent tile={gameState.lastAction.tile} size="lg" className="scale-125 shadow-2xl" />
+               </div>
+            )}
+
+            {/* My Turn Action Buttons */}
+            {isMyTurn && !hasPendingActions && (
+              <div className="flex gap-4">
+                 <button onClick={handleSelfDiscard} disabled={selectedTileIndex === null} className="btn-primary px-10 py-4 text-2xl font-bold rounded-full disabled:bg-gray-500 disabled:opacity-50 shadow-xl hover:scale-105 transition-transform active:scale-95">
+                    出 牌
+                 </button>
+              </div>
+            )}
+
+            {/* My Interruption Action Buttons */}
+            {myPendingActions && myPendingActions.length > 0 && (
+               <div className="flex gap-4 p-4 bg-black/60 rounded-2xl backdrop-blur-md shadow-2xl animate-bounce">
+                  {myPendingActions.map((action, idx) => (
+                    <button 
+                       key={idx} 
+                       onClick={() => handleAction(action.type)} 
+                       className={`
+                         px-8 py-4 text-3xl font-bold rounded-full shadow-xl hover:scale-110 transition-transform active:scale-90
+                         ${action.type === 'hu' ? 'bg-red-500 text-white animate-pulse' : 
+                           action.type === 'kong' ? 'bg-yellow-500 text-black' : 
+                           'bg-blue-500 text-white'}
+                       `}
+                    >
+                       {actionLabels[action.type] || action.type}
+                    </button>
+                  ))}
+                  <button 
+                     onClick={() => handleAction('pass')} 
+                     className="px-8 py-4 text-3xl font-bold bg-gray-600 text-white rounded-full shadow-xl hover:scale-110 transition-transform active:scale-90"
+                  >
+                     过
+                  </button>
+               </div>
+            )}
+         </div>
 
          {/* Bottom Player (Self) */}
          {bottom && (
@@ -230,6 +333,12 @@ export default function MahjongGameRoom() {
                />
             </div>
          )}
+         
+         <GameEndModal 
+            gameState={gameState} 
+            currentUser={currentUser}
+            onReturnToLobby={() => router.push('/mahjong')} 
+         />
 
       </div>
     </div>

@@ -54,6 +54,8 @@ export interface GameState {
   actionTimer?: number; // UNIX timestamp for action timeout
 }
 
+export type ValidAction = { type: ActionType, tile: Tile };
+
 // ---------------------------------------------------------
 // Deck & Initialization
 // ---------------------------------------------------------
@@ -149,12 +151,133 @@ export function applyDiscard(state: GameState, playerId: string, tileIndex: numb
   player.discards.push(discardedTile);
   
   newState.lastAction = { playerId, type: 'discard', tile: discardedTile };
+  newState.pendingActions = {};
+
+  // Check all OTHER players to see if they can Hu, Kong, Pong, Chow here
+  let hasPending = false;
   
-  // Real implementation would check all OTHER players to see if they can Hu, Kong, Pong here
-  // and populate newState.pendingActions.
-  // For simplicity: We will just immediately pass to the next player.
+  newState.players.forEach((p, index) => {
+    if (p.id === playerId || p.status === 'hu') return;
+    
+    const actions: ValidAction[] = [];
+    
+    // 1. Can Hu?
+    if (canHu(p.hand, newState.mode, p.voidSuit, discardedTile)) {
+      actions.push({ type: 'hu', tile: discardedTile });
+    }
+    // 2. Can Kong?
+    if (canKong(p.hand, discardedTile)) {
+      actions.push({ type: 'kong', tile: discardedTile });
+    }
+    // 3. Can Pong?
+    if (canPong(p.hand, discardedTile)) {
+      actions.push({ type: 'pong', tile: discardedTile });
+    }
+    // 4. Can Chow? (Only the immediate Next player can Chow in standard mahjong)
+    if (newState.mode === 'standard' && index === (newState.currentTurn + 1) % 4) {
+       const chows = canChow(p.hand, discardedTile, newState.mode);
+       if (chows.length > 0) {
+          actions.push({ type: 'chow', tile: discardedTile }); // Simplified: doesn't specify which combo if multiple
+       }
+    }
+
+    if (actions.length > 0) {
+      newState.pendingActions![p.id] = actions;
+      hasPending = true;
+    }
+  });
+
+  if (hasPending) {
+    // Pause the game until actions are resolved
+    newState.status = 'playing'; // Still playing
+    // We can add a sub-status or just rely on Object.keys(pendingActions).length > 0
+    return newState;
+  }
   
   return advanceTurn(newState);
+}
+
+// Resolve an action (Pong/Kong/Hu/Pass)
+export function applyAction(state: GameState, playerId: string, actionType: ActionType): GameState {
+  const newState = JSON.parse(JSON.stringify(state)) as GameState;
+  if (!newState.pendingActions || !newState.pendingActions[playerId]) return newState;
+
+  const player = newState.players.find(p => p.id === playerId);
+  const discarderId = newState.lastAction?.playerId;
+  const discardedTile = newState.lastAction?.tile;
+  
+  if (!player || !discarderId || !discardedTile) return newState;
+
+  // Find the discarder and remove that tile from their discards, since it's being claimed
+  const discarder = newState.players.find(p => p.id === discarderId);
+
+  if (actionType === 'pass') {
+    delete newState.pendingActions[playerId];
+    
+    // If no one else has pending actions, continue game
+    if (Object.keys(newState.pendingActions).length === 0) {
+       return advanceTurn(newState);
+    }
+    return newState;
+  }
+
+  // Someone claimed a tile! Remove it from the table (discarder's pile)
+  if (discarder && discarder.discards.length > 0) {
+    discarder.discards.pop();
+  }
+
+  // Clear ALL pending actions because someone took the tile
+  newState.pendingActions = {};
+
+  if (actionType === 'hu') {
+    player.status = 'hu';
+    newState.status = 'finished';
+    return newState;
+  }
+
+  if (actionType === 'pong') {
+    // Remove 2 matching tiles from hand
+    for (let i = 0; i < 2; i++) {
+       const idx = player.hand.findIndex(t => t.suit === discardedTile.suit && t.value === discardedTile.value);
+       if (idx !== -1) player.hand.splice(idx, 1);
+    }
+    // Add Meld
+    player.melds.push({
+       type: 'pong',
+       tiles: [discardedTile, discardedTile, discardedTile],
+       fromPlayer: discarderId
+    });
+    // Now it's this player's turn to discard
+    newState.currentTurn = newState.players.findIndex(p => p.id === playerId);
+    player.status = 'thinking';
+    return newState;
+  }
+
+  if (actionType === 'kong') {
+    // Remove 3 matching tiles from hand
+    for (let i = 0; i < 3; i++) {
+       const idx = player.hand.findIndex(t => t.suit === discardedTile.suit && t.value === discardedTile.value);
+       if (idx !== -1) player.hand.splice(idx, 1);
+    }
+    // Add Meld
+    player.melds.push({
+       type: 'kong',
+       tiles: [discardedTile, discardedTile, discardedTile, discardedTile],
+       fromPlayer: discarderId
+    });
+    
+    // Kong means you draw an extra tile immediately AND it's your turn
+    newState.currentTurn = newState.players.findIndex(p => p.id === playerId);
+    if (newState.deck.length > 0) {
+       player.hand.push(newState.deck.pop()!);
+    } else {
+       newState.status = 'finished'; // Draw out
+    }
+    player.status = 'thinking';
+    return newState;
+  }
+
+  return newState;
 }
 
 export function applyBotTurn(state: GameState, playerId: string): GameState {
@@ -424,7 +547,12 @@ export function getBotAction(
       return 'hu';
     }
     
-    // 2. Pong if we can and it doesn't break our void suit (for Sichuan)
+    // 2. Kong over Pong
+    if (canKong(player.hand, discardedTile)) {
+       return 'kong';
+    }
+
+    // 3. Pong if we can and it doesn't break our void suit (for Sichuan)
     if (canPong(player.hand, discardedTile)) {
        if (gameState.mode === 'sichuan' && player.voidSuit === discardedTile.suit) {
            // Ignore, we want to get rid of this suit.
