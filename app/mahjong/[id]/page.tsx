@@ -33,8 +33,9 @@ export default function MahjongGameRoom() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'mahjong_games', filter: `id=eq.${id}` },
         (payload) => {
-          if (payload.new.game_state) {
-            setGameState(payload.new.game_state as GameState)
+          const gs = payload.new.game_state
+          if (gs && gs.players && gs.deck) {
+            setGameState(gs as GameState)
           }
         }
       )
@@ -54,7 +55,7 @@ export default function MahjongGameRoom() {
         .single()
 
       if (error) throw error
-      if (data && data.game_state) {
+      if (data && data.game_state && data.game_state.players && data.game_state.deck) {
         setGameState(data.game_state as GameState)
       } else {
         // Handle waiting state UI if game_state isn't fully ready

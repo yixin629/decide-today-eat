@@ -29,8 +29,9 @@ export default function GomokuGameRoom() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'gomoku_games', filter: `id=eq.${id}` },
         (payload) => {
-          if (payload.new.game_state) {
-            setGameState(payload.new.game_state as GomokuGameState)
+          const gs = payload.new.game_state
+          if (gs && gs.players && gs.board) {
+            setGameState(gs as GomokuGameState)
           }
         }
       )
@@ -50,7 +51,7 @@ export default function GomokuGameRoom() {
         .single()
 
       if (error) throw error
-      if (data && data.game_state) {
+      if (data && data.game_state && data.game_state.players && data.game_state.board) {
         setGameState(data.game_state as GomokuGameState)
       } else {
         setGameState(null)

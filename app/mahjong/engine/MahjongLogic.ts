@@ -294,7 +294,13 @@ export function applyBotTurn(state: GameState, playerId: string): GameState {
 
 export function advanceTurn(state: GameState): GameState {
    const newState = JSON.parse(JSON.stringify(state)) as GameState;
-   
+
+   // Safety: if all players have hu'd, end the game
+   if (newState.players.every(p => p.status === 'hu')) {
+      newState.status = 'finished';
+      return newState;
+   }
+
    // Next active player
    do {
       newState.currentTurn = (newState.currentTurn + 1) % 4;

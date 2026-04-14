@@ -125,7 +125,6 @@ export default function MahjongLobbyPage() {
 
       // We only fully initialize game state if it's full (all bots)
       const isFull = (botCount === 3)
-      const initialState = isFull ? initializeGameState('temp-id', mode, multiplier, playerIds, currentUser) : null
 
       const { data, error } = await supabase
         .from('mahjong_games')
@@ -135,7 +134,7 @@ export default function MahjongLobbyPage() {
           host_id: currentUser,
           status: isFull ? 'playing' : 'waiting',
           players: playerIds,
-          game_state: isFull ? initialState : {}
+          game_state: isFull ? {} : {}
         })
         .select()
         .single()
@@ -143,6 +142,14 @@ export default function MahjongLobbyPage() {
       if (error) throw error
 
       if (data) {
+        // Now that we have the real DB id, initialize full game state
+        if (isFull) {
+          const initialState = initializeGameState(data.id, mode, multiplier, playerIds, currentUser)
+          await supabase
+            .from('mahjong_games')
+            .update({ game_state: initialState })
+            .eq('id', data.id)
+        }
         showToast('房间创建成功', 'success')
         router.push(`/mahjong/${data.id}`)
       }

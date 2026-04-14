@@ -6,7 +6,7 @@ import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { GomokuGameState, createEmptyBoard, Player } from './engine/GomokuLogic'
+import { GomokuGameState, GomokuPlayerInfo, createEmptyBoard, Player } from './engine/GomokuLogic'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 
 export default function GomokuLobbyPage() {
@@ -82,35 +82,36 @@ export default function GomokuLobbyPage() {
         .eq('id', currentUser)
         .single()
 
-      const hostPlayer = {
+      const hostPlayer: GomokuPlayerInfo = {
          id: currentUser,
-         name: profileData?.name || 'Player 1',
-         avatar: profileData?.avatar_url || '👤',
-         color: 'black' as Player, // Creator is black (first move typically)
+         name: profileData?.name || (currentUser === 'zyx' ? 'Zyx' : 'Zly'),
+         avatar: profileData?.avatar_url || (currentUser === 'zyx' ? '👨' : '👩'),
+         color: 'black' as Player,
          isBot: false
       }
 
-      const initialState: Partial<GomokuGameState> = {
-         board: createEmptyBoard(),
-         currentPlayer: 'black',
-         status: mode === 'pve' ? 'playing' : 'waiting', // PvE starts immediately
-         winner: null,
-         lastMove: null,
-         history: [],
-         players: [hostPlayer],
-         gameMode: mode,
-         hostId: currentUser
-      }
+      const allPlayers: GomokuPlayerInfo[] = [hostPlayer]
 
       if (mode === 'pve') {
-         // Auto-add bot
-         initialState.players!.push({
+         allPlayers.push({
             id: 'bot-1',
             name: 'Gomoku Bot',
             avatar: '🤖',
             color: 'white' as Player,
             isBot: true
          })
+      }
+
+      const initialState: GomokuGameState = {
+         board: createEmptyBoard(),
+         currentPlayer: 'black',
+         status: mode === 'pve' ? 'playing' : 'waiting',
+         winner: null,
+         lastMove: null,
+         history: [],
+         players: allPlayers,
+         gameMode: mode,
+         hostId: currentUser
       }
 
       const { data, error } = await supabase
@@ -120,7 +121,7 @@ export default function GomokuLobbyPage() {
           status: initialState.status,
           host_id: currentUser,
           game_mode: mode,
-          players: initialState.players!.map(p => p.id)
+          players: allPlayers
         }])
         .select()
         .single()
@@ -137,13 +138,13 @@ export default function GomokuLobbyPage() {
     }
   }
 
-  const handleJoinRoom = async (gameId: string, currentPlayers: any[]) => {
+  const handleJoinRoom = async (gameId: string, currentPlayers: GomokuPlayerInfo[]) => {
     if (!currentUser) return
     setIsCreating(true)
 
     try {
       // Check if already in room
-      const existingPlayer = currentPlayers.find((p: any) => p.id === currentUser)
+      const existingPlayer = currentPlayers.find(p => p.id === currentUser)
       if (existingPlayer) {
         router.push(`/gomoku/${gameId}`)
         return
@@ -155,21 +156,15 @@ export default function GomokuLobbyPage() {
         return
       }
 
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('name, avatar_url')
-        .eq('id', currentUser)
-        .single()
-
-      const newPlayer = {
+      const newPlayer: GomokuPlayerInfo = {
         id: currentUser,
-        name: profile?.name || 'Player 2',
-        avatar: profile?.avatar_url || '👤',
-        color: 'white' as Player, // Second player is white
+        name: currentUser === 'zyx' ? 'Zyx' : 'Zly',
+        avatar: currentUser === 'zyx' ? '👨' : '👩',
+        color: 'white' as Player,
         isBot: false
       }
 
-      // We need to fetch the full game state to append the new player properly to the JSON
+      // Fetch the full game state to update properly
       const { data: gameData, error: fetchErr } = await supabase
          .from('gomoku_games')
          .select('game_state')
@@ -181,12 +176,14 @@ export default function GomokuLobbyPage() {
       const nextState = { ...gameData.game_state, status: 'playing' }
       nextState.players.push(newPlayer)
 
+      const updatedPlayers = nextState.players
+
       const { error } = await supabase
         .from('gomoku_games')
         .update({
           game_state: nextState,
           status: 'playing',
-          players: nextState.players.map((p: any) => p.id)
+          players: updatedPlayers
         })
         .eq('id', gameId)
 
@@ -250,9 +247,10 @@ export default function GomokuLobbyPage() {
           ) : (
             <div className="grid gap-3">
               {waitingRooms.map((room) => {
-                 const host = room.players[0]
+                 const players = room.players || []
+                 const host = Array.isArray(players) && players.length > 0 && typeof players[0] === 'object' ? players[0] : null
                  return (
-                  <div 
+                  <div
                     key={room.id}
                     className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white border rounded-xl hover:shadow-md transition-shadow gap-4"
                   >
@@ -263,14 +261,14 @@ export default function GomokuLobbyPage() {
                       <div className="text-left">
                         <div className="font-bold text-lg">{host?.name || '未知玩家'}</div>
                         <div className="text-sm text-gray-500">
-                           {room.game_mode === 'pvp' ? '双人在线对战' : '人机对战'} | 
+                           {room.game_mode === 'pvp' ? '双人在线对战' : '人机对战'} |
                            等待加入...
                         </div>
                       </div>
                     </div>
-                    
+
                     <button
-                      onClick={() => handleJoinRoom(room.id, room.players)}
+                      onClick={() => handleJoinRoom(room.id, players)}
                       disabled={isCreating}
                       className="w-full sm:w-auto px-6 py-2 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-50"
                     >

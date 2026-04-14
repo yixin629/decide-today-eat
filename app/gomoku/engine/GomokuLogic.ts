@@ -5,15 +5,22 @@ export type Cell = Player | null;
 
 export const BOARD_SIZE = 15;
 
-export interface GomokuGameState {
+export interface GomokuPlayerInfo {
   id: string;
+  name: string;
+  avatar: string;
+  color: Player;
+  isBot: boolean;
+}
+
+export interface GomokuGameState {
   board: Cell[][];
   currentPlayer: Player;
   status: 'waiting' | 'playing' | 'finished';
   winner: Player | null;
   lastMove: [number, number] | null;
   history: { board: Cell[][]; player: Player; move: [number, number] }[];
-  players: { id: string; name: string; avatar: string; color: Player; isBot: boolean }[];
+  players: GomokuPlayerInfo[];
   gameMode: 'pvp' | 'pve';
   hostId: string;
 }
