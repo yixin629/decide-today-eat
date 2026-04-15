@@ -86,7 +86,7 @@ export default function PlayerHand({
         )}
       </div>
 
-      {/* Hidden hand tiles - show count */}
+      {/* Hidden hand tiles */}
       <div className="flex gap-[1px]">
         {player.hand.map((_, i) => (
           <TileComponent key={`oh-${i}`} isHidden size="xs" />
@@ -102,15 +102,6 @@ export default function PlayerHand({
                 <TileComponent key={`om-${mIdx}-${tIdx}`} tile={t} size="xs" />
               ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Discards */}
-      {player.discards.length > 0 && (
-        <div className="mt-2 grid grid-cols-6 gap-[1px]">
-          {player.discards.map((tile, i) => (
-            <TileComponent key={`od-${i}-${tile.id}`} tile={tile} size="xs" />
           ))}
         </div>
       )}

@@ -239,21 +239,63 @@ export default function MahjongGameRoom() {
 
       {/* ── Game Table ── */}
       <div className="flex-1 relative w-full max-w-5xl mx-auto">
-        {/* Center discard area */}
+        {/* Center discard area - all players' discards */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          {/* Inner table border */}
-          <div className="w-[240px] h-[180px] md:w-[320px] md:h-[240px] rounded-xl
-            border border-amber-700/20 bg-black/15 flex items-center justify-center">
+          <div className="w-[260px] h-[220px] md:w-[360px] md:h-[300px] rounded-xl
+            border border-amber-700/20 bg-black/15 relative overflow-hidden">
 
-            {/* Last action display */}
-            {gameState.lastAction?.tile && gameState.lastAction.type === 'discard' && (
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-white/50 text-xs">
-                  {gameState.players.find(p => p.id === gameState.lastAction!.playerId)?.name} 打出
-                </span>
-                <div className="transform scale-110">
-                  <TileComponent tile={gameState.lastAction.tile} size="md" />
+            {/* Top player discards (grow downward) */}
+            {top && top.discards.length > 0 && (
+              <div className="absolute top-1 left-1/2 -translate-x-1/2">
+                <div className="flex flex-wrap justify-center gap-[1px] max-w-[160px] md:max-w-[220px]">
+                  {top.discards.map((t, i) => (
+                    <TileComponent key={`dt-${i}`} tile={t} size="xs" />
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {/* Left player discards (grow rightward) */}
+            {left && left.discards.length > 0 && (
+              <div className="absolute left-1 top-1/2 -translate-y-1/2">
+                <div className="flex flex-wrap gap-[1px] max-w-[60px] md:max-w-[80px]">
+                  {left.discards.map((t, i) => (
+                    <TileComponent key={`dl-${i}`} tile={t} size="xs" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Right player discards (grow leftward) */}
+            {right && right.discards.length > 0 && (
+              <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                <div className="flex flex-wrap justify-end gap-[1px] max-w-[60px] md:max-w-[80px]">
+                  {right.discards.map((t, i) => (
+                    <TileComponent key={`dr-${i}`} tile={t} size="xs" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom (self) discards (grow upward) */}
+            {bottom && bottom.discards.length > 0 && (
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
+                <div className="flex flex-wrap justify-center gap-[1px] max-w-[160px] md:max-w-[220px]">
+                  {bottom.discards.map((t, i) => (
+                    <TileComponent key={`db-${i}`} tile={t} size="xs" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Last discard highlight in true center */}
+            {gameState.lastAction?.tile && gameState.lastAction.type === 'discard' && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                flex flex-col items-center gap-1 bg-black/50 rounded-lg px-3 py-2 backdrop-blur-sm">
+                <span className="text-white/60 text-[10px]">
+                  {gameState.players.find(p => p.id === gameState.lastAction!.playerId)?.name}
+                </span>
+                <TileComponent tile={gameState.lastAction.tile} size="sm" />
               </div>
             )}
           </div>

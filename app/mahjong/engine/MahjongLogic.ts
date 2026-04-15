@@ -241,6 +241,7 @@ export function applyAction(state: GameState, playerId: string, actionType: Acti
        const idx = player.hand.findIndex(t => t.suit === discardedTile.suit && t.value === discardedTile.value);
        if (idx !== -1) player.hand.splice(idx, 1);
     }
+    player.hand.sort(sortTiles);
     // Add Meld
     player.melds.push({
        type: 'pong',
@@ -265,7 +266,7 @@ export function applyAction(state: GameState, playerId: string, actionType: Acti
        tiles: [discardedTile, discardedTile, discardedTile, discardedTile],
        fromPlayer: discarderId
     });
-    
+
     // Kong means you draw an extra tile immediately AND it's your turn
     newState.currentTurn = newState.players.findIndex(p => p.id === playerId);
     if (newState.deck.length > 0) {
@@ -273,6 +274,7 @@ export function applyAction(state: GameState, playerId: string, actionType: Acti
     } else {
        newState.status = 'finished'; // Draw out
     }
+    player.hand.sort(sortTiles);
     player.status = 'thinking';
     return newState;
   }
@@ -312,11 +314,12 @@ export function advanceTurn(state: GameState): GameState {
    if (newState.deck.length > 0) {
       const drawnTile = newState.deck.pop()!;
       nextPlayer.hand.push(drawnTile);
+      nextPlayer.hand.sort(sortTiles);
       newState.lastAction = { playerId: nextPlayer.id, type: 'draw', tile: drawnTile };
    } else {
       newState.status = 'finished';
    }
-   
+
    nextPlayer.status = 'thinking';
    return newState;
 }
