@@ -27,11 +27,14 @@ export default function Home() {
   })
   const [dailyQuote, setDailyQuote] = useState('')
   const [nextAnniversary, setNextAnniversary] = useState<NextAnniversary | null>(null)
+  const [unreadChat, setUnreadChat] = useState(0)
+  const [unreadNotes, setUnreadNotes] = useState(0)
 
   useEffect(() => {
     loadStats()
     loadDailyQuote()
     loadNextAnniversary()
+    loadUnreadCounts()
   }, [])
 
   const loadStats = async () => {
@@ -82,6 +85,35 @@ export default function Home() {
     } catch (error) {
       console.error('加载每日情话失败:', error)
       setDailyQuote('爱你，是我做过最好的决定 💕')
+    }
+  }
+
+  const loadUnreadCounts = async () => {
+    try {
+      const currentUser = localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
+      if (!currentUser) return
+
+      // Unread chat messages (sent by the other person, not read yet)
+      const { count: chatCount } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .neq('sender', currentUser)
+        .eq('is_read', false)
+
+      setUnreadChat(chatCount || 0)
+
+      // Unread notes (written by the other person, check notes created in last 24h)
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const { count: notesCount } = await supabase
+        .from('love_notes')
+        .select('*', { count: 'exact', head: true })
+        .neq('author', currentUser)
+        .gte('created_at', yesterday.toISOString())
+
+      setUnreadNotes(notesCount || 0)
+    } catch (err) {
+      // Silently ignore - tables might not exist yet
     }
   }
 
@@ -239,6 +271,22 @@ ${nextAnniversary.date}
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {/* Couple Chat - TOP PRIORITY */}
+          <Link href="/chat">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-pink-500/10 to-red-500/10 relative">
+              {unreadChat > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg animate-bounce z-10">
+                  {unreadChat > 99 ? '99+' : unreadChat}
+                </div>
+              )}
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💬</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                情侣聊天室
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">实时聊天，随时传情</p>
+            </div>
+          </Link>
+
           {/* Photo Album */}
           <Link href="/photos">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
@@ -309,7 +357,12 @@ ${nextAnniversary.date}
 
           {/* Love Notes */}
           <Link href="/notes">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer relative">
+              {unreadNotes > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg z-10">
+                  {unreadNotes}
+                </div>
+              )}
               <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💌</div>
               <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
                 甜蜜留言板
@@ -639,17 +692,6 @@ ${nextAnniversary.date}
               <p className="text-sm sm:text-base text-gray-600 text-center">
                 创建属于你们的爱情约定
               </p>
-            </div>
-          </Link>
-
-          {/* Couple Chat */}
-          <Link href="/chat">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-pink-500/10 to-red-500/10">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💬</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣聊天室
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">实时聊天，随时传情</p>
             </div>
           </Link>
 

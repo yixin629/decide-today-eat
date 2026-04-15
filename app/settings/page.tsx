@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
+import { supabase } from '@/lib/supabase'
 
 interface UserSettings {
-  avatar: string
+  avatar: string // emoji or URL
   nickname: string
   signature: string
   mood: string
@@ -14,88 +15,24 @@ interface UserSettings {
   loveDeclaration: string
 }
 
-// 可选头像
-const AVATAR_OPTIONS = [
-  // 表情类
-  '😊',
-  '🥰',
-  '😘',
-  '😍',
-  '🤗',
-  '😎',
-  '🥳',
-  '😇',
-  '🤩',
-  '😋',
-  // 动物类
-  '🐱',
-  '🐶',
-  '🐰',
-  '🐻',
-  '🐼',
-  '🦊',
-  '🐨',
-  '🐯',
-  '🦁',
-  '🐸',
-  // 物品类
-  '⭐',
-  '🌟',
-  '💖',
-  '💕',
-  '🍐',
-  '🍑',
-  '🍓',
-  '🌸',
-  '🌈',
-  '🎀',
-  // 更多
-  '🦋',
-  '🌙',
-  '☀️',
-  '🔥',
-  '💎',
-  '👑',
-  '🎭',
-  '🎪',
-  '🎨',
-  '🎵',
+const AVATAR_EMOJIS = [
+  '😊','🥰','😘','😍','🤗','😎','🥳','😇','🤩','😋',
+  '🐱','🐶','🐰','🐻','🐼','🦊','🐨','🐯','🦁','🐸',
+  '⭐','🌟','💖','💕','🍐','🍑','🍓','🌸','🌈','🎀',
+  '🦋','🌙','☀️','🔥','💎','👑','🎭','🎪','🎨','🎵',
 ]
 
-// 心情选项
 const MOOD_OPTIONS = [
-  { emoji: '😊', text: '开心' },
-  { emoji: '🥰', text: '甜蜜' },
-  { emoji: '😴', text: '困困' },
-  { emoji: '🤔', text: '思考' },
-  { emoji: '😤', text: '生气' },
-  { emoji: '😢', text: '难过' },
-  { emoji: '🤒', text: '不舒服' },
-  { emoji: '💪', text: '充满能量' },
-  { emoji: '🥱', text: '无聊' },
-  { emoji: '😎', text: '超酷' },
+  { emoji: '😊', text: '开心' }, { emoji: '🥰', text: '甜蜜' },
+  { emoji: '😴', text: '困困' }, { emoji: '🤔', text: '思考' },
+  { emoji: '😤', text: '生气' }, { emoji: '😢', text: '难过' },
+  { emoji: '🤒', text: '不舒服' }, { emoji: '💪', text: '充满能量' },
+  { emoji: '🥱', text: '无聊' }, { emoji: '😎', text: '超酷' },
 ]
 
-// 主题颜色
-const THEME_OPTIONS = [
-  { name: '粉色甜心', value: 'pink', color: 'bg-pink-400' },
-  { name: '薰衣草紫', value: 'purple', color: 'bg-purple-400' },
-  { name: '天空蓝', value: 'blue', color: 'bg-blue-400' },
-  { name: '薄荷绿', value: 'green', color: 'bg-green-400' },
-  { name: '暖阳橙', value: 'orange', color: 'bg-orange-400' },
-  { name: '樱花红', value: 'red', color: 'bg-red-400' },
-]
-
-// 预设签名
 const SIGNATURE_PRESETS = [
-  '今天也要开心鸭~',
-  '爱你三千遍 💕',
-  '你是我的小太阳 ☀️',
-  '永远爱你的人',
-  '最幸福的那个人',
-  '被爱包围的每一天',
-  '想你的第 N 天',
-  '小可爱本爱',
+  '今天也要开心鸭~', '爱你三千遍 💕', '你是我的小太阳 ☀️', '永远爱你的人',
+  '最幸福的那个人', '被爱包围的每一天', '想你的第 N 天', '小可爱本爱',
 ]
 
 export default function SettingsPage() {
@@ -103,52 +40,46 @@ export default function SettingsPage() {
   const toast = useToast()
   const [currentUser, setCurrentUser] = useState('')
   const [settings, setSettings] = useState<UserSettings>({
-    avatar: '😊',
-    nickname: '',
-    signature: '',
-    mood: '😊',
-    theme: 'pink',
-    loveDeclaration: '',
+    avatar: '😊', nickname: '', signature: '', mood: '😊', theme: 'pink', loveDeclaration: '',
   })
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
   const [partnerSettings, setPartnerSettings] = useState<UserSettings | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const user = localStorage.getItem('loggedInUser')
-    if (!user) {
-      router.push('/login')
-      return
-    }
+    if (!user) { router.push('/login'); return }
     setCurrentUser(user)
 
-    // 加载当前用户设置
     const savedSettings = localStorage.getItem(`userSettings_${user}`)
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings))
     } else {
-      // 默认设置
       setSettings({
         avatar: user === 'zyx' ? '⭐' : '🍐',
         nickname: user === 'zyx' ? '星星' : '梨梨',
         signature: '今天也要开心鸭~',
-        mood: '😊',
-        theme: 'pink',
-        loveDeclaration: '',
+        mood: '😊', theme: 'pink', loveDeclaration: '',
       })
     }
 
-    // 加载对方设置
     const partner = user === 'zyx' ? 'zly' : 'zyx'
     const partnerSaved = localStorage.getItem(`userSettings_${partner}`)
-    if (partnerSaved) {
-      setPartnerSettings(JSON.parse(partnerSaved))
-    }
+    if (partnerSaved) setPartnerSettings(JSON.parse(partnerSaved))
   }, [router])
 
   const saveSettings = () => {
     localStorage.setItem(`userSettings_${currentUser}`, JSON.stringify(settings))
-    toast.success('设置保存成功！💕')
+    // Also sync avatar to Supabase for cross-device
+    supabase.from('user_profiles').upsert({
+      id: currentUser,
+      name: settings.nickname || currentUser,
+      avatar_emoji: settings.avatar.length <= 2 ? settings.avatar : null,
+      avatar_url: settings.avatar.startsWith('http') ? settings.avatar : null,
+    }, { onConflict: 'id' }).then(() => {})
+    toast.success('设置保存成功! 💕')
   }
 
   const handleAvatarSelect = (avatar: string) => {
@@ -156,14 +87,35 @@ export default function SettingsPage() {
     setShowAvatarPicker(false)
   }
 
-  const handleMoodSelect = (mood: string) => {
-    setSettings({ ...settings, mood })
-    setShowMoodPicker(false)
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return
+    const file = event.target.files[0]
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('图片不能超过 5MB')
+      return
+    }
+    const fileExt = file.name.split('.').pop()
+    const filePath = `${currentUser}-${Date.now()}.${fileExt}`
+
+    setUploading(true)
+    try {
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      setSettings(prev => ({ ...prev, avatar: data.publicUrl }))
+      setShowAvatarPicker(false)
+      toast.success('头像上传成功!')
+    } catch (err: any) {
+      console.error(err)
+      toast.error('上传失败，请确保 Supabase 已创建 avatars 存储桶')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
-  const getPartnerName = () => {
-    return currentUser === 'zyx' ? 'zly' : 'zyx'
-  }
+  const getPartnerName = () => currentUser === 'zyx' ? 'zly' : 'zyx'
+  const isImageAvatar = settings.avatar.startsWith('http')
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -176,14 +128,19 @@ export default function SettingsPage() {
           </h1>
           <p className="text-gray-600 text-center mb-6">自定义你的专属空间</p>
 
-          {/* 当前用户信息预览 */}
+          {/* User Preview Card */}
           <div className="bg-gradient-to-br from-pink-100 to-purple-100 rounded-2xl p-6 mb-6">
             <div className="flex items-center gap-4">
               <div
-                className="text-7xl cursor-pointer hover:scale-110 transition-transform"
+                className="w-20 h-20 rounded-full cursor-pointer hover:scale-110 transition-transform
+                  flex items-center justify-center bg-white shadow-lg border-4 border-white overflow-hidden"
                 onClick={() => setShowAvatarPicker(true)}
               >
-                {settings.avatar}
+                {isImageAvatar ? (
+                  <img src={settings.avatar} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-5xl">{settings.avatar}</span>
+                )}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -195,50 +152,88 @@ export default function SettingsPage() {
                 <p className="text-gray-600 italic">
                   {settings.signature || '点击下方设置签名...'}
                 </p>
+                <p className="text-xs text-gray-400 mt-1">点击头像更换</p>
               </div>
             </div>
           </div>
 
-          {/* 头像选择器 */}
+          {/* Avatar Picker Modal */}
           {showAvatarPicker && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">选择头像</h3>
-                <div className="grid grid-cols-5 gap-3">
-                  {AVATAR_OPTIONS.map((avatar) => (
-                    <button
-                      key={avatar}
-                      onClick={() => handleAvatarSelect(avatar)}
-                      className={`p-3 rounded-xl text-3xl transition-all hover:scale-110 ${
-                        settings.avatar === avatar
-                          ? 'bg-primary/20 ring-2 ring-primary'
-                          : 'bg-gray-100 hover:bg-gray-200'
-                      }`}
-                    >
-                      {avatar}
-                    </button>
-                  ))}
+              <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-hidden shadow-2xl">
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                  <h3 className="text-lg font-bold text-gray-800">更换头像</h3>
+                  <button onClick={() => setShowAvatarPicker(false)} className="text-gray-400 hover:text-gray-600 text-xl">
+                    ✕
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowAvatarPicker(false)}
-                  className="w-full mt-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                >
-                  取消
-                </button>
+
+                {/* Upload section */}
+                <div className="p-4 border-b bg-gradient-to-r from-pink-50 to-purple-50">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-white shadow flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300">
+                      {uploading ? (
+                        <span className="animate-spin text-2xl">⏳</span>
+                      ) : isImageAvatar ? (
+                        <img src={settings.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-3xl">{settings.avatar}</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium
+                          hover:bg-pink-600 transition-colors disabled:opacity-50"
+                      >
+                        {uploading ? '上传中...' : '上传自定义图片'}
+                      </button>
+                      <p className="text-xs text-gray-400 mt-1">支持 JPG/PNG，最大 5MB</p>
+                    </div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Default emoji avatars */}
+                <div className="p-4 overflow-y-auto" style={{ maxHeight: '50vh' }}>
+                  <p className="text-xs text-gray-500 mb-3 font-medium">默认头像</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {AVATAR_EMOJIS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleAvatarSelect(emoji)}
+                        className={`p-3 rounded-xl text-3xl transition-all hover:scale-110 ${
+                          settings.avatar === emoji
+                            ? 'bg-primary/20 ring-2 ring-primary shadow-md'
+                            : 'bg-gray-50 hover:bg-gray-100'
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* 心情选择器 */}
+          {/* Mood Picker Modal */}
           {showMoodPicker && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">今天心情如何？</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">今天心情如何?</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {MOOD_OPTIONS.map((mood) => (
+                  {MOOD_OPTIONS.map(mood => (
                     <button
                       key={mood.emoji}
-                      onClick={() => handleMoodSelect(mood.emoji)}
+                      onClick={() => { setSettings({ ...settings, mood: mood.emoji }); setShowMoodPicker(false) }}
                       className={`p-4 rounded-xl flex items-center gap-3 transition-all ${
                         settings.mood === mood.emoji
                           ? 'bg-primary/20 ring-2 ring-primary'
@@ -250,105 +245,88 @@ export default function SettingsPage() {
                     </button>
                   ))}
                 </div>
-                <button
-                  onClick={() => setShowMoodPicker(false)}
-                  className="w-full mt-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                >
+                <button onClick={() => setShowMoodPicker(false)} className="w-full mt-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
                   取消
                 </button>
               </div>
             </div>
           )}
 
-          {/* 设置表单 */}
+          {/* Settings Form */}
           <div className="space-y-6">
-            {/* 昵称 */}
             <div>
               <label className="block text-gray-700 font-medium mb-2">💝 昵称</label>
               <input
-                type="text"
-                value={settings.nickname}
-                onChange={(e) => setSettings({ ...settings, nickname: e.target.value })}
+                type="text" value={settings.nickname}
+                onChange={e => setSettings({ ...settings, nickname: e.target.value })}
                 placeholder="给自己起个可爱的名字..."
                 className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 maxLength={10}
               />
             </div>
 
-            {/* 个性签名 */}
             <div>
               <label className="block text-gray-700 font-medium mb-2">✨ 个性签名</label>
               <input
-                type="text"
-                value={settings.signature}
-                onChange={(e) => setSettings({ ...settings, signature: e.target.value })}
+                type="text" value={settings.signature}
+                onChange={e => setSettings({ ...settings, signature: e.target.value })}
                 placeholder="写点什么..."
                 className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 maxLength={30}
               />
               <div className="flex flex-wrap gap-2 mt-2">
-                {SIGNATURE_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
+                {SIGNATURE_PRESETS.map(preset => (
+                  <button key={preset}
                     onClick={() => setSettings({ ...settings, signature: preset })}
                     className="text-xs px-3 py-1 bg-pink-100 text-pink-600 rounded-full hover:bg-pink-200 transition-colors"
-                  >
-                    {preset}
-                  </button>
+                  >{preset}</button>
                 ))}
               </div>
             </div>
 
-            {/* 心情 */}
             <div>
               <label className="block text-gray-700 font-medium mb-2">😊 今日心情</label>
-              <button
-                onClick={() => setShowMoodPicker(true)}
+              <button onClick={() => setShowMoodPicker(true)}
                 className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-left flex items-center gap-3 hover:bg-gray-50"
               >
                 <span className="text-3xl">{settings.mood}</span>
-                <span className="text-gray-600">
-                  {MOOD_OPTIONS.find((m) => m.emoji === settings.mood)?.text || '点击选择心情'}
-                </span>
+                <span className="text-gray-600">{MOOD_OPTIONS.find(m => m.emoji === settings.mood)?.text || '点击选择心情'}</span>
               </button>
             </div>
 
-            {/* 给对方的话 */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                💌 想对 {getPartnerName()} 说的话
-              </label>
+              <label className="block text-gray-700 font-medium mb-2">💌 想对 {getPartnerName()} 说的话</label>
               <textarea
                 value={settings.loveDeclaration}
-                onChange={(e) => setSettings({ ...settings, loveDeclaration: e.target.value })}
+                onChange={e => setSettings({ ...settings, loveDeclaration: e.target.value })}
                 placeholder={`写点想对${getPartnerName()}说的悄悄话...`}
                 className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-                rows={3}
-                maxLength={100}
+                rows={3} maxLength={100}
               />
             </div>
 
-            {/* 保存按钮 */}
             <button onClick={saveSettings} className="w-full btn-primary text-lg py-4">
               💾 保存设置
             </button>
           </div>
         </div>
 
-        {/* 对方的空间 */}
+        {/* Partner Space */}
         {partnerSettings && (
           <div className="card">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
-              💕 {getPartnerName()} 的空间
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">💕 {getPartnerName()} 的空间</h2>
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6">
               <div className="flex items-center gap-4">
-                <span className="text-6xl">{partnerSettings.avatar}</span>
+                <div className="w-16 h-16 rounded-full bg-white shadow flex items-center justify-center overflow-hidden">
+                  {partnerSettings.avatar.startsWith('http') ? (
+                    <img src={partnerSettings.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-4xl">{partnerSettings.avatar}</span>
+                  )}
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-gray-800">
-                      {partnerSettings.nickname || getPartnerName()}
-                    </h3>
+                    <h3 className="text-xl font-bold text-gray-800">{partnerSettings.nickname || getPartnerName()}</h3>
                     <span className="text-xl">{partnerSettings.mood}</span>
                   </div>
                   <p className="text-gray-600 italic">{partnerSettings.signature}</p>
@@ -356,7 +334,7 @@ export default function SettingsPage() {
               </div>
               {partnerSettings.loveDeclaration && (
                 <div className="mt-4 p-4 bg-white/50 rounded-xl">
-                  <p className="text-sm text-gray-500 mb-1">💌 Ta 对你说：</p>
+                  <p className="text-sm text-gray-500 mb-1">💌 Ta 对你说:</p>
                   <p className="text-gray-700">{partnerSettings.loveDeclaration}</p>
                 </div>
               )}
@@ -364,47 +342,33 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* 快捷功能 */}
+        {/* Quick Actions */}
         <div className="card mt-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">🎯 快捷功能</h2>
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => {
-                localStorage.removeItem('loggedInUser')
-                router.push('/login')
-              }}
+            <button onClick={() => { localStorage.removeItem('loggedInUser'); router.push('/login') }}
               className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
             >
               <span className="text-2xl mb-2 block">🔄</span>
               <span className="text-gray-700 font-medium">切换账号</span>
             </button>
-            <button
-              onClick={() => {
-                localStorage.removeItem(`userSettings_${currentUser}`)
-                toast.success('设置已重置')
-                window.location.reload()
-              }}
+            <button onClick={() => { localStorage.removeItem(`userSettings_${currentUser}`); toast.success('设置已重置'); window.location.reload() }}
               className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
             >
               <span className="text-2xl mb-2 block">🗑️</span>
               <span className="text-gray-700 font-medium">重置设置</span>
             </button>
-            <button
-              onClick={() => {
-                localStorage.removeItem('couplePlaylist')
-                toast.success('播放列表已重置为默认')
-              }}
-              className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
-            >
-              <span className="text-2xl mb-2 block">🎵</span>
-              <span className="text-gray-700 font-medium">重置歌单</span>
-            </button>
-            <button
-              onClick={() => router.push('/profile')}
+            <button onClick={() => router.push('/profile')}
               className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
             >
               <span className="text-2xl mb-2 block">👤</span>
               <span className="text-gray-700 font-medium">个人资料</span>
+            </button>
+            <button onClick={() => { setShowAvatarPicker(true) }}
+              className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
+            >
+              <span className="text-2xl mb-2 block">📷</span>
+              <span className="text-gray-700 font-medium">更换头像</span>
             </button>
           </div>
         </div>
