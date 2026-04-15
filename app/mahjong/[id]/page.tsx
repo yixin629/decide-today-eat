@@ -4,10 +4,14 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import BackButton from '../../components/BackButton'
 import { useToast } from '../../components/ToastProvider'
 import LoadingSkeleton from '../../components/LoadingSkeleton'
-import { GameState, Player, Tile, getBotAction, getBotDiscard, applyDiscard, applyBotTurn, applyAction, ValidAction, ActionType } from '../engine/MahjongLogic'
+import {
+  GameState, Player, Tile,
+  getBotAction, getBotDiscard,
+  applyDiscard, applyBotTurn, applyAction,
+  ValidAction, ActionType,
+} from '../engine/MahjongLogic'
 import PlayerHand from '../components/PlayerHand'
 import TileComponent from '../components/Tile'
 import GameEndModal from '../components/GameEndModal'
@@ -22,9 +26,9 @@ export default function MahjongGameRoom() {
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null)
 
+  // ─── Data Fetching ────────────────────────────────────────
   useEffect(() => {
     if (!currentUser || !id) return
-
     fetchGame()
 
     const channel = supabase
@@ -34,31 +38,22 @@ export default function MahjongGameRoom() {
         { event: 'UPDATE', schema: 'public', table: 'mahjong_games', filter: `id=eq.${id}` },
         (payload) => {
           const gs = payload.new.game_state
-          if (gs && gs.players && gs.deck) {
-            setGameState(gs as GameState)
-          }
-        }
+          if (gs && gs.players && gs.deck) setGameState(gs as GameState)
+        },
       )
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [currentUser, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchGame = async () => {
     try {
       const { data, error } = await supabase
-        .from('mahjong_games')
-        .select('*')
-        .eq('id', id)
-        .single()
-
+        .from('mahjong_games').select('*').eq('id', id).single()
       if (error) throw error
-      if (data && data.game_state && data.game_state.players && data.game_state.deck) {
+      if (data?.game_state?.players && data.game_state.deck) {
         setGameState(data.game_state as GameState)
       } else {
-        // Handle waiting state UI if game_state isn't fully ready
         setGameState(null)
       }
     } catch (err) {
@@ -70,291 +65,305 @@ export default function MahjongGameRoom() {
     }
   }
 
-  // Calculate positions: Bottom is self. Left is (selfIndex + 3) % 4, Top is (selfIndex + 2) % 4, Right is (selfIndex + 1) % 4
+  // ─── Player Position Mapping ──────────────────────────────
   const getRenderPositions = () => {
     if (!gameState) return { bottom: null, right: null, top: null, left: null }
-
-    const selfIndex = gameState.players.findIndex(p => p.id === currentUser)
-    if (selfIndex === -1) {
-       // Spectator view, just render 0 as bottom
-       return {
-         bottom: gameState.players[0],
-         right: gameState.players[1],
-         top: gameState.players[2],
-         left: gameState.players[3],
-       }
-    }
-
+    const selfIdx = gameState.players.findIndex(p => p.id === currentUser)
+    const idx = selfIdx === -1 ? 0 : selfIdx
     return {
-      bottom: gameState.players[selfIndex],
-      right: gameState.players[(selfIndex + 1) % 4],
-      top: gameState.players[(selfIndex + 2) % 4],
-      left: gameState.players[(selfIndex + 3) % 4],
+      bottom: gameState.players[idx],
+      right:  gameState.players[(idx + 1) % 4],
+      top:    gameState.players[(idx + 2) % 4],
+      left:   gameState.players[(idx + 3) % 4],
     }
   }
 
-  // Bot Turn Automation (Host only)
+  // ─── Bot Automation (Host Only) ───────────────────────────
   useEffect(() => {
     if (!gameState || !currentUser) return
-    if (gameState.host_id !== currentUser) return // Only host drives bots
+    if (gameState.host_id !== currentUser) return
 
-    // 1. Handle Bot Pending Actions (Interruptions)
+    // 1) Bot pending actions
     if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) {
-       
-       // CRITICAL FIX: If ANY human player has pending actions, bots must wait!
-       const hasHumanPending = Object.keys(gameState.pendingActions).some(pId => {
-          const p = gameState.players.find(x => x.id === pId);
-          return p && !p.isBot;
-       });
+      const hasHumanPending = Object.keys(gameState.pendingActions).some(pId => {
+        const p = gameState.players.find(x => x.id === pId)
+        return p && !p.isBot
+      })
+      if (hasHumanPending) return
 
-       if (hasHumanPending) {
-         // Wait for the human to make a decision (Pong/Hu/Pass). 
-         // The human's action will trigger a database update, which will rerun this effect.
-         return; 
-       }
-
-       let botActionTaken = false;
-       for (const [pId, actions] of Object.entries(gameState.pendingActions)) {
-          const player = gameState.players.find(p => p.id === pId);
-          if (player && player.isBot) {
-             botActionTaken = true;
-             const timer = setTimeout(async () => {
-                try {
-                  // Realistically the bot should decide. Given our simplistic `getBotAction`:
-                  // If it has 'hu', it does 'hu'. Else 'kong' > 'pong' > 'pass'.
-                  let chosenAction: ValidAction | undefined;
-                  chosenAction = actions.find(a => a.type === 'hu');
-                  if (!chosenAction) chosenAction = actions.find(a => a.type === 'kong');
-                  if (!chosenAction) chosenAction = actions.find(a => a.type === 'pong');
-                  
-                  const typeToTake = chosenAction ? chosenAction.type : 'pass';
-                  const nextState = applyAction(gameState, player.id, typeToTake);
-                  await supabase.from('mahjong_games').update({ game_state: nextState }).eq('id', id);
-                } catch (err) {
-                  console.error('Bot pending action error:', err);
-                }
-             }, 1000 + Math.random() * 1000); // Random delay 1-2s to feel human
-             return () => clearTimeout(timer);
-          }
-       }
-       if (botActionTaken) return; // Wait for bot to resolve before normal turns
+      for (const [pId, actions] of Object.entries(gameState.pendingActions)) {
+        const player = gameState.players.find(p => p.id === pId)
+        if (player?.isBot) {
+          const timer = setTimeout(async () => {
+            try {
+              let chosen: ValidAction | undefined
+              chosen = actions.find(a => a.type === 'hu')
+              if (!chosen) chosen = actions.find(a => a.type === 'kong')
+              if (!chosen) chosen = actions.find(a => a.type === 'pong')
+              const typeToTake = chosen ? chosen.type : 'pass'
+              const next = applyAction(gameState, player.id, typeToTake)
+              setGameState(next)
+              await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
+            } catch (err) { console.error('Bot pending action error:', err) }
+          }, 800 + Math.random() * 800)
+          return () => clearTimeout(timer)
+        }
+      }
+      return
     }
 
-    // 2. Normal Bot Turn
-    if (gameState.status !== 'playing') return;
-
-    const currentPlayerIndex = gameState.currentTurn
-    const currentPlayer = gameState.players[currentPlayerIndex]
-
-    if (currentPlayer && currentPlayer.isBot) {
-      if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) return; // Waiting for someone else
-
-      // It's a bot's normal draw/discard turn!
+    // 2) Normal bot turn
+    if (gameState.status !== 'playing') return
+    const cp = gameState.players[gameState.currentTurn]
+    if (cp?.isBot) {
+      if (gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0) return
       const timer = setTimeout(async () => {
         try {
-           const nextState = applyBotTurn(gameState, currentPlayer.id)
-           await supabase
-             .from('mahjong_games')
-             .update({ game_state: nextState })
-             .eq('id', id)
-        } catch (err) {
-           console.error('Bot turn error:', err)
-        }
-      }, 1500) // 1.5 second delay for bot think time
-
+          const next = applyBotTurn(gameState, cp.id)
+          setGameState(next)
+          await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
+        } catch (err) { console.error('Bot turn error:', err) }
+      }, 1200)
       return () => clearTimeout(timer)
     }
   }, [gameState, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Player Actions ───────────────────────────────────────
   const handleSelfDiscard = async () => {
-     if (selectedTileIndex === null || !gameState || !currentUser) return
-     const selfIndex = gameState.players.findIndex(p => p.id === currentUser)
-     if (gameState.currentTurn !== selfIndex) {
-         showToast('还没到你的回合', 'warning')
-         return
-     }
-
-     const nextState = applyDiscard(gameState, currentUser, selectedTileIndex)
-     setSelectedTileIndex(null)
-
-     try {
-       await supabase
-         .from('mahjong_games')
-         .update({ game_state: nextState })
-         .eq('id', id)
-     } catch (err) {
-       console.error(err)
-       showToast('出牌失败', 'error')
-     }
+    if (selectedTileIndex === null || !gameState || !currentUser) return
+    const selfIdx = gameState.players.findIndex(p => p.id === currentUser)
+    if (gameState.currentTurn !== selfIdx) {
+      showToast('还没到你的回合', 'warning')
+      return
+    }
+    const next = applyDiscard(gameState, currentUser, selectedTileIndex)
+    setSelectedTileIndex(null)
+    setGameState(next)
+    try {
+      await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
+    } catch (err) {
+      console.error(err)
+      showToast('出牌失败', 'error')
+    }
   }
 
   const handleAction = async (actionType: ActionType) => {
-     if (!gameState || !currentUser) return;
-     const nextState = applyAction(gameState, currentUser, actionType);
-     try {
-       await supabase
-         .from('mahjong_games')
-         .update({ game_state: nextState })
-         .eq('id', id)
-     } catch (err) {
-       console.error(err)
-       showToast('操作失败', 'error')
-     }
+    if (!gameState || !currentUser) return
+    const next = applyAction(gameState, currentUser, actionType)
+    setGameState(next)
+    try {
+      await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
+    } catch (err) {
+      console.error(err)
+      showToast('操作失败', 'error')
+    }
   }
 
+  // ─── Loading / Waiting States ─────────────────────────────
   if (isLoading || !currentUser) {
     return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1f14] flex items-center justify-center">
         <LoadingSkeleton type="card" count={1} />
       </div>
     )
   }
 
   if (!gameState) {
-     return (
-        <div className="min-h-screen flex flex-col items-center justify-center">
-            <h1 className="text-2xl font-bold mb-4">等待玩家加入...</h1>
-            <BackButton href="/mahjong" text="退出房间" />
-        </div>
-     )
+    return (
+      <div className="min-h-screen bg-[#0a1f14] flex flex-col items-center justify-center gap-4">
+        <div className="text-5xl">🀄</div>
+        <h1 className="text-xl font-bold text-amber-300">等待玩家加入...</h1>
+        <button
+          onClick={() => router.push('/mahjong')}
+          className="px-6 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
+        >
+          退出房间
+        </button>
+      </div>
+    )
   }
 
+  // ─── Derived State ────────────────────────────────────────
   const { bottom, right, top, left } = getRenderPositions()
-  
-  // Is it my normal turn?
-  const isMyTurn = bottom ? gameState.currentTurn === gameState.players.findIndex(p => p.id === bottom.id) : false
-  const hasPendingActions = gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0;
-  
-  // Do I have an interruption choice to make?
-  const myPendingActions = gameState.pendingActions ? gameState.pendingActions[currentUser] : null;
+  const isMyTurn = bottom
+    ? gameState.currentTurn === gameState.players.findIndex(p => p.id === bottom.id)
+    : false
+  const hasPending = gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0
+  const myPending = gameState.pendingActions?.[currentUser] ?? null
 
-  const actionLabels: Record<string, string> = {
-     hu: '胡',
-     kong: '杠',
-     pong: '碰',
-     chow: '吃',
-  }
+  const actionLabels: Record<string, string> = { hu: '胡', kong: '杠', pong: '碰', chow: '吃' }
 
+  // ─── Render ───────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-green-900 overflow-hidden flex flex-col">
-      {/* Top Header */}
-      <div className="absolute top-4 left-4 z-10 flex gap-4">
-        <BackButton href="/mahjong" text="离开房间" className="bg-white/20 text-white hover:bg-white/30" />
-        <div className="bg-black/40 text-white px-4 py-2 rounded-lg flex flex-col">
-          <span className="text-xs opacity-70">
-             {gameState.mode === 'sichuan' ? '四川血战' : '经典模式'} | 底分: {gameState.baseMultiplier * 100}豆
-          </span>
-          <span className="font-bold">剩余牌数: {gameState.deck.length}</span>
+    <div
+      className="min-h-screen overflow-hidden flex flex-col relative select-none"
+      style={{
+        background: 'radial-gradient(ellipse at center, #1a4a2e 0%, #0f2d1a 50%, #081a0f 100%)',
+      }}
+    >
+      {/* ── Table felt texture overlay ── */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'6\' height=\'6\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Ccircle cx=\'1\' cy=\'1\' r=\'0.6\' fill=\'%23fff\'/%3E%3C/svg%3E")',
+        backgroundSize: '6px 6px',
+      }} />
+
+      {/* ── Top Bar ── */}
+      <div className="relative z-30 flex items-center justify-between px-4 py-2">
+        <button
+          onClick={() => router.push('/mahjong')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/30 text-white/70 text-sm
+            hover:bg-black/50 transition-colors border border-white/10"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          离开
+        </button>
+
+        {/* Center info */}
+        <div className="flex items-center gap-4">
+          <div className="bg-black/40 border border-amber-700/30 rounded-lg px-4 py-1.5 text-center">
+            <div className="text-amber-400/70 text-[10px] tracking-wider uppercase">
+              {gameState.mode === 'sichuan' ? '四川血战' : '经典模式'}
+            </div>
+            <div className="text-amber-300 text-sm font-bold">{gameState.baseMultiplier * 100} 豆/番</div>
+          </div>
+          <div className="bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-center">
+            <div className="text-white/40 text-[10px]">剩余</div>
+            <div className="text-white font-bold text-lg leading-none">{gameState.deck.length}</div>
+          </div>
         </div>
+
+        <div className="w-[60px]" />
       </div>
 
-      {/* Game Board Container */}
-      <div className="flex-1 relative w-full max-w-7xl mx-auto mt-16 pb-16">
-         
-         {/* Top Player */}
-         {top && (
-            <div className="absolute top-0 left-1/2 -translate-x-1/2">
-               <PlayerHand 
-                 player={top} 
-                 position="top" 
-                 isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === top.id)} 
-               />
-            </div>
-         )}
+      {/* ── Game Table ── */}
+      <div className="flex-1 relative w-full max-w-5xl mx-auto">
+        {/* Center discard area */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          {/* Inner table border */}
+          <div className="w-[240px] h-[180px] md:w-[320px] md:h-[240px] rounded-xl
+            border border-amber-700/20 bg-black/15 flex items-center justify-center">
 
-         {/* Left Player */}
-         {left && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 transform -translate-x-1/4 scale-75 md:scale-100">
-               <PlayerHand 
-                 player={left} 
-                 position="left" 
-                 isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === left.id)} 
-               />
-            </div>
-         )}
-
-         {/* Right Player */}
-         {right && (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 transform translate-x-1/4 scale-75 md:scale-100">
-               <PlayerHand 
-                 player={right} 
-                 position="right" 
-                 isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === right.id)} 
-               />
-            </div>
-         )}
-
-         {/* Center Action Area (Prompts & Table) */}
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-8">
-            
-            {/* Last Discarded Tile Visualization */}
-            {gameState.lastAction && gameState.lastAction.tile && (
-               <div className="flex flex-col items-center bg-black/40 p-6 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10 animate-fade-in">
-                  <span className="text-white/80 text-sm mb-3">
-                     {gameState.players.find(p => p.id === gameState.lastAction!.playerId)?.name} 打出:
-                  </span>
-                  <TileComponent tile={gameState.lastAction.tile} size="lg" className="scale-125 shadow-2xl" />
-               </div>
-            )}
-
-            {/* My Turn Action Buttons */}
-            {isMyTurn && !hasPendingActions && (
-              <div className="flex gap-4">
-                 <button onClick={handleSelfDiscard} disabled={selectedTileIndex === null} className="btn-primary px-10 py-4 text-2xl font-bold rounded-full disabled:bg-gray-500 disabled:opacity-50 shadow-xl hover:scale-105 transition-transform active:scale-95">
-                    出 牌
-                 </button>
+            {/* Last action display */}
+            {gameState.lastAction?.tile && gameState.lastAction.type === 'discard' && (
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-white/50 text-xs">
+                  {gameState.players.find(p => p.id === gameState.lastAction!.playerId)?.name} 打出
+                </span>
+                <div className="transform scale-110">
+                  <TileComponent tile={gameState.lastAction.tile} size="md" />
+                </div>
               </div>
             )}
+          </div>
+        </div>
 
-            {/* My Interruption Action Buttons */}
-            {myPendingActions && myPendingActions.length > 0 && (
-               <div className="flex gap-4 p-4 bg-black/60 rounded-2xl backdrop-blur-md shadow-2xl animate-bounce">
-                  {myPendingActions.map((action, idx) => (
-                    <button 
-                       key={idx} 
-                       onClick={() => handleAction(action.type)} 
-                       className={`
-                         px-8 py-4 text-3xl font-bold rounded-full shadow-xl hover:scale-110 transition-transform active:scale-90
-                         ${action.type === 'hu' ? 'bg-red-500 text-white animate-pulse' : 
-                           action.type === 'kong' ? 'bg-yellow-500 text-black' : 
-                           'bg-blue-500 text-white'}
-                       `}
-                    >
-                       {actionLabels[action.type] || action.type}
-                    </button>
-                  ))}
-                  <button 
-                     onClick={() => handleAction('pass')} 
-                     className="px-8 py-4 text-3xl font-bold bg-gray-600 text-white rounded-full shadow-xl hover:scale-110 transition-transform active:scale-90"
-                  >
-                     过
-                  </button>
-               </div>
-            )}
-         </div>
+        {/* ── Top Player ── */}
+        {top && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+            <PlayerHand
+              player={top}
+              position="top"
+              isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === top.id)}
+            />
+          </div>
+        )}
 
-         {/* Bottom Player (Self) */}
-         {bottom && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full px-4">
-               <PlayerHand 
-                 player={bottom} 
-                 position="bottom" 
-                 isCurrentTurn={isMyTurn}
-                 selectedTileIndex={selectedTileIndex}
-                 onTileClick={(tile, idx) => {
-                    if (isMyTurn) setSelectedTileIndex(idx)
-                 }}
-               />
+        {/* ── Left Player ── */}
+        {left && (
+          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+            <PlayerHand
+              player={left}
+              position="left"
+              isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === left.id)}
+            />
+          </div>
+        )}
+
+        {/* ── Right Player ── */}
+        {right && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+            <PlayerHand
+              player={right}
+              position="right"
+              isCurrentTurn={gameState.currentTurn === gameState.players.findIndex(p => p.id === right.id)}
+            />
+          </div>
+        )}
+
+        {/* ── Action Buttons (center overlay) ── */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-3 pointer-events-none">
+          {/* My turn: Discard button */}
+          {isMyTurn && !hasPending && (
+            <button
+              onClick={handleSelfDiscard}
+              disabled={selectedTileIndex === null}
+              className="pointer-events-auto px-10 py-3 rounded-xl font-black text-xl
+                bg-gradient-to-b from-amber-400 to-amber-600 text-black
+                shadow-lg shadow-amber-600/30
+                hover:from-amber-300 hover:to-amber-500
+                disabled:from-gray-600 disabled:to-gray-700 disabled:text-gray-400 disabled:shadow-none
+                active:scale-95 transition-all"
+            >
+              出 牌
+            </button>
+          )}
+
+          {/* Interruption buttons */}
+          {myPending && myPending.length > 0 && (
+            <div className="pointer-events-auto flex gap-3 p-3 bg-black/70 rounded-2xl backdrop-blur-md
+              border border-amber-600/30 shadow-2xl animate-pulse">
+              {myPending.map((action, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleAction(action.type)}
+                  className={`
+                    px-6 py-3 text-xl font-black rounded-xl shadow-lg
+                    active:scale-90 transition-all hover:scale-105
+                    ${action.type === 'hu'
+                      ? 'bg-gradient-to-b from-red-500 to-red-700 text-white shadow-red-600/40'
+                      : action.type === 'kong'
+                        ? 'bg-gradient-to-b from-yellow-400 to-amber-600 text-black shadow-amber-600/40'
+                        : 'bg-gradient-to-b from-blue-400 to-blue-600 text-white shadow-blue-600/40'}
+                  `}
+                >
+                  {actionLabels[action.type] || action.type}
+                </button>
+              ))}
+              <button
+                onClick={() => handleAction('pass')}
+                className="px-6 py-3 text-xl font-black bg-gradient-to-b from-gray-500 to-gray-700
+                  text-white rounded-xl shadow-lg active:scale-90 transition-all hover:scale-105"
+              >
+                过
+              </button>
             </div>
-         )}
-         
-         <GameEndModal 
-            gameState={gameState} 
-            currentUser={currentUser}
-            onReturnToLobby={() => router.push('/mahjong')} 
-         />
+          )}
+        </div>
 
+        {/* ── Bottom Player (Self) ── */}
+        {bottom && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full px-2 z-10">
+            <PlayerHand
+              player={bottom}
+              position="bottom"
+              isCurrentTurn={isMyTurn}
+              selectedTileIndex={selectedTileIndex}
+              onTileClick={(tile, idx) => {
+                if (isMyTurn) setSelectedTileIndex(prev => prev === idx ? null : idx)
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      {/* ── Game End Modal ── */}
+      <GameEndModal
+        gameState={gameState}
+        currentUser={currentUser}
+        onReturnToLobby={() => router.push('/mahjong')}
+      />
     </div>
   )
 }
