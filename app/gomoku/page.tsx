@@ -12,13 +12,14 @@ import LoadingSkeleton from '../components/LoadingSkeleton'
 export default function GomokuLobbyPage() {
   const router = useRouter()
   const { showToast } = useToast()
-  const { user: currentUser } = useAuth()
-  
+  const { user: currentUser, loading: authLoading } = useAuth()
+
   const [waitingRooms, setWaitingRooms] = useState<any[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading) return // Wait for auth to resolve from localStorage
     if (!currentUser) {
        router.push('/login?redirect=/gomoku')
        return
@@ -40,7 +41,7 @@ export default function GomokuLobbyPage() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchRooms = async () => {
     try {
@@ -199,7 +200,7 @@ export default function GomokuLobbyPage() {
     }
   }
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
       return (
          <div className="min-h-screen p-4 md:p-8 flex flex-col justify-center max-w-4xl mx-auto">
             <LoadingSkeleton type="card" count={3} />

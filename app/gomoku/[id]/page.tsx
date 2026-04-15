@@ -12,13 +12,14 @@ import { GomokuGameState, BOARD_SIZE, checkWinner, getBotMove, createEmptyBoard 
 export default function GomokuGameRoom() {
   const { id } = useParams()
   const router = useRouter()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, loading: authLoading } = useAuth()
   const { showToast } = useToast()
 
   const [gameState, setGameState] = useState<GomokuGameState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading) return
     if (!currentUser || !id) return
     fetchGame()
 
@@ -35,7 +36,7 @@ export default function GomokuGameRoom() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [currentUser, id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser, id, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchGame = async () => {
     try {
@@ -177,7 +178,7 @@ export default function GomokuGameRoom() {
   }
 
   // ── Loading States ──
-  if (isLoading || !currentUser) {
+  if (authLoading || isLoading || !currentUser) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <LoadingSkeleton type="card" count={1} />
