@@ -29,7 +29,7 @@ export default function MahjongGameRoom() {
   // ─── Data Fetching ────────────────────────────────────────
   useEffect(() => {
     if (!currentUser || !id) return
-    fetchGame()
+    fetchGame(true)
 
     const channel = supabase
       .channel(`mahjong_game_${id}`)
@@ -41,29 +41,59 @@ export default function MahjongGameRoom() {
           if (gs && gs.players && gs.deck) setGameState(gs as GameState)
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') console.debug('[mahjong] realtime status:', status)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [currentUser, id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchGame = async () => {
+  const fetchGame = async (showLoading = false) => {
     try {
       const { data, error } = await supabase
         .from('mahjong_games').select('*').eq('id', id).single()
       if (error) throw error
       if (data?.game_state?.players && data.game_state.deck) {
-        setGameState(data.game_state as GameState)
-      } else {
+        setGameState(prev => {
+          const next = data.game_state as GameState
+          // Avoid overwriting local optimistic state if ours is more recent
+          if (prev && prev.deck.length < next.deck.length) return prev
+          return next
+        })
+      } else if (showLoading) {
         setGameState(null)
       }
     } catch (err) {
-      console.error(err)
-      showToast('获取对局数据失败', 'error')
-      router.push('/mahjong')
+      if (showLoading) {
+        console.error(err)
+        showToast('获取对局数据失败', 'error')
+        router.push('/mahjong')
+      }
     } finally {
-      setIsLoading(false)
+      if (showLoading) setIsLoading(false)
     }
   }
+
+  // ─── Polling fallback (for when Realtime isn't configured) ────
+  useEffect(() => {
+    if (!gameState || !currentUser) return
+    if (gameState.status !== 'playing') return
+
+    // Non-host players (or when it's not my turn) - poll every 2s as backup
+    const selfIdx = gameState.players.findIndex(p => p.id === currentUser)
+    const isMyTurn = selfIdx === gameState.currentTurn
+    const isHost = gameState.host_id === currentUser
+    const hasMyPending = gameState.pendingActions?.[currentUser]
+
+    // Poll only when we're waiting for server updates (not driving the game locally)
+    if (isMyTurn && !hasMyPending) return
+    if (isHost && gameState.players.every(p => !p.isBot || p.id !== gameState.players[gameState.currentTurn]?.id)) {
+      // Host handles bots locally, no polling needed
+    }
+
+    const interval = setInterval(() => { fetchGame(false) }, 2000)
+    return () => clearInterval(interval)
+  }, [gameState?.currentTurn, gameState?.status, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Player Position Mapping ──────────────────────────────
   const getRenderPositions = () => {

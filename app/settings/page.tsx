@@ -54,31 +54,51 @@ export default function SettingsPage() {
     setCurrentUser(user)
 
     const savedSettings = localStorage.getItem(`userSettings_${user}`)
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings))
-    } else {
-      setSettings({
-        avatar: user === 'zyx' ? '⭐' : '🍐',
-        nickname: user === 'zyx' ? '星星' : '梨梨',
-        signature: '今天也要开心鸭~',
-        mood: '😊', theme: 'pink', loveDeclaration: '',
+    const baseSettings: UserSettings = savedSettings
+      ? JSON.parse(savedSettings)
+      : {
+          avatar: user === 'zyx' ? '⭐' : '🍐',
+          nickname: user === 'zyx' ? '星星' : '梨梨',
+          signature: '今天也要开心鸭~',
+          mood: '😊', theme: 'pink', loveDeclaration: '',
+        }
+    setSettings(baseSettings)
+
+    // Fetch latest avatar from Supabase (overrides localStorage if newer)
+    supabase.from('user_profiles')
+      .select('avatar_url, avatar_emoji')
+      .eq('name', user)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data && (data.avatar_url || data.avatar_emoji)) {
+          const remoteAvatar = data.avatar_url || data.avatar_emoji
+          setSettings(prev => ({ ...prev, avatar: remoteAvatar }))
+        }
       })
-    }
 
     const partner = user === 'zyx' ? 'zly' : 'zyx'
     const partnerSaved = localStorage.getItem(`userSettings_${partner}`)
     if (partnerSaved) setPartnerSettings(JSON.parse(partnerSaved))
   }, [router])
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     localStorage.setItem(`userSettings_${currentUser}`, JSON.stringify(settings))
-    // Also sync avatar to Supabase for cross-device
-    supabase.from('user_profiles').upsert({
-      id: currentUser,
-      name: settings.nickname || currentUser,
-      avatar_emoji: settings.avatar.length <= 2 ? settings.avatar : null,
-      avatar_url: settings.avatar.startsWith('http') ? settings.avatar : null,
-    }, { onConflict: 'id' }).then(() => {})
+
+    // Sync avatar to Supabase (UPDATE only - profile row must exist via Profile page)
+    try {
+      const isUrl = settings.avatar.startsWith('http')
+      await supabase
+        .from('user_profiles')
+        .update({
+          avatar_emoji: isUrl ? null : settings.avatar,
+          avatar_url: isUrl ? settings.avatar : null,
+        })
+        .eq('name', currentUser)
+    } catch (e) {
+      // Profile row might not exist yet - that's fine, localStorage still works
+      console.debug('Avatar Supabase sync skipped', e)
+    }
+
     toast.success('设置保存成功! 💕')
   }
 

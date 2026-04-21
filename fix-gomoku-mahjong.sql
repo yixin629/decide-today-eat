@@ -98,3 +98,11 @@ DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE user_balances;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- ============================================================
+-- 6. REPLICA IDENTITY FULL (必需！JSONB 列的更新才能通过 Realtime 推送)
+-- 没有这一步，UPDATE 事件只会发送主键，game_state 收不到
+-- ============================================================
+
+ALTER TABLE gomoku_games REPLICA IDENTITY FULL;
+ALTER TABLE mahjong_games REPLICA IDENTITY FULL;

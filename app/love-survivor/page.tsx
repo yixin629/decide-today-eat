@@ -4,1220 +4,870 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 
-interface Position {
-  x: number
-  y: number
-}
+interface Pos { x: number; y: number }
 
 interface Enemy {
   id: number
-  x: number
-  y: number
-  hp: number
-  maxHp: number
-  type: 'normal' | 'fast' | 'tank' | 'boss' | 'shooter'
+  x: number; y: number
+  hp: number; maxHp: number
+  type: 'fighter' | 'bomber' | 'tank' | 'heli' | 'boss'
   speed: number
   shootCooldown?: number
+  driftPhase?: number
 }
 
 interface Bullet {
   id: number
-  x: number
-  y: number
-  angle: number
+  x: number; y: number
+  vx: number; vy: number
   damage: number
+  color: string
+  size: number
   isEnemy?: boolean
+  weapon?: 'vulcan' | 'laser' | 'missile' | 'spread'
 }
 
 interface PowerUp {
-  id: number
-  x: number
-  y: number
-  type:
-    | 'speed'
-    | 'damage'
-    | 'heal'
-    | 'shield'
-    | 'multishot'
-    | 'firerate'
-    | 'magnet'
-    | 'bomb'
-    | 'life'
+  id: number; x: number; y: number
+  type: 'vulcan' | 'laser' | 'missile' | 'spread' | 'speed' | 'shield' | 'bomb' | 'life' | 'heal'
 }
 
 interface Particle {
-  id: number
-  x: number
-  y: number
-  emoji: string
-  life: number
-  vx?: number
-  vy?: number
-  scale?: number
+  id: number; x: number; y: number
+  vx: number; vy: number
+  life: number; maxLife: number
+  size: number; color: string; kind: 'spark' | 'smoke' | 'explosion'
 }
 
-interface ExpOrb {
-  id: number
-  x: number
-  y: number
-  value: number
-}
+interface Star { x: number; y: number; speed: number; size: number }
 
-// 游戏配置
-const GAME_WIDTH = 400
-const GAME_HEIGHT = 600
-const PLAYER_SIZE = 30
-const ENEMY_SIZE = 25
-const BULLET_SIZE = 10
-const POWERUP_SIZE = 20
+// ── Game Config ──────────────────────────────────────────────
+const W = 420, H = 640
+const PLAYER_SIZE = 28
 
-// 玩家角色选择
-const PLAYER_CHARACTERS = [
-  { emoji: '😊', name: '小开心', bonus: 'hp', bonusValue: 20 },
-  { emoji: '🥰', name: '小甜心', bonus: 'damage', bonusValue: 5 },
-  { emoji: '😎', name: '小酷哥', bonus: 'speed', bonusValue: 1 },
-  { emoji: '🤗', name: '小暖心', bonus: 'heal', bonusValue: 0.5 },
-]
+const WEAPONS = {
+  vulcan:  { name: '机枪', color: '#fde047', fireRate: 180, count: 1 },
+  spread:  { name: '散弹', color: '#60a5fa', fireRate: 250, count: 3 },
+  laser:   { name: '激光', color: '#f87171', fireRate: 90,  count: 1 },
+  missile: { name: '导弹', color: '#fb923c', fireRate: 600, count: 2 },
+} as const
+type WeaponType = keyof typeof WEAPONS
 
-export default function LoveSurvivorPage() {
+export default function ThunderFighterPage() {
   const toast = useToast()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const gameLoopRef = useRef<number | null>(null)
+  const rafRef = useRef<number | null>(null)
   const keysRef = useRef<Set<string>>(new Set())
 
-  // 游戏状态
-  const [gameStarted, setGameStarted] = useState(false)
-  const [gameOver, setGameOver] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
-  const [showCharacterSelect, setShowCharacterSelect] = useState(false)
-  const [selectedCharacter, setSelectedCharacter] = useState(0)
+  // Game state
+  const [started, setStarted] = useState(false)
+  const [over, setOver] = useState(false)
+  const [paused, setPaused] = useState(false)
   const [score, setScore] = useState(0)
   const [highScore, setHighScore] = useState(0)
   const [wave, setWave] = useState(1)
   const [kills, setKills] = useState(0)
-  const [gameTime, setGameTime] = useState(0)
   const [combo, setCombo] = useState(0)
   const [maxCombo, setMaxCombo] = useState(0)
-  const [exp, setExp] = useState(0)
-  const [level, setLevel] = useState(1)
-  const [expToNextLevel, setExpToNextLevel] = useState(100)
+  const [bombs, setBombs] = useState(3)
 
-  // 玩家状态
-  const [playerPos, setPlayerPos] = useState<Position>({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80 })
-  const [playerHp, setPlayerHp] = useState(100)
-  const [playerMaxHp, setPlayerMaxHp] = useState(100)
-  const [playerSpeed, setPlayerSpeed] = useState(5)
-  const [damage, setDamage] = useState(10)
-  const [fireRate, setFireRate] = useState(300) // ms
-  const [multishot, setMultishot] = useState(1)
-  const [hasShield, setHasShield] = useState(false)
-  const [magnetRange, setMagnetRange] = useState(50)
-  const [critChance, setCritChance] = useState(0.1)
-  const [lifeSteal, setLifeSteal] = useState(0)
+  // Player state
+  const [pos, setPos] = useState<Pos>({ x: W / 2, y: H - 80 })
+  const [hp, setHp] = useState(100)
+  const [maxHp, setMaxHp] = useState(100)
+  const [weapon, setWeapon] = useState<WeaponType>('vulcan')
+  const [weaponLv, setWeaponLv] = useState(1)
+  const [speed, setSpeed] = useState(5)
+  const [shield, setShield] = useState(false)
   const [invincible, setInvincible] = useState(false)
 
-  // 游戏对象
+  // World objects
   const [enemies, setEnemies] = useState<Enemy[]>([])
   const [bullets, setBullets] = useState<Bullet[]>([])
   const [powerUps, setPowerUps] = useState<PowerUp[]>([])
   const [particles, setParticles] = useState<Particle[]>([])
-  const [expOrbs, setExpOrbs] = useState<ExpOrb[]>([])
+  const starsRef = useRef<Star[]>([])
 
   // Refs for game loop
-  const playerPosRef = useRef(playerPos)
+  const posRef = useRef(pos)
   const enemiesRef = useRef(enemies)
-  const bulletsRef = useRef(bullets)
-  const powerUpsRef = useRef(powerUps)
-  const lastFireRef = useRef(0)
-  const lastEnemySpawnRef = useRef(0)
+  const weaponRef = useRef(weapon)
+  const weaponLvRef = useRef(weaponLv)
   const waveRef = useRef(wave)
   const comboRef = useRef(combo)
+  const lastFireRef = useRef(0)
+  const lastSpawnRef = useRef(0)
   const comboTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const damageRef = useRef(damage)
-  const critChanceRef = useRef(critChance)
-  const lifeStealRef = useRef(lifeSteal)
 
-  // 同步 refs
-  useEffect(() => {
-    playerPosRef.current = playerPos
-  }, [playerPos])
-  useEffect(() => {
-    enemiesRef.current = enemies
-  }, [enemies])
-  useEffect(() => {
-    bulletsRef.current = bullets
-  }, [bullets])
-  useEffect(() => {
-    powerUpsRef.current = powerUps
-  }, [powerUps])
-  useEffect(() => {
-    waveRef.current = wave
-  }, [wave])
-  useEffect(() => {
-    comboRef.current = combo
-  }, [combo])
-  useEffect(() => {
-    damageRef.current = damage
-  }, [damage])
-  useEffect(() => {
-    critChanceRef.current = critChance
-  }, [critChance])
-  useEffect(() => {
-    lifeStealRef.current = lifeSteal
-  }, [lifeSteal])
+  useEffect(() => { posRef.current = pos }, [pos])
+  useEffect(() => { enemiesRef.current = enemies }, [enemies])
+  useEffect(() => { weaponRef.current = weapon }, [weapon])
+  useEffect(() => { weaponLvRef.current = weaponLv }, [weaponLv])
+  useEffect(() => { waveRef.current = wave }, [wave])
+  useEffect(() => { comboRef.current = combo }, [combo])
 
-  // 加载最高分
+  // Initialize starfield
   useEffect(() => {
-    const saved = localStorage.getItem('loveSurvivorHighScore')
+    starsRef.current = Array.from({ length: 80 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      speed: 0.5 + Math.random() * 3,
+      size: Math.random() < 0.3 ? 2 : 1,
+    }))
+    const saved = localStorage.getItem('thunderHighScore')
     if (saved) setHighScore(parseInt(saved))
   }, [])
 
-  // 键盘控制
+  // Keyboard
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const down = (e: KeyboardEvent) => {
       keysRef.current.add(e.key.toLowerCase())
-      if (e.key === 'Escape') setIsPaused((p) => !p)
-      if (e.key === ' ' && !gameStarted && !showCharacterSelect) {
-        setShowCharacterSelect(true)
-      }
+      if (e.key === 'Escape') setPaused(p => !p)
+      if ((e.key === 'b' || e.key === 'B') && started && !over && bombs > 0) useBomb()
     }
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key.toLowerCase())
-    }
+    const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase())
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+  }, [started, over, bombs])
 
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [gameStarted, showCharacterSelect])
+  // Touch control
+  const handleTouch = useCallback((e: React.TouchEvent) => {
+    if (!started || over || paused) return
+    const t = e.touches[0]
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const x = ((t.clientX - rect.left) / rect.width) * W
+    const y = ((t.clientY - rect.top) / rect.height) * H
+    setPos({
+      x: Math.max(PLAYER_SIZE / 2, Math.min(W - PLAYER_SIZE / 2, x)),
+      y: Math.max(PLAYER_SIZE / 2, Math.min(H - PLAYER_SIZE / 2, y)),
+    })
+  }, [started, over, paused])
 
-  // 触摸控制
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      if (!gameStarted || gameOver || isPaused) return
-      const touch = e.touches[0]
-      const rect = canvasRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      const x = ((touch.clientX - rect.left) / rect.width) * GAME_WIDTH
-      const y = ((touch.clientY - rect.top) / rect.height) * GAME_HEIGHT
-
-      setPlayerPos({
-        x: Math.max(PLAYER_SIZE / 2, Math.min(GAME_WIDTH - PLAYER_SIZE / 2, x)),
-        y: Math.max(PLAYER_SIZE / 2, Math.min(GAME_HEIGHT - PLAYER_SIZE / 2, y)),
-      })
-    },
-    [gameStarted, gameOver, isPaused]
-  )
-
-  // 开始游戏
-  const startGame = (characterIndex: number) => {
-    const character = PLAYER_CHARACTERS[characterIndex]
-    setSelectedCharacter(characterIndex)
-    setShowCharacterSelect(false)
-    setGameStarted(true)
-    setGameOver(false)
-    setIsPaused(false)
-    setScore(0)
-    setWave(1)
-    setKills(0)
-    setGameTime(0)
-    setCombo(0)
-    setMaxCombo(0)
-    setExp(0)
-    setLevel(1)
-    setExpToNextLevel(100)
-    setPlayerPos({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80 })
-
-    // 根据角色应用加成
-    const baseHp = character.bonus === 'hp' ? 100 + character.bonusValue : 100
-    const baseDamage = character.bonus === 'damage' ? 10 + character.bonusValue : 10
-    const baseSpeed = character.bonus === 'speed' ? 5 + character.bonusValue : 5
-
-    setPlayerHp(baseHp)
-    setPlayerMaxHp(baseHp)
-    setPlayerSpeed(baseSpeed)
-    setDamage(baseDamage)
-    setFireRate(300)
-    setMultishot(1)
-    setHasShield(false)
-    setMagnetRange(50)
-    setCritChance(0.1)
-    setLifeSteal(character.bonus === 'heal' ? character.bonusValue : 0)
-    setInvincible(false)
-    setEnemies([])
-    setBullets([])
-    setPowerUps([])
-    setParticles([])
-    setExpOrbs([])
+  // ── Start / Restart ──
+  const startGame = () => {
+    setStarted(true); setOver(false); setPaused(false)
+    setScore(0); setWave(1); setKills(0); setCombo(0); setMaxCombo(0); setBombs(3)
+    setPos({ x: W / 2, y: H - 80 })
+    setHp(100); setMaxHp(100)
+    setWeapon('vulcan'); setWeaponLv(1)
+    setSpeed(5); setShield(false); setInvincible(false)
+    setEnemies([]); setBullets([]); setPowerUps([]); setParticles([])
   }
 
-  // 添加粒子效果
-  const addParticle = useCallback((x: number, y: number, emoji: string, burst = false) => {
-    if (burst) {
-      // 爆炸效果
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2
-        setParticles((prev) => [
-          ...prev,
-          {
-            id: Date.now() + Math.random(),
-            x,
-            y,
-            emoji,
-            life: 20,
-            vx: Math.cos(angle) * 3,
-            vy: Math.sin(angle) * 3,
-            scale: 1,
-          },
-        ])
-      }
-    } else {
-      setParticles((prev) => [
-        ...prev,
-        { id: Date.now() + Math.random(), x, y, emoji, life: 30, vx: 0, vy: -1, scale: 1 },
-      ])
+  // ── Effects ──
+  const spawnExplosion = useCallback((x: number, y: number, big = false) => {
+    const count = big ? 24 : 12
+    const parts: Particle[] = []
+    for (let i = 0; i < count; i++) {
+      const ang = Math.random() * Math.PI * 2
+      const sp = 1 + Math.random() * (big ? 5 : 3)
+      parts.push({
+        id: Date.now() + Math.random(),
+        x, y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        life: big ? 40 : 25,
+        maxLife: big ? 40 : 25,
+        size: big ? 4 + Math.random() * 4 : 2 + Math.random() * 3,
+        color: ['#fbbf24', '#f97316', '#ef4444', '#fde047'][Math.floor(Math.random() * 4)],
+        kind: 'explosion',
+      })
     }
+    setParticles(prev => [...prev, ...parts])
   }, [])
 
-  // 添加经验球
-  const addExpOrb = useCallback((x: number, y: number, value: number) => {
-    setExpOrbs((prev) => [...prev, { id: Date.now() + Math.random(), x, y, value }])
+  const spawnSmoke = useCallback((x: number, y: number) => {
+    setParticles(prev => [...prev, {
+      id: Date.now() + Math.random(), x, y,
+      vx: (Math.random() - 0.5) * 0.5, vy: 1 + Math.random(),
+      life: 20, maxLife: 20, size: 4, color: '#64748b', kind: 'smoke',
+    }])
   }, [])
 
-  // 增加连击
   const addCombo = useCallback(() => {
-    setCombo((c) => {
-      const newCombo = c + 1
-      if (newCombo > maxCombo) setMaxCombo(newCombo)
-      return newCombo
+    setCombo(c => {
+      const n = c + 1
+      if (n > maxCombo) setMaxCombo(n)
+      return n
     })
-    // 重置连击计时器
     if (comboTimerRef.current) clearTimeout(comboTimerRef.current)
-    comboTimerRef.current = setTimeout(() => setCombo(0), 2000)
+    comboTimerRef.current = setTimeout(() => setCombo(0), 2500)
   }, [maxCombo])
 
-  // 获得经验
-  const gainExp = useCallback(
-    (amount: number) => {
-      setExp((prev) => {
-        const newExp = prev + amount
-        if (newExp >= expToNextLevel) {
-          // 升级
-          setLevel((l) => l + 1)
-          setExpToNextLevel((e) => Math.floor(e * 1.5))
-          toast.success(`🎉 升级！等级 ${level + 1}`)
-          // 升级奖励
-          setPlayerMaxHp((hp) => hp + 10)
-          setPlayerHp((hp) => Math.min(hp + 20, playerMaxHp + 10))
-          setDamage((d) => d + 2)
-          return newExp - expToNextLevel
-        }
-        return newExp
-      })
-    },
-    [expToNextLevel, level, playerMaxHp, toast]
-  )
-
-  // 使用炸弹
-  const activateBomb = useCallback(() => {
-    // 清除所有敌人
-    setEnemies((prev) => {
-      prev.forEach((e) => {
-        addParticle(e.x, e.y, '💥', true)
-        const points = e.type === 'boss' ? 100 : e.type === 'tank' ? 30 : 10
-        setScore((s) => s + points)
-        setKills((k) => k + 1)
-        addExpOrb(e.x, e.y, e.type === 'boss' ? 50 : 10)
-      })
-      return []
+  const useBomb = useCallback(() => {
+    if (bombs <= 0) return
+    setBombs(b => b - 1)
+    enemiesRef.current.forEach(e => {
+      spawnExplosion(e.x, e.y, e.type === 'boss')
+      setScore(s => s + (e.type === 'boss' ? 100 : 20))
+      setKills(k => k + 1)
     })
-    // 清除敌人子弹
-    setBullets((prev) => prev.filter((b) => !b.isEnemy))
-    toast.success('💣 炸弹！清除所有敌人！')
-  }, [addParticle, addExpOrb, toast])
+    setEnemies([])
+    setBullets(prev => prev.filter(b => !b.isEnemy))
+    toast.warning('💣 核弹引爆！')
+  }, [bombs, spawnExplosion, toast])
 
-  // 生成敌人
+  // ── Enemy Spawning ──
   const spawnEnemy = useCallback(() => {
-    const types: Enemy['type'][] = ['normal', 'fast', 'tank', 'shooter']
-    const currentWave = waveRef.current
+    const w = waveRef.current
 
-    // Boss 每5波出现一次
-    if (currentWave % 5 === 0 && enemiesRef.current.filter((e) => e.type === 'boss').length === 0) {
-      const boss: Enemy = {
-        id: Date.now(),
-        x: GAME_WIDTH / 2,
-        y: -50,
-        hp: 100 + currentWave * 20,
-        maxHp: 100 + currentWave * 20,
-        type: 'boss',
-        speed: 0.5 + currentWave * 0.05,
-        shootCooldown: 0,
-      }
-      setEnemies((prev) => [...prev, boss])
-      toast.info(`👾 Boss 出现！`)
+    // Boss every 5 waves
+    if (w % 5 === 0 && enemiesRef.current.filter(e => e.type === 'boss').length === 0) {
+      setEnemies(prev => [...prev, {
+        id: Date.now(), x: W / 2, y: -60,
+        hp: 200 + w * 30, maxHp: 200 + w * 30,
+        type: 'boss', speed: 0.3,
+        shootCooldown: 0, driftPhase: 0,
+      }])
+      toast.error('⚠️ 巨型战舰接近！')
       return
     }
 
-    // 根据波数调整敌人类型概率
+    // Formation-based spawning (more like Raiden)
+    const r = Math.random()
     let type: Enemy['type']
-    const rand = Math.random()
-    if (currentWave >= 3 && rand < 0.15) {
-      type = 'shooter'
-    } else if (rand < 0.3) {
-      type = 'fast'
-    } else if (rand < 0.45) {
-      type = 'tank'
-    } else {
-      type = 'normal'
+    if (w >= 3 && r < 0.2) type = 'heli'
+    else if (r < 0.35) type = 'tank'
+    else if (r < 0.55) type = 'bomber'
+    else type = 'fighter'
+
+    // Formation: sometimes spawn 3 fighters in a row
+    if (type === 'fighter' && Math.random() < 0.4) {
+      const startX = 60 + Math.random() * (W - 120)
+      for (let i = 0; i < 3; i++) {
+        setEnemies(prev => [...prev, {
+          id: Date.now() + i + Math.random(),
+          x: startX + i * 45,
+          y: -40 - i * 30,
+          hp: 15 + w * 2, maxHp: 15 + w * 2,
+          type: 'fighter',
+          speed: 2 + w * 0.1,
+          driftPhase: Math.random() * Math.PI * 2,
+        }])
+      }
+      return
     }
 
-    const enemy: Enemy = {
+    setEnemies(prev => [...prev, {
       id: Date.now() + Math.random(),
-      x: Math.random() * (GAME_WIDTH - ENEMY_SIZE * 2) + ENEMY_SIZE,
-      y: -ENEMY_SIZE,
-      hp:
-        type === 'tank'
-          ? 30 + currentWave * 5
-          : type === 'fast'
-          ? 10
-          : type === 'shooter'
-          ? 15
-          : 20 + currentWave * 2,
-      maxHp:
-        type === 'tank'
-          ? 30 + currentWave * 5
-          : type === 'fast'
-          ? 10
-          : type === 'shooter'
-          ? 15
-          : 20 + currentWave * 2,
+      x: 40 + Math.random() * (W - 80),
+      y: -40,
+      hp: type === 'tank' ? 40 + w * 5 : type === 'heli' ? 30 + w * 3 : type === 'bomber' ? 25 + w * 2 : 15 + w * 2,
+      maxHp: type === 'tank' ? 40 + w * 5 : type === 'heli' ? 30 + w * 3 : type === 'bomber' ? 25 + w * 2 : 15 + w * 2,
       type,
-      speed:
-        type === 'fast'
-          ? 3 + currentWave * 0.2
-          : type === 'tank'
-          ? 1
-          : type === 'shooter'
-          ? 0.8
-          : 1.5 + currentWave * 0.1,
-      shootCooldown: type === 'shooter' ? 0 : undefined,
-    }
-    setEnemies((prev) => [...prev, enemy])
+      speed: type === 'tank' ? 0.8 : type === 'heli' ? 1 : type === 'bomber' ? 1.2 : 2 + w * 0.08,
+      shootCooldown: (type === 'heli' || type === 'bomber') ? 0 : undefined,
+      driftPhase: Math.random() * Math.PI * 2,
+    }])
   }, [toast])
 
-  // 生成道具
-  const spawnPowerUp = useCallback((x: number, y: number) => {
-    if (Math.random() > 0.35) return // 35% 概率掉落
-
-    const types: PowerUp['type'][] = [
-      'speed',
-      'damage',
-      'heal',
-      'shield',
-      'multishot',
-      'firerate',
-      'magnet',
-      'bomb',
-      'life',
-    ]
-    // 稀有道具概率更低
-    const rand = Math.random()
+  // ── Power-up Spawn ──
+  const maybeSpawnPowerUp = useCallback((x: number, y: number) => {
+    if (Math.random() > 0.18) return
+    const r = Math.random()
     let type: PowerUp['type']
-    if (rand < 0.05) {
-      type = 'bomb'
-    } else if (rand < 0.1) {
-      type = 'life'
-    } else if (rand < 0.2) {
-      type = 'shield'
-    } else {
-      const commonTypes: PowerUp['type'][] = [
-        'speed',
-        'damage',
-        'heal',
-        'multishot',
-        'firerate',
-        'magnet',
-      ]
-      type = commonTypes[Math.floor(Math.random() * commonTypes.length)]
+    if (r < 0.04) type = 'bomb'
+    else if (r < 0.08) type = 'life'
+    else if (r < 0.14) type = 'shield'
+    else if (r < 0.25) type = 'heal'
+    else if (r < 0.45) type = 'speed'
+    else {
+      const ws: PowerUp['type'][] = ['vulcan', 'spread', 'laser', 'missile']
+      type = ws[Math.floor(Math.random() * 4)]
     }
-    setPowerUps((prev) => [...prev, { id: Date.now(), x, y, type }])
+    setPowerUps(prev => [...prev, { id: Date.now() + Math.random(), x, y, type }])
   }, [])
 
-  // 发射子弹
-  const fireBullets = useCallback(() => {
-    const pos = playerPosRef.current
-    const newBullets: Bullet[] = []
+  // ── Fire Weapons ──
+  const fireWeapon = useCallback(() => {
+    const p = posRef.current
+    const w = weaponRef.current
+    const lv = weaponLvRef.current
+    const conf = WEAPONS[w]
+    const bullets: Bullet[] = []
 
-    for (let i = 0; i < multishot; i++) {
-      const spread = multishot > 1 ? ((i - (multishot - 1) / 2) * 15 * Math.PI) / 180 : 0
-      newBullets.push({
-        id: Date.now() + i,
-        x: pos.x,
-        y: pos.y - PLAYER_SIZE / 2,
-        angle: -Math.PI / 2 + spread,
-        damage,
+    if (w === 'vulcan') {
+      // Straight rapid fire, scales with level
+      const count = Math.min(lv, 3)
+      for (let i = 0; i < count; i++) {
+        const offset = (i - (count - 1) / 2) * 6
+        bullets.push({
+          id: Date.now() + Math.random() + i,
+          x: p.x + offset, y: p.y - PLAYER_SIZE / 2,
+          vx: 0, vy: -12,
+          damage: 10 + lv * 2,
+          color: conf.color, size: 3, weapon: 'vulcan',
+        })
+      }
+    } else if (w === 'spread') {
+      const count = 2 + lv
+      for (let i = 0; i < count; i++) {
+        const angle = -Math.PI / 2 + (i - (count - 1) / 2) * 0.22
+        bullets.push({
+          id: Date.now() + Math.random() + i,
+          x: p.x, y: p.y - PLAYER_SIZE / 2,
+          vx: Math.cos(angle) * 9,
+          vy: Math.sin(angle) * 9,
+          damage: 8 + lv,
+          color: conf.color, size: 4, weapon: 'spread',
+        })
+      }
+    } else if (w === 'laser') {
+      // Thick fast piercing beam
+      bullets.push({
+        id: Date.now() + Math.random(),
+        x: p.x, y: p.y - PLAYER_SIZE / 2,
+        vx: 0, vy: -18,
+        damage: 6 + lv * 2,
+        color: conf.color, size: 5 + lv, weapon: 'laser',
       })
+    } else if (w === 'missile') {
+      // 2-4 homing missiles
+      const count = Math.min(2 + Math.floor(lv / 2), 4)
+      for (let i = 0; i < count; i++) {
+        const offset = (i - (count - 1) / 2) * 12
+        bullets.push({
+          id: Date.now() + Math.random() + i,
+          x: p.x + offset, y: p.y,
+          vx: (i % 2 === 0 ? -1 : 1) * 2,
+          vy: -6,
+          damage: 20 + lv * 5,
+          color: conf.color, size: 5, weapon: 'missile',
+        })
+      }
     }
+    setBullets(prev => [...prev, ...bullets])
+  }, [])
 
-    setBullets((prev) => [...prev, ...newBullets])
-  }, [multishot, damage])
-
-  // 游戏主循环
+  // ── Main Game Loop ──
   useEffect(() => {
-    if (!gameStarted || gameOver || isPaused) return
+    if (!started || over || paused) return
 
-    const gameLoop = () => {
+    const loop = () => {
       const now = Date.now()
       const keys = keysRef.current
 
-      // 移动玩家
-      setPlayerPos((prev) => {
-        let newX = prev.x
-        let newY = prev.y
-
-        if (keys.has('arrowleft') || keys.has('a')) newX -= playerSpeed
-        if (keys.has('arrowright') || keys.has('d')) newX += playerSpeed
-        if (keys.has('arrowup') || keys.has('w')) newY -= playerSpeed
-        if (keys.has('arrowdown') || keys.has('s')) newY += playerSpeed
-
+      // Player movement
+      setPos(prev => {
+        let x = prev.x, y = prev.y
+        if (keys.has('arrowleft') || keys.has('a')) x -= speed
+        if (keys.has('arrowright') || keys.has('d')) x += speed
+        if (keys.has('arrowup') || keys.has('w')) y -= speed
+        if (keys.has('arrowdown') || keys.has('s')) y += speed
         return {
-          x: Math.max(PLAYER_SIZE / 2, Math.min(GAME_WIDTH - PLAYER_SIZE / 2, newX)),
-          y: Math.max(PLAYER_SIZE / 2, Math.min(GAME_HEIGHT - PLAYER_SIZE / 2, newY)),
+          x: Math.max(PLAYER_SIZE / 2, Math.min(W - PLAYER_SIZE / 2, x)),
+          y: Math.max(PLAYER_SIZE / 2, Math.min(H - PLAYER_SIZE / 2, y)),
         }
       })
 
-      // 自动射击
+      // Auto-fire
+      const fireRate = WEAPONS[weaponRef.current].fireRate
       if (now - lastFireRef.current > fireRate) {
-        fireBullets()
+        fireWeapon()
         lastFireRef.current = now
       }
 
-      // 生成敌人
-      const spawnInterval = Math.max(500, 2000 - waveRef.current * 100)
-      if (now - lastEnemySpawnRef.current > spawnInterval) {
+      // Spawn enemies
+      const spawnInt = Math.max(400, 1400 - waveRef.current * 80)
+      if (now - lastSpawnRef.current > spawnInt) {
         spawnEnemy()
-        lastEnemySpawnRef.current = now
+        lastSpawnRef.current = now
       }
 
-      // 更新子弹
-      setBullets((prev) =>
-        prev
-          .map((b) => ({
-            ...b,
-            x: b.x + Math.cos(b.angle) * (b.isEnemy ? 5 : 10),
-            y: b.y + Math.sin(b.angle) * (b.isEnemy ? 5 : 10),
-          }))
-          .filter(
-            (b) =>
-              b.y > -BULLET_SIZE &&
-              b.y < GAME_HEIGHT + BULLET_SIZE &&
-              b.x > -BULLET_SIZE &&
-              b.x < GAME_WIDTH + BULLET_SIZE
-          )
-      )
-
-      // 更新敌人 (包括射击)
-      setEnemies((prev) =>
-        prev
-          .map((e) => {
-            const updated = { ...e, y: e.y + e.speed }
-            // 射击型敌人和Boss发射子弹
-            if ((e.type === 'shooter' || e.type === 'boss') && e.shootCooldown !== undefined) {
-              updated.shootCooldown = (e.shootCooldown || 0) + 16 // 约60fps
-              if (updated.shootCooldown > (e.type === 'boss' ? 1000 : 2000) && e.y > 0) {
-                updated.shootCooldown = 0
-                // 发射敌人子弹
-                const playerPos = playerPosRef.current
-                const angle = Math.atan2(playerPos.y - e.y, playerPos.x - e.x)
-                setBullets((bullets) => [
-                  ...bullets,
-                  {
-                    id: Date.now() + Math.random(),
-                    x: e.x,
-                    y: e.y,
-                    angle,
-                    damage: 15,
-                    isEnemy: true,
-                  },
-                ])
-              }
-            }
-            return updated
+      // Update bullets (including missile homing)
+      setBullets(prev => prev.map(b => {
+        if (b.weapon === 'missile' && !b.isEnemy) {
+          // Seek nearest enemy
+          let tgt: Enemy | null = null, best = Infinity
+          enemiesRef.current.forEach(e => {
+            const d = Math.hypot(e.x - b.x, e.y - b.y)
+            if (d < best) { best = d; tgt = e }
           })
-          .filter((e) => e.y < GAME_HEIGHT + ENEMY_SIZE)
-      )
-
-      // 更新粒子
-      setParticles((prev) =>
-        prev
-          .map((p) => ({
-            ...p,
-            life: p.life - 1,
-            x: p.x + (p.vx || 0),
-            y: p.y + (p.vy || -1),
-            scale: (p.scale || 1) * 0.95,
-          }))
-          .filter((p) => p.life > 0)
-      )
-
-      // 更新经验球（磁吸效果）
-      const playerPos = playerPosRef.current
-      setExpOrbs((prev) =>
-        prev
-          .map((orb) => {
-            const dx = playerPos.x - orb.x
-            const dy = playerPos.y - orb.y
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist < magnetRange) {
-              // 磁吸效果
-              const speed = 5 + (magnetRange - dist) * 0.1
-              return {
-                ...orb,
-                x: orb.x + (dx / dist) * speed,
-                y: orb.y + (dy / dist) * speed,
-              }
-            }
-            return { ...orb, y: orb.y + 0.5 }
-          })
-          .filter((orb) => orb.y < GAME_HEIGHT + 20)
-      )
-
-      // 收集经验球
-      setExpOrbs((prev) =>
-        prev.filter((orb) => {
-          const dx = playerPos.x - orb.x
-          const dy = playerPos.y - orb.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < PLAYER_SIZE) {
-            gainExp(orb.value)
-            return false
+          if (tgt && best < 300) {
+            const t = tgt as Enemy
+            const ang = Math.atan2(t.y - b.y, t.x - b.x)
+            b.vx = b.vx * 0.9 + Math.cos(ang) * 9 * 0.1
+            b.vy = b.vy * 0.9 + Math.sin(ang) * 9 * 0.1
           }
-          return true
-        })
-      )
+          spawnSmoke(b.x, b.y)
+        }
+        return { ...b, x: b.x + b.vx, y: b.y + b.vy }
+      }).filter(b => b.y > -30 && b.y < H + 30 && b.x > -30 && b.x < W + 30))
 
-      // 更新游戏时间
-      setGameTime((t) => t + 16)
+      // Update enemies
+      setEnemies(prev => prev.map(e => {
+        const phase = (e.driftPhase || 0) + 0.03
+        const driftX = e.type === 'fighter' ? Math.sin(phase) * 1.2 : 0
+        const newX = e.x + driftX
+        const newY = e.y + e.speed
 
-      // 碰撞检测：玩家子弹 vs 敌人
-      setBullets((prevBullets) => {
-        const remainingBullets: Bullet[] = []
-
-        prevBullets.forEach((bullet) => {
-          if (bullet.isEnemy) {
-            remainingBullets.push(bullet)
-            return
-          }
-
-          let hit = false
-          // 暴击判定
-          const isCrit = Math.random() < critChanceRef.current
-          const actualDamage = isCrit ? bullet.damage * 2 : bullet.damage
-
-          setEnemies((prevEnemies) => {
-            return prevEnemies
-              .map((enemy) => {
-                const dx = bullet.x - enemy.x
-                const dy = bullet.y - enemy.y
-                const dist = Math.sqrt(dx * dx + dy * dy)
-                const hitRadius = enemy.type === 'boss' ? 40 : ENEMY_SIZE
-
-                if (dist < hitRadius && !hit) {
-                  hit = true
-                  const newHp = enemy.hp - actualDamage
-
-                  // 吸血效果
-                  if (lifeStealRef.current > 0) {
-                    setPlayerHp((hp) =>
-                      Math.min(playerMaxHp, hp + actualDamage * lifeStealRef.current)
-                    )
-                  }
-
-                  if (newHp <= 0) {
-                    // 敌人死亡
-                    addCombo()
-                    const comboBonus = 1 + comboRef.current * 0.1
-                    const points = Math.floor(
-                      (enemy.type === 'boss'
-                        ? 100
-                        : enemy.type === 'tank'
-                        ? 30
-                        : enemy.type === 'fast'
-                        ? 15
-                        : enemy.type === 'shooter'
-                        ? 20
-                        : 10) * comboBonus
-                    )
-                    setScore((s) => s + points)
-                    setKills((k) => {
-                      const newKills = k + 1
-                      // 每杀10个敌人升一波
-                      if (newKills % 10 === 0) {
-                        setWave((w) => w + 1)
-                        toast.success(`🌊 第 ${waveRef.current + 1} 波！`)
-                      }
-                      return newKills
-                    })
-                    spawnPowerUp(enemy.x, enemy.y)
-                    addExpOrb(
-                      enemy.x,
-                      enemy.y,
-                      enemy.type === 'boss' ? 50 : enemy.type === 'tank' ? 20 : 10
-                    )
-                    addParticle(
-                      enemy.x,
-                      enemy.y,
-                      enemy.type === 'boss' ? '💥' : isCrit ? '💫' : '✨',
-                      enemy.type === 'boss'
-                    )
-                    return null
-                  }
-
-                  addParticle(enemy.x, enemy.y, isCrit ? '💥' : '💔')
-                  return { ...enemy, hp: newHp }
-                }
-                return enemy
-              })
-              .filter((e): e is Enemy => e !== null)
-          })
-
-          if (!hit) remainingBullets.push(bullet)
-        })
-
-        return remainingBullets
-      })
-
-      // 碰撞检测：玩家 vs 敌人
-      const currentPos = playerPosRef.current
-      enemiesRef.current.forEach((enemy) => {
-        const dx = currentPos.x - enemy.x
-        const dy = currentPos.y - enemy.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        const hitRadius = enemy.type === 'boss' ? 50 : ENEMY_SIZE + PLAYER_SIZE / 2
-
-        if (dist < hitRadius) {
-          if (hasShield) {
-            setHasShield(false)
-            addParticle(currentPos.x, currentPos.y, '🛡️')
-            setEnemies((prev) => prev.filter((e) => e.id !== enemy.id))
-          } else {
-            const dmg = enemy.type === 'boss' ? 30 : enemy.type === 'tank' ? 20 : 10
-            setPlayerHp((hp) => {
-              const newHp = hp - dmg
-              if (newHp <= 0) {
-                setGameOver(true)
-                if (score > highScore) {
-                  setHighScore(score)
-                  localStorage.setItem('loveSurvivorHighScore', score.toString())
-                }
+        let shootCD = e.shootCooldown
+        if (shootCD !== undefined && newY > 30) {
+          shootCD += 16
+          const interval = e.type === 'boss' ? 700 : e.type === 'heli' ? 1500 : 2400
+          if (shootCD > interval) {
+            shootCD = 0
+            const pp = posRef.current
+            const ang = Math.atan2(pp.y - newY, pp.x - newX)
+            if (e.type === 'boss') {
+              // Boss: 3-way spread
+              for (let i = -1; i <= 1; i++) {
+                const a = ang + i * 0.25
+                setBullets(bs => [...bs, {
+                  id: Date.now() + Math.random() + i,
+                  x: newX, y: newY,
+                  vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+                  damage: 15, color: '#ef4444', size: 5, isEnemy: true,
+                }])
               }
-              return Math.max(0, newHp)
-            })
-            setEnemies((prev) => prev.filter((e) => e.id !== enemy.id))
-            addParticle(currentPos.x, currentPos.y, '💢')
+            } else {
+              setBullets(bs => [...bs, {
+                id: Date.now() + Math.random(),
+                x: newX, y: newY,
+                vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5,
+                damage: 12, color: '#ef4444', size: 4, isEnemy: true,
+              }])
+            }
           }
         }
+
+        return { ...e, x: newX, y: newY, driftPhase: phase, shootCooldown: shootCD }
+      }).filter(e => e.y < H + 40))
+
+      // Update particles
+      setParticles(prev => prev.map(p => ({
+        ...p,
+        x: p.x + p.vx, y: p.y + p.vy,
+        vx: p.vx * 0.95, vy: p.vy * 0.95 + (p.kind === 'smoke' ? -0.05 : 0),
+        life: p.life - 1,
+      })).filter(p => p.life > 0))
+
+      // Update power-ups (drift down)
+      setPowerUps(prev => prev.map(p => ({ ...p, y: p.y + 1.3 })).filter(p => p.y < H + 20))
+
+      // Collision: player bullets vs enemies
+      setBullets(prevBullets => {
+        const remain: Bullet[] = []
+        prevBullets.forEach(b => {
+          if (b.isEnemy) { remain.push(b); return }
+          let hit = false
+          setEnemies(prevEn => prevEn.map(e => {
+            if (hit) return e
+            const hitR = e.type === 'boss' ? 45 : e.type === 'tank' ? 22 : 18
+            if (Math.hypot(b.x - e.x, b.y - e.y) < hitR) {
+              // Laser pierces
+              if (b.weapon !== 'laser') hit = true
+              const newHp = e.hp - b.damage
+              if (newHp <= 0) {
+                addCombo()
+                const comboMul = 1 + comboRef.current * 0.05
+                const pts = Math.floor((e.type === 'boss' ? 200 : e.type === 'tank' ? 40 : e.type === 'heli' ? 30 : e.type === 'bomber' ? 25 : 15) * comboMul)
+                setScore(s => s + pts)
+                setKills(k => {
+                  const nk = k + 1
+                  if (nk % 10 === 0) {
+                    setWave(w => w + 1)
+                    toast.success(`🌊 第 ${waveRef.current + 1} 波`)
+                  }
+                  return nk
+                })
+                spawnExplosion(e.x, e.y, e.type === 'boss' || e.type === 'tank')
+                maybeSpawnPowerUp(e.x, e.y)
+                return null as any
+              }
+              spawnExplosion(e.x, e.y, false)
+              return { ...e, hp: newHp }
+            }
+            return e
+          }).filter(Boolean) as Enemy[])
+          if (!hit) remain.push(b)
+        })
+        return remain
       })
 
-      // 碰撞检测：玩家 vs 道具
-      setPowerUps((prevPowerUps) => {
-        return prevPowerUps.filter((powerUp) => {
-          const dx = currentPos.x - powerUp.x
-          const dy = currentPos.y - powerUp.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-
-          if (dist < PLAYER_SIZE / 2 + POWERUP_SIZE / 2) {
-            // 获得道具
-            switch (powerUp.type) {
-              case 'speed':
-                setPlayerSpeed((s) => Math.min(10, s + 0.5))
-                toast.success('⚡ 速度提升！')
-                break
-              case 'damage':
-                setDamage((d) => d + 5)
-                toast.success('💪 攻击力提升！')
-                break
-              case 'heal':
-                setPlayerHp((hp) => Math.min(playerMaxHp, hp + 30))
-                toast.success('💚 恢复生命！')
-                break
-              case 'shield':
-                setHasShield(true)
-                toast.success('🛡️ 获得护盾！')
-                break
-              case 'multishot':
-                setMultishot((m) => Math.min(5, m + 1))
-                toast.success('🎯 多重射击！')
-                break
-              case 'firerate':
-                setFireRate((r) => Math.max(100, r - 30))
-                toast.success('🔥 射速提升！')
-                break
-              case 'magnet':
-                setMagnetRange((m) => Math.min(200, m + 30))
-                toast.success('🧲 磁吸范围增加！')
-                break
-              case 'bomb':
-                activateBomb()
-                break
-              case 'life':
-                setPlayerMaxHp((hp) => hp + 20)
-                setPlayerHp((hp) => hp + 20)
-                toast.success('❤️ 最大生命值增加！')
-                break
+      // Collision: player vs enemies
+      const p = posRef.current
+      if (!invincible) {
+        enemiesRef.current.forEach(e => {
+          const hitR = e.type === 'boss' ? 50 : 22
+          if (Math.hypot(p.x - e.x, p.y - e.y) < hitR) {
+            if (shield) {
+              setShield(false)
+              spawnExplosion(p.x, p.y, false)
+              setEnemies(prev => prev.filter(x => x.id !== e.id))
+            } else {
+              const dmg = e.type === 'boss' ? 35 : e.type === 'tank' ? 25 : 15
+              setHp(h => {
+                const nh = h - dmg
+                if (nh <= 0) {
+                  setOver(true)
+                  if (score > highScore) {
+                    setHighScore(score)
+                    localStorage.setItem('thunderHighScore', score.toString())
+                  }
+                }
+                return Math.max(0, nh)
+              })
+              setEnemies(prev => prev.filter(x => x.id !== e.id))
+              spawnExplosion(p.x, p.y, true)
+              setInvincible(true)
+              setTimeout(() => setInvincible(false), 800)
             }
-            addParticle(powerUp.x, powerUp.y, '⭐')
+          }
+        })
+      }
+
+      // Collision: enemy bullets vs player
+      if (!invincible) {
+        setBullets(prev => prev.filter(b => {
+          if (!b.isEnemy) return true
+          if (Math.hypot(p.x - b.x, p.y - b.y) < PLAYER_SIZE / 2 + b.size) {
+            if (shield) {
+              setShield(false)
+              spawnExplosion(p.x, p.y, false)
+            } else {
+              setHp(h => {
+                const nh = h - b.damage
+                if (nh <= 0) {
+                  setOver(true)
+                  if (score > highScore) {
+                    setHighScore(score)
+                    localStorage.setItem('thunderHighScore', score.toString())
+                  }
+                }
+                return Math.max(0, nh)
+              })
+              spawnExplosion(p.x, p.y, false)
+              setInvincible(true)
+              setTimeout(() => setInvincible(false), 600)
+            }
             return false
           }
           return true
-        })
-      })
-
-      // 碰撞检测：敌人子弹 vs 玩家
-      if (!invincible) {
-        setBullets((prev) =>
-          prev.filter((bullet) => {
-            if (!bullet.isEnemy) return true
-            const dx = currentPos.x - bullet.x
-            const dy = currentPos.y - bullet.y
-            const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist < PLAYER_SIZE) {
-              if (hasShield) {
-                setHasShield(false)
-                addParticle(currentPos.x, currentPos.y, '🛡️')
-              } else {
-                setPlayerHp((hp) => {
-                  const newHp = hp - bullet.damage
-                  if (newHp <= 0) {
-                    setGameOver(true)
-                    if (score > highScore) {
-                      setHighScore(score)
-                      localStorage.setItem('loveSurvivorHighScore', score.toString())
-                    }
-                  }
-                  return Math.max(0, newHp)
-                })
-                addParticle(currentPos.x, currentPos.y, '💢')
-                // 无敌时间
-                setInvincible(true)
-                setTimeout(() => setInvincible(false), 500)
-              }
-              return false
-            }
-            return true
-          })
-        )
+        }))
       }
 
-      gameLoopRef.current = requestAnimationFrame(gameLoop)
+      // Collect power-ups
+      setPowerUps(prev => prev.filter(pu => {
+        if (Math.hypot(p.x - pu.x, p.y - pu.y) < PLAYER_SIZE) {
+          applyPowerUp(pu.type)
+          return false
+        }
+        return true
+      }))
+
+      rafRef.current = requestAnimationFrame(loop)
     }
+    rafRef.current = requestAnimationFrame(loop)
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [started, over, paused, speed, shield, invincible, fireWeapon, spawnEnemy, maybeSpawnPowerUp, spawnExplosion, spawnSmoke, addCombo, score, highScore, toast]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    gameLoopRef.current = requestAnimationFrame(gameLoop)
-
-    return () => {
-      if (gameLoopRef.current) {
-        cancelAnimationFrame(gameLoopRef.current)
-      }
+  const applyPowerUp = (type: PowerUp['type']) => {
+    switch (type) {
+      case 'vulcan':
+      case 'spread':
+      case 'laser':
+      case 'missile':
+        if (weaponRef.current === type) {
+          setWeaponLv(l => Math.min(5, l + 1))
+          toast.success(`🔼 ${WEAPONS[type].name} 升级`)
+        } else {
+          setWeapon(type); setWeaponLv(1)
+          toast.success(`🔫 切换至 ${WEAPONS[type].name}`)
+        }
+        break
+      case 'speed':    setSpeed(s => Math.min(9, s + 0.8)); toast.success('⚡ 速度+'); break
+      case 'shield':   setShield(true); toast.success('🛡️ 能量护盾'); break
+      case 'heal':     setHp(h => Math.min(maxHp, h + 30)); toast.success('💉 修复'); break
+      case 'bomb':     setBombs(b => Math.min(9, b + 1)); toast.success('💣 +1 核弹'); break
+      case 'life':     setMaxHp(m => m + 25); setHp(h => h + 25); toast.success('❤️ 最大生命+'); break
     }
-  }, [
-    gameStarted,
-    gameOver,
-    isPaused,
-    playerSpeed,
-    fireRate,
-    fireBullets,
-    spawnEnemy,
-    spawnPowerUp,
-    addParticle,
-    addExpOrb,
-    addCombo,
-    gainExp,
-    activateBomb,
-    hasShield,
-    invincible,
-    magnetRange,
-    score,
-    highScore,
-    playerMaxHp,
-    toast,
-  ])
+  }
 
-  // 渲染游戏
+  // ── Canvas Rendering ─────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // 清空画布
-    ctx.fillStyle = '#1a1a2e'
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT)
+    // Dark space gradient background
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
+    bgGrad.addColorStop(0, '#0a0e27')
+    bgGrad.addColorStop(0.5, '#1a1f3a')
+    bgGrad.addColorStop(1, '#0f1628')
+    ctx.fillStyle = bgGrad
+    ctx.fillRect(0, 0, W, H)
 
-    // 绘制星星背景
-    ctx.fillStyle = '#ffffff20'
-    for (let i = 0; i < 50; i++) {
-      const x = (i * 37) % GAME_WIDTH
-      const y = (i * 53 + Date.now() * 0.02) % GAME_HEIGHT
-      ctx.beginPath()
-      ctx.arc(x, y, 1, 0, Math.PI * 2)
-      ctx.fill()
+    // Parallax starfield
+    if (started && !paused && !over) {
+      starsRef.current.forEach(s => {
+        s.y += s.speed
+        if (s.y > H) { s.y = 0; s.x = Math.random() * W }
+      })
     }
-
-    // 绘制道具
-    powerUps.forEach((p) => {
-      const emoji =
-        p.type === 'speed'
-          ? '⚡'
-          : p.type === 'damage'
-          ? '💪'
-          : p.type === 'heal'
-          ? '💚'
-          : p.type === 'shield'
-          ? '🛡️'
-          : p.type === 'multishot'
-          ? '🎯'
-          : p.type === 'firerate'
-          ? '🔥'
-          : p.type === 'magnet'
-          ? '🧲'
-          : p.type === 'bomb'
-          ? '💣'
-          : '❤️'
-      ctx.font = '20px Arial'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      // 道具发光效果
-      ctx.shadowColor = '#ffff00'
-      ctx.shadowBlur = 10
-      ctx.fillText(emoji, p.x, p.y)
-      ctx.shadowBlur = 0
+    starsRef.current.forEach(s => {
+      ctx.fillStyle = s.speed > 2 ? '#ffffff' : s.speed > 1 ? '#a5b4fc' : '#6366f1'
+      ctx.fillRect(s.x, s.y, s.size, s.size + s.speed * 0.5)
     })
 
-    // 绘制经验球
-    expOrbs.forEach((orb) => {
-      ctx.fillStyle = '#4ade80'
-      ctx.beginPath()
-      ctx.arc(orb.x, orb.y, 5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = '#22c55e'
-      ctx.beginPath()
-      ctx.arc(orb.x, orb.y, 3, 0, Math.PI * 2)
-      ctx.fill()
+    // Power-ups (classic capsule design)
+    powerUps.forEach(p => {
+      const colors: Record<string, [string, string, string]> = {
+        vulcan:  ['#fde047', '#eab308', 'V'],
+        spread:  ['#60a5fa', '#2563eb', 'S'],
+        laser:   ['#f87171', '#dc2626', 'L'],
+        missile: ['#fb923c', '#ea580c', 'M'],
+        speed:   ['#a78bfa', '#7c3aed', '⚡'],
+        shield:  ['#22d3ee', '#0891b2', '🛡'],
+        heal:    ['#4ade80', '#16a34a', '+'],
+        bomb:    ['#f43f5e', '#be123c', 'B'],
+        life:    ['#ec4899', '#be185d', '♥'],
+      }
+      const [bg, border, label] = colors[p.type]
+      ctx.fillStyle = bg
+      ctx.strokeStyle = border
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = 'bold 12px monospace'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText(label, p.x, p.y)
     })
 
-    // 绘制子弹
-    bullets.forEach((b) => {
-      ctx.font = '15px Arial'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
+    // Bullets
+    bullets.forEach(b => {
       if (b.isEnemy) {
-        ctx.fillStyle = '#ef4444'
+        ctx.fillStyle = '#fca5a5'
+        ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 8
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill()
+        ctx.shadowBlur = 0
+      } else if (b.weapon === 'laser') {
+        // Bright laser beam with glow
+        ctx.shadowColor = b.color; ctx.shadowBlur = 12
+        ctx.fillStyle = b.color
+        ctx.fillRect(b.x - b.size / 2, b.y - 10, b.size, 20)
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(b.x - 1, b.y - 10, 2, 20)
+        ctx.shadowBlur = 0
+      } else if (b.weapon === 'missile') {
+        ctx.fillStyle = b.color
+        ctx.shadowColor = b.color; ctx.shadowBlur = 8
         ctx.beginPath()
-        ctx.arc(b.x, b.y, 6, 0, Math.PI * 2)
-        ctx.fill()
+        const ang = Math.atan2(b.vy, b.vx)
+        ctx.translate(b.x, b.y); ctx.rotate(ang + Math.PI / 2)
+        ctx.fillRect(-3, -8, 6, 14)
+        ctx.rotate(-ang - Math.PI / 2); ctx.translate(-b.x, -b.y)
+        ctx.shadowBlur = 0
       } else {
-        ctx.fillText('💕', b.x, b.y)
+        // Vulcan / spread - bright tracer
+        ctx.fillStyle = '#ffffff'
+        ctx.shadowColor = b.color; ctx.shadowBlur = 8
+        ctx.fillRect(b.x - b.size / 2, b.y - 4, b.size, 8)
+        ctx.fillStyle = b.color
+        ctx.fillRect(b.x - b.size / 2, b.y - 2, b.size, 4)
+        ctx.shadowBlur = 0
       }
     })
 
-    // 绘制敌人
-    enemies.forEach((e) => {
-      const emoji =
-        e.type === 'boss'
-          ? '👾'
-          : e.type === 'tank'
-          ? '🤖'
-          : e.type === 'fast'
-          ? '👻'
-          : e.type === 'shooter'
-          ? '🔫'
-          : '💀'
-      const size = e.type === 'boss' ? 40 : 25
+    // Enemies
+    enemies.forEach(e => {
+      const emoji = e.type === 'boss' ? '🛸' : e.type === 'tank' ? '🚜' : e.type === 'heli' ? '🚁' : e.type === 'bomber' ? '🛩️' : '⚔️'
+      const size = e.type === 'boss' ? 48 : e.type === 'tank' ? 32 : 28
       ctx.font = `${size}px Arial`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      // Flash red if low HP
+      const lowHp = e.hp / e.maxHp < 0.3
+      if (lowHp && Math.floor(Date.now() / 100) % 2 === 0) {
+        ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10
+      }
       ctx.fillText(emoji, e.x, e.y)
+      ctx.shadowBlur = 0
 
-      // 血条
-      const barWidth = e.type === 'boss' ? 60 : 30
-      const barHeight = 4
-      const hpPercent = e.hp / e.maxHp
-      ctx.fillStyle = '#333'
-      ctx.fillRect(e.x - barWidth / 2, e.y - size / 2 - 8, barWidth, barHeight)
-      ctx.fillStyle = hpPercent > 0.5 ? '#4ade80' : hpPercent > 0.25 ? '#fbbf24' : '#ef4444'
-      ctx.fillRect(e.x - barWidth / 2, e.y - size / 2 - 8, barWidth * hpPercent, barHeight)
+      // HP bar
+      const bw = e.type === 'boss' ? 80 : 34
+      const hpp = e.hp / e.maxHp
+      ctx.fillStyle = '#00000080'
+      ctx.fillRect(e.x - bw / 2 - 1, e.y - size / 2 - 7, bw + 2, 5)
+      ctx.fillStyle = hpp > 0.5 ? '#4ade80' : hpp > 0.25 ? '#fbbf24' : '#ef4444'
+      ctx.fillRect(e.x - bw / 2, e.y - size / 2 - 6, bw * hpp, 3)
     })
 
-    // 绘制玩家
-    const character = PLAYER_CHARACTERS[selectedCharacter]
-    ctx.font = '30px Arial'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    // 无敌闪烁效果
-    if (!invincible || Math.floor(Date.now() / 100) % 2 === 0) {
-      ctx.fillText(character.emoji, playerPos.x, playerPos.y)
-    }
-
-    // 绘制护盾
-    if (hasShield) {
-      ctx.strokeStyle = '#60a5fa'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      ctx.arc(playerPos.x, playerPos.y, PLAYER_SIZE, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-
-    // 绘制磁吸范围（淡淡的圆）
-    if (magnetRange > 50) {
-      ctx.strokeStyle = 'rgba(74, 222, 128, 0.2)'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.arc(playerPos.x, playerPos.y, magnetRange, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-
-    // 绘制粒子
-    particles.forEach((p) => {
-      ctx.globalAlpha = p.life / 30
-      ctx.font = `${20 * (p.scale || 1)}px Arial`
-      ctx.fillText(p.emoji, p.x, p.y)
+    // Particles
+    particles.forEach(p => {
+      const a = p.life / p.maxLife
+      ctx.globalAlpha = a
+      if (p.kind === 'smoke') {
+        ctx.fillStyle = p.color
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1 + (1 - a) * 0.8), 0, Math.PI * 2); ctx.fill()
+      } else {
+        ctx.fillStyle = p.color
+        ctx.shadowColor = p.color; ctx.shadowBlur = 6
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); ctx.fill()
+        ctx.shadowBlur = 0
+      }
     })
     ctx.globalAlpha = 1
 
-    // 绘制连击数
-    if (combo > 0) {
-      ctx.font = 'bold 24px Arial'
-      ctx.fillStyle = combo >= 10 ? '#f59e0b' : '#fff'
-      ctx.textAlign = 'center'
-      ctx.fillText(`${combo} COMBO!`, GAME_WIDTH / 2, 30)
+    // Player
+    if (!invincible || Math.floor(Date.now() / 80) % 2 === 0) {
+      // Jet body
+      ctx.save()
+      ctx.translate(pos.x, pos.y)
+
+      // Engine trail
+      ctx.fillStyle = '#60a5fa'
+      ctx.shadowColor = '#60a5fa'; ctx.shadowBlur = 12
+      ctx.beginPath()
+      ctx.moveTo(-4, 10); ctx.lineTo(0, 22 + Math.random() * 6); ctx.lineTo(4, 10); ctx.closePath()
+      ctx.fill()
+      ctx.shadowBlur = 0
+
+      // Body (metallic gradient fighter shape)
+      ctx.font = '28px Arial'
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      ctx.fillText('✈️', 0, 0)
+
+      ctx.restore()
+
+      // Shield ring
+      if (shield) {
+        ctx.strokeStyle = '#22d3ee'
+        ctx.lineWidth = 2
+        ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 10
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, PLAYER_SIZE, 0, Math.PI * 2); ctx.stroke()
+        ctx.shadowBlur = 0
+      }
     }
-  }, [
-    playerPos,
-    enemies,
-    bullets,
-    powerUps,
-    particles,
-    expOrbs,
-    hasShield,
-    invincible,
-    magnetRange,
-    combo,
-    selectedCharacter,
-  ])
+
+    // HUD: Combo counter
+    if (combo > 2) {
+      ctx.font = `bold ${20 + Math.min(combo, 20)}px "Courier New", monospace`
+      ctx.textAlign = 'center'
+      ctx.fillStyle = combo >= 15 ? '#fde047' : combo >= 8 ? '#fb923c' : '#ffffff'
+      ctx.shadowColor = '#000'; ctx.shadowBlur = 4
+      ctx.fillText(`x${combo}`, W / 2, 40)
+      ctx.shadowBlur = 0
+    }
+  }, [pos, enemies, bullets, powerUps, particles, shield, invincible, combo, started, paused, over])
+
+  const weaponConfig = WEAPONS[weapon]
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8" style={{ background: 'linear-gradient(180deg, #0a0e27 0%, #1a1f3a 100%)' }}>
       <div className="max-w-lg mx-auto">
-        <BackButton />
+        <BackButton className="bg-white/10 text-white hover:bg-white/20 border-white/20" />
 
-        <div className="card text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-2">💕 爱心大作战</h1>
-          <p className="text-gray-600 mb-4">控制角色，自动发射爱心，消灭敌人！</p>
+        <div className="rounded-2xl p-4 md:p-6 shadow-2xl" style={{
+          background: 'linear-gradient(180deg, rgba(26, 31, 58, 0.95) 0%, rgba(15, 22, 40, 0.95) 100%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}>
+          <h1 className="text-3xl md:text-4xl font-black text-center mb-1 tracking-wider"
+            style={{ color: '#fde047', textShadow: '0 0 20px rgba(253, 224, 71, 0.5)', fontFamily: 'monospace' }}
+          >
+            ⚡ 雷霆战机 ⚡
+          </h1>
+          <p className="text-center text-cyan-300/70 text-xs mb-4 tracking-[0.3em] font-mono">THUNDER FIGHTER</p>
 
-          {/* 游戏画布 */}
-          <div className="relative inline-block">
+          {/* Canvas */}
+          <div className="relative inline-block w-full">
             <canvas
-              ref={canvasRef}
-              width={GAME_WIDTH}
-              height={GAME_HEIGHT}
-              className="border-4 border-pink-300 rounded-xl touch-none"
-              style={{ maxWidth: '100%', height: 'auto' }}
-              onTouchMove={handleTouchMove}
-              onTouchStart={handleTouchMove}
+              ref={canvasRef} width={W} height={H}
+              className="w-full rounded-lg touch-none"
+              style={{ border: '2px solid #334155', boxShadow: '0 0 30px rgba(6, 182, 212, 0.2)' }}
+              onTouchMove={handleTouch} onTouchStart={handleTouch}
             />
 
-            {/* 开始界面 */}
-            {!gameStarted && !showCharacterSelect && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-xl">
-                <div className="text-6xl mb-4 animate-bounce">💕</div>
-                <h2 className="text-2xl font-bold text-white mb-2">爱心大作战</h2>
-                <p className="text-gray-300 mb-4">最高分: {highScore}</p>
-                <button
-                  onClick={() => setShowCharacterSelect(true)}
-                  className="btn-primary text-lg px-8 py-3"
-                >
-                  🎮 开始游戏
-                </button>
-                <p className="text-gray-400 text-sm mt-4">⌨️ WASD/方向键移动 | 📱 触摸拖动</p>
-              </div>
-            )}
-
-            {/* 角色选择界面 */}
-            {showCharacterSelect && !gameStarted && (
-              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-xl p-4">
-                <h2 className="text-2xl font-bold text-white mb-4">选择角色</h2>
-                <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
-                  {PLAYER_CHARACTERS.map((char, index) => (
-                    <button
-                      key={index}
-                      onClick={() => startGame(index)}
-                      className="bg-white/10 hover:bg-white/20 rounded-xl p-3 transition-all transform hover:scale-105 border-2 border-transparent hover:border-pink-400"
-                    >
-                      <div className="text-4xl mb-1">{char.emoji}</div>
-                      <div className="text-white font-bold">{char.name}</div>
-                      <div className="text-xs text-green-400">
-                        {char.bonus === 'hp' && `+${char.bonusValue} 生命`}
-                        {char.bonus === 'damage' && `+${char.bonusValue} 攻击`}
-                        {char.bonus === 'speed' && `+${char.bonusValue} 速度`}
-                        {char.bonus === 'heal' && `+${(char.bonusValue * 100).toFixed(0)}% 吸血`}
-                      </div>
-                    </button>
-                  ))}
+            {/* Start overlay */}
+            {!started && (
+              <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm">
+                <div className="text-7xl mb-4 animate-pulse">✈️</div>
+                <h2 className="text-3xl font-black text-yellow-300 mb-2 tracking-widest" style={{ textShadow: '0 0 20px #fde047' }}>雷霆战机</h2>
+                <p className="text-cyan-300 text-sm mb-6">最高分: <span className="font-bold text-yellow-200">{highScore}</span></p>
+                <button onClick={startGame}
+                  className="px-8 py-3 bg-gradient-to-b from-yellow-400 to-orange-500 text-black font-black rounded-lg shadow-lg shadow-yellow-500/40 active:scale-95 transition-all text-lg tracking-wider"
+                >▶ 开始任务</button>
+                <div className="mt-6 text-gray-400 text-xs font-mono space-y-1 text-center">
+                  <p>WASD / 方向键 移动 | B 使用核弹 | ESC 暂停</p>
+                  <p>手机: 触摸拖动</p>
                 </div>
-                <button
-                  onClick={() => setShowCharacterSelect(false)}
-                  className="mt-4 text-gray-400 hover:text-white"
-                >
-                  返回
-                </button>
               </div>
             )}
 
-            {/* 暂停界面 */}
-            {isPaused && gameStarted && !gameOver && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-xl">
-                <div className="text-4xl mb-4">⏸️</div>
-                <h2 className="text-2xl font-bold text-white mb-4">游戏暂停</h2>
-                <button onClick={() => setIsPaused(false)} className="btn-primary">
-                  继续游戏
-                </button>
+            {/* Pause */}
+            {paused && started && !over && (
+              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg">
+                <div className="text-5xl mb-3">⏸</div>
+                <h2 className="text-xl font-bold text-white mb-4">暂停中</h2>
+                <button onClick={() => setPaused(false)} className="px-6 py-2 bg-cyan-500 text-white rounded-lg font-bold">继续</button>
               </div>
             )}
 
-            {/* 游戏结束 */}
-            {gameOver && (
-              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-xl p-4">
-                <div className="text-4xl mb-2">💔</div>
-                <h2 className="text-2xl font-bold text-white mb-2">游戏结束</h2>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-center mb-4">
-                  <p className="text-pink-300">
-                    得分: <span className="font-bold">{score}</span>
-                  </p>
-                  <p className="text-blue-300">
-                    等级: <span className="font-bold">{level}</span>
-                  </p>
-                  <p className="text-purple-300">
-                    波数: <span className="font-bold">{wave}</span>
-                  </p>
-                  <p className="text-green-300">
-                    击杀: <span className="font-bold">{kills}</span>
-                  </p>
-                  <p className="text-yellow-300">
-                    最大连击: <span className="font-bold">{maxCombo}</span>
-                  </p>
-                  <p className="text-gray-300">
-                    时间: <span className="font-bold">{Math.floor(gameTime / 1000)}秒</span>
-                  </p>
+            {/* Game over */}
+            {over && (
+              <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center rounded-lg p-4 backdrop-blur-sm">
+                <div className="text-5xl mb-2">💥</div>
+                <h2 className="text-2xl font-black text-red-400 mb-4 tracking-widest" style={{ textShadow: '0 0 15px #ef4444' }}>MISSION FAILED</h2>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm mb-5 font-mono">
+                  <p className="text-yellow-300">分数: <span className="font-bold">{score}</span></p>
+                  <p className="text-cyan-300">波数: <span className="font-bold">{wave}</span></p>
+                  <p className="text-green-300">击落: <span className="font-bold">{kills}</span></p>
+                  <p className="text-orange-300">连击: <span className="font-bold">{maxCombo}</span></p>
                 </div>
                 {score >= highScore && score > 0 && (
-                  <p className="text-yellow-400 mb-4 animate-pulse">🎉 新纪录！</p>
+                  <p className="text-yellow-300 mb-4 animate-pulse font-bold">🏆 新纪录！</p>
                 )}
-                <button onClick={() => setShowCharacterSelect(true)} className="btn-primary">
-                  再来一次
-                </button>
+                <button onClick={startGame}
+                  className="px-6 py-2 bg-gradient-to-b from-yellow-400 to-orange-500 text-black rounded-lg font-bold active:scale-95"
+                >再次出击</button>
               </div>
             )}
           </div>
 
-          {/* 经验条 */}
-          {gameStarted && !gameOver && (
-            <div className="mt-2">
-              <div className="flex justify-between text-xs text-gray-600 mb-1">
-                <span>Lv.{level}</span>
-                <span>
-                  {exp}/{expToNextLevel} EXP
+          {/* HUD */}
+          {started && !over && (
+            <>
+              <div className="mt-3 grid grid-cols-4 gap-2 text-xs font-mono">
+                <div className="bg-black/40 border border-red-500/30 rounded p-2">
+                  <div className="text-red-400/70 text-[10px]">HP</div>
+                  <div className="font-bold text-red-300">{hp}/{maxHp}</div>
+                  <div className="w-full bg-red-900/50 rounded h-1 mt-1">
+                    <div className="bg-red-500 h-1 rounded" style={{ width: `${(hp / maxHp) * 100}%` }} />
+                  </div>
+                </div>
+                <div className="bg-black/40 border border-yellow-500/30 rounded p-2">
+                  <div className="text-yellow-400/70 text-[10px]">SCORE</div>
+                  <div className="font-bold text-yellow-300">{score}</div>
+                </div>
+                <div className="bg-black/40 border border-cyan-500/30 rounded p-2">
+                  <div className="text-cyan-400/70 text-[10px]">WAVE</div>
+                  <div className="font-bold text-cyan-300">{wave}</div>
+                </div>
+                <div className="bg-black/40 border border-orange-500/30 rounded p-2">
+                  <div className="text-orange-400/70 text-[10px]">BOMBS</div>
+                  <div className="font-bold text-orange-300">×{bombs}</div>
+                </div>
+              </div>
+              <div className="mt-2 flex justify-center items-center gap-2 text-xs font-mono">
+                <span className="bg-white/10 px-3 py-1 rounded border border-white/10">
+                  🔫 <span style={{ color: weaponConfig.color }}>{weaponConfig.name}</span> Lv.{weaponLv}
                 </span>
+                <span className="bg-white/10 px-3 py-1 rounded border border-white/10">⚡ {speed.toFixed(1)}</span>
+                {shield && <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded animate-pulse">🛡️</span>}
+                <button onClick={useBomb} disabled={bombs === 0}
+                  className="bg-orange-500/20 text-orange-300 px-3 py-1 rounded border border-orange-500/30 font-bold disabled:opacity-30 active:scale-95"
+                >💣 核弹 (B)</button>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all"
-                  style={{ width: `${(exp / expToNextLevel) * 100}%` }}
-                />
-              </div>
-            </div>
+            </>
           )}
 
-          {/* 游戏信息 */}
-          {gameStarted && !gameOver && (
-            <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
-              <div className="bg-pink-100 rounded-lg p-2">
-                <div className="text-gray-600">生命</div>
-                <div className="font-bold text-pink-600">
-                  {playerHp}/{playerMaxHp}
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                  <div
-                    className="bg-pink-500 h-2 rounded-full transition-all"
-                    style={{ width: `${(playerHp / playerMaxHp) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="bg-purple-100 rounded-lg p-2">
-                <div className="text-gray-600">得分</div>
-                <div className="font-bold text-purple-600">{score}</div>
-              </div>
-              <div className="bg-blue-100 rounded-lg p-2">
-                <div className="text-gray-600">波数</div>
-                <div className="font-bold text-blue-600">{wave}</div>
-              </div>
-              <div className="bg-green-100 rounded-lg p-2">
-                <div className="text-gray-600">击杀</div>
-                <div className="font-bold text-green-600">{kills}</div>
-              </div>
-            </div>
-          )}
-
-          {/* 状态显示 */}
-          {gameStarted && !gameOver && (
-            <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs">
-              <span className="bg-yellow-100 px-2 py-1 rounded">⚡ {playerSpeed.toFixed(1)}</span>
-              <span className="bg-red-100 px-2 py-1 rounded">💪 {damage}</span>
-              <span className="bg-blue-100 px-2 py-1 rounded">🎯 x{multishot}</span>
-              <span className="bg-orange-100 px-2 py-1 rounded">
-                🔥 {(1000 / fireRate).toFixed(1)}/s
-              </span>
-              <span className="bg-green-100 px-2 py-1 rounded">🧲 {magnetRange}</span>
-              {hasShield && <span className="bg-cyan-100 px-2 py-1 rounded animate-pulse">🛡️</span>}
-              {combo > 0 && (
-                <span className="bg-amber-100 px-2 py-1 rounded font-bold">{combo}x 连击</span>
-              )}
-            </div>
-          )}
-
-          {/* 操作说明 */}
-          <div className="mt-6 text-left bg-gray-50 p-4 rounded-lg text-sm">
-            <h3 className="font-bold mb-2">🎮 游戏说明</h3>
-            <ul className="space-y-1 text-gray-600">
-              <li>⌨️ WASD/方向键移动，ESC暂停</li>
-              <li>📱 手机上触摸拖动控制</li>
-              <li>💕 自动发射爱心攻击敌人</li>
-              <li>🟢 收集绿色经验球升级</li>
-              <li>👾 每5波出现Boss，小心红色子弹！</li>
-            </ul>
-            <h3 className="font-bold mt-3 mb-2">✨ 道具说明</h3>
-            <div className="grid grid-cols-3 gap-1 text-gray-600 text-xs">
-              <span>⚡ 速度</span>
-              <span>💪 攻击</span>
-              <span>💚 回血</span>
-              <span>🛡️ 护盾</span>
-              <span>🎯 多弹</span>
-              <span>🔥 射速</span>
-              <span>🧲 磁吸</span>
-              <span>💣 炸弹</span>
-              <span>❤️ 生命</span>
-            </div>
-            <h3 className="font-bold mt-3 mb-2">👹 敌人类型</h3>
-            <div className="grid grid-cols-2 gap-1 text-gray-600 text-xs">
-              <span>💀 普通 - 标准敌人</span>
-              <span>👻 快速 - 移动很快</span>
-              <span>🤖 坦克 - 血量很厚</span>
-              <span>🔫 射手 - 会发射子弹</span>
-              <span>👾 Boss - 超强敌人</span>
-            </div>
+          {/* Info */}
+          <div className="mt-4 text-xs text-gray-400 space-y-1 font-mono">
+            <p className="text-yellow-300 font-bold">武器：</p>
+            <p>V 机枪 · S 散弹 · L 激光（穿透）· M 导弹（追踪）</p>
+            <p>拾取同类武器升级（Lv 5 封顶）</p>
           </div>
         </div>
       </div>

@@ -35,6 +35,35 @@ export default function Home() {
     loadDailyQuote()
     loadNextAnniversary()
     loadUnreadCounts()
+
+    // Refresh unread badges when user returns from another tab/page
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadUnreadCounts()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('focus', loadUnreadCounts)
+
+    // Realtime subscription for chat and notes
+    const chatChannel = supabase
+      .channel('home_unread_chat')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => {
+        loadUnreadCounts()
+      })
+      .subscribe()
+
+    const notesChannel = supabase
+      .channel('home_unread_notes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'love_notes' }, () => {
+        loadUnreadCounts()
+      })
+      .subscribe()
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('focus', loadUnreadCounts)
+      supabase.removeChannel(chatChannel)
+      supabase.removeChannel(notesChannel)
+    }
   }, [])
 
   const loadStats = async () => {
@@ -610,15 +639,28 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
-          {/* Love Survivor Game */}
+          {/* Thunder Fighter (Raiden-style) */}
           <Link href="/love-survivor">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🚀</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                爱心大作战
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-slate-800 to-indigo-900 text-white">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">✈️</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-yellow-300">
+                雷霆战机
               </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                射击游戏，收集道具变强！
+              <p className="text-sm sm:text-base text-gray-300 text-center">
+                竖版飞行射击，经典雷神感
+              </p>
+            </div>
+          </Link>
+
+          {/* Grass Cutter (Survivor) */}
+          <Link href="/grass-cutter">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-green-700 to-emerald-900 text-white">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🧑‍🌾</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-green-300">
+                割草大作战
+              </h2>
+              <p className="text-sm sm:text-base text-gray-300 text-center">
+                自动攻击，存活 5 分钟获胜
               </p>
             </div>
           </Link>

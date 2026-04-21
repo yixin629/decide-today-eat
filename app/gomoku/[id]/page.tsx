@@ -21,7 +21,7 @@ export default function GomokuGameRoom() {
   useEffect(() => {
     if (authLoading) return
     if (!currentUser || !id) return
-    fetchGame()
+    fetchGame(true)
 
     const channel = supabase
       .channel(`gomoku_game_${id}`)
@@ -33,29 +33,53 @@ export default function GomokuGameRoom() {
           if (gs && gs.players && gs.board) setGameState(gs as GomokuGameState)
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') console.debug('[gomoku] realtime status:', status)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [currentUser, id, authLoading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchGame = async () => {
+  const fetchGame = async (showLoading = false) => {
     try {
       const { data, error } = await supabase
         .from('gomoku_games').select('*').eq('id', id).single()
       if (error) throw error
       if (data?.game_state?.players && data.game_state.board) {
-        setGameState(data.game_state as GomokuGameState)
-      } else {
+        setGameState(prev => {
+          const next = data.game_state as GomokuGameState
+          // Skip update if local state is more advanced (avoid overwriting optimistic moves)
+          if (prev && prev.history.length > next.history.length) return prev
+          return next
+        })
+      } else if (showLoading) {
         setGameState(null)
       }
     } catch (err) {
-      console.error(err)
-      showToast('获取对局数据失败', 'error')
-      router.push('/gomoku')
+      if (showLoading) {
+        console.error(err)
+        showToast('获取对局数据失败', 'error')
+        router.push('/gomoku')
+      }
     } finally {
-      setIsLoading(false)
+      if (showLoading) setIsLoading(false)
     }
   }
+
+  // ── Polling fallback for PvP (in case Realtime isn't configured) ──
+  useEffect(() => {
+    if (!gameState || !currentUser) return
+    if (gameState.gameMode !== 'pvp') return
+    if (gameState.status !== 'playing' && gameState.status !== 'waiting') return
+
+    // Only poll when it's the opponent's turn (not my turn)
+    const myInfo = gameState.players.find(p => p.id === currentUser)
+    const isMyTurn = myInfo && gameState.currentPlayer === myInfo.color
+    if (isMyTurn && gameState.status === 'playing') return
+
+    const interval = setInterval(() => { fetchGame(false) }, 2000)
+    return () => clearInterval(interval)
+  }, [gameState?.currentPlayer, gameState?.status, gameState?.gameMode, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Game Mechanics ──
 
