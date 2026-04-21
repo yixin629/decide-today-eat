@@ -18,28 +18,72 @@ interface SavedOutfit {
   shoesStyle: number
   shoesColor: string
   accessory: number
+  scene: number
   timestamp: number
 }
 
-// 皮肤色调选项
-const SKIN_TONES = ['#FFDFC4', '#F0D5BE', '#D1A684', '#A67C52', '#8D5524', '#614335']
+// ── Realistic skin tones with undertones ──
+const SKIN_TONES = [
+  { base: '#FADBC4', shadow: '#E8B89A', highlight: '#FFE8D6' },
+  { base: '#EECEB2', shadow: '#D4A888', highlight: '#F8DFC7' },
+  { base: '#DEB088', shadow: '#B88D65', highlight: '#EBC6A0' },
+  { base: '#B88560', shadow: '#8E6140', highlight: '#CDA080' },
+  { base: '#8B5A3C', shadow: '#613A24', highlight: '#A07456' },
+  { base: '#5C3A24', shadow: '#3E2416', highlight: '#7A5438' },
+]
 
-// 发型名称
-const HAIR_STYLES_MALE = ['短发', '寸头', '背头', '中分', '偏分', '卷发', '莫西干', '扎发']
-const HAIR_STYLES_FEMALE = ['长发', '短发', '马尾', '双马尾', '丸子头', '波浪卷', '编发', '直发']
+// ── Scenes with photo-realistic CSS gradients ──
+interface Scene {
+  name: string
+  emoji: string
+  sky: string
+  ground: string
+  decorations?: React.ReactNode
+}
 
-// 上装名称
-const TOP_STYLES_MALE = ['T恤', '衬衫', '卫衣', '西装', '夹克', '毛衣', '运动背心', '风衣']
-const TOP_STYLES_FEMALE = ['T恤', '衬衫', '连衣裙', '吊带', '卫衣', '毛衣', '礼服', '运动装']
+const SCENES: Scene[] = [
+  {
+    name: '城市街道', emoji: '🏙️',
+    sky: 'linear-gradient(180deg, #87CEEB 0%, #B4D4E8 60%, #E0E8EF 100%)',
+    ground: 'linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%)',
+  },
+  {
+    name: '温馨咖啡厅', emoji: '☕',
+    sky: 'linear-gradient(180deg, #8B6F47 0%, #A38560 60%, #C4A27E 100%)',
+    ground: 'linear-gradient(180deg, #6b4423 0%, #4a2f18 100%)',
+  },
+  {
+    name: '海边沙滩', emoji: '🌊',
+    sky: 'linear-gradient(180deg, #FFB88C 0%, #FFD7B0 30%, #87CEEB 60%, #4A9BC4 100%)',
+    ground: 'linear-gradient(180deg, #F5DEB3 0%, #E8CC9E 100%)',
+  },
+  {
+    name: '现代办公室', emoji: '🏢',
+    sky: 'linear-gradient(180deg, #D4E0EC 0%, #E8EEF4 50%, #F5F7FA 100%)',
+    ground: 'linear-gradient(180deg, #8a8a8a 0%, #6b6b6b 100%)',
+  },
+  {
+    name: '绿意公园', emoji: '🌳',
+    sky: 'linear-gradient(180deg, #87CEEB 0%, #AEDBF0 40%, #C8E6C9 100%)',
+    ground: 'linear-gradient(180deg, #5a7f3a 0%, #3d5a28 100%)',
+  },
+  {
+    name: '霓虹夜街', emoji: '🌃',
+    sky: 'linear-gradient(180deg, #1a0033 0%, #2d0854 40%, #4a1078 100%)',
+    ground: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%)',
+  },
+]
 
-// 下装名称
-const BOTTOM_STYLES = ['长裤', '短裤', '牛仔裤', '运动裤', '裙子', '西裤', '百褶裙', '工装裤']
+// ── Realistic clothing styles ──
+const HAIR_STYLES_MALE = ['短寸', '油头', '毛寸', '中分', '偏分微卷', '蓬松烫', '莫西干', '辫子']
+const HAIR_STYLES_FEMALE = ['长直发', '齐肩短发', '高马尾', '双麻花辫', '丸子头', '大波浪', '锁骨发', '空气刘海']
 
-// 鞋子名称
-const SHOES_STYLES = ['运动鞋', '皮鞋', '高跟鞋', '靴子', '凉鞋', '拖鞋', '帆布鞋', '马丁靴']
+const TOP_STYLES_MALE = ['纯棉T恤', '牛津衬衫', '连帽卫衣', '皮夹克', 'Polo衫', '西装外套', '针织毛衣', '工装夹克']
+const TOP_STYLES_FEMALE = ['基础T恤', '丝质衬衫', '连衣裙', '针织开衫', '卫衣', '小香风外套', '吊带背心', '风衣']
 
-// 配饰名称
-const ACCESSORIES = ['无', '眼镜', '墨镜', '帽子', '耳环', '项链', '围巾', '领结']
+const BOTTOM_STYLES = ['直筒牛仔', '阔腿裤', '百褶裙', '短裤', '西装裤', '工装裤', '紧身裤', '短裙']
+const SHOES_STYLES = ['白色运动鞋', '皮革短靴', '高跟鞋', '牛津鞋', '凉鞋', '帆布鞋', '乐福鞋', '马丁靴']
+const ACCESSORIES = ['无', '金属眼镜', '墨镜', '棒球帽', '贝雷帽', '手拿包', '斜挎包', '耳机']
 
 export default function DressUpPage() {
   const toast = useToast()
@@ -48,915 +92,971 @@ export default function DressUpPage() {
   const [hairStyle, setHairStyle] = useState(0)
   const [hairColor, setHairColor] = useState('#2C1810')
   const [topStyle, setTopStyle] = useState(0)
-  const [topColor, setTopColor] = useState('#FF69B4')
+  const [topColor, setTopColor] = useState('#F5F5F5')
   const [bottomStyle, setBottomStyle] = useState(0)
-  const [bottomColor, setBottomColor] = useState('#4169E1')
+  const [bottomColor, setBottomColor] = useState('#2E4C7B')
   const [shoesStyle, setShoesStyle] = useState(0)
-  const [shoesColor, setShoesColor] = useState('#8B4513')
+  const [shoesColor, setShoesColor] = useState('#FFFFFF')
   const [accessory, setAccessory] = useState(0)
+  const [scene, setScene] = useState(0)
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([])
   const [outfitName, setOutfitName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory'>(
-    'hair'
-  )
+  const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory' | 'scene'>('scene')
 
   useEffect(() => {
-    const saved = localStorage.getItem('dressUpOutfits_v2')
-    if (saved) {
-      setSavedOutfits(JSON.parse(saved))
-    }
+    const saved = localStorage.getItem('dressUpOutfits_v3')
+    if (saved) setSavedOutfits(JSON.parse(saved))
   }, [])
 
   const saveOutfit = () => {
-    if (!outfitName.trim()) {
-      toast.error('请输入装扮名称')
-      return
-    }
-
+    if (!outfitName.trim()) { toast.error('请输入装扮名称'); return }
     const newOutfit: SavedOutfit = {
       id: Date.now().toString(),
       name: outfitName.trim(),
-      gender,
-      skinTone,
-      hairStyle,
-      hairColor,
-      topStyle,
-      topColor,
-      bottomStyle,
-      bottomColor,
-      shoesStyle,
-      shoesColor,
-      accessory,
+      gender, skinTone, hairStyle, hairColor, topStyle, topColor,
+      bottomStyle, bottomColor, shoesStyle, shoesColor, accessory, scene,
       timestamp: Date.now(),
     }
-
     const updated = [newOutfit, ...savedOutfits]
     setSavedOutfits(updated)
-    localStorage.setItem('dressUpOutfits_v2', JSON.stringify(updated))
-    setOutfitName('')
-    setShowSaveDialog(false)
-    toast.success(`装扮 "${newOutfit.name}" 已保存！`)
+    localStorage.setItem('dressUpOutfits_v3', JSON.stringify(updated))
+    setOutfitName(''); setShowSaveDialog(false)
+    toast.success(`"${newOutfit.name}" 已保存`)
   }
 
-  const loadOutfit = (outfit: SavedOutfit) => {
-    setGender(outfit.gender)
-    setSkinTone(outfit.skinTone)
-    setHairStyle(outfit.hairStyle)
-    setHairColor(outfit.hairColor)
-    setTopStyle(outfit.topStyle)
-    setTopColor(outfit.topColor)
-    setBottomStyle(outfit.bottomStyle)
-    setBottomColor(outfit.bottomColor)
-    setShoesStyle(outfit.shoesStyle)
-    setShoesColor(outfit.shoesColor)
-    setAccessory(outfit.accessory)
-    toast.success(`已加载装扮 "${outfit.name}"`)
+  const loadOutfit = (o: SavedOutfit) => {
+    setGender(o.gender); setSkinTone(o.skinTone); setHairStyle(o.hairStyle); setHairColor(o.hairColor)
+    setTopStyle(o.topStyle); setTopColor(o.topColor); setBottomStyle(o.bottomStyle); setBottomColor(o.bottomColor)
+    setShoesStyle(o.shoesStyle); setShoesColor(o.shoesColor); setAccessory(o.accessory)
+    if (o.scene !== undefined) setScene(o.scene)
+    toast.success(`加载 "${o.name}"`)
   }
 
   const deleteOutfit = (id: string) => {
-    const updated = savedOutfits.filter((o) => o.id !== id)
+    const updated = savedOutfits.filter(o => o.id !== id)
     setSavedOutfits(updated)
-    localStorage.setItem('dressUpOutfits_v2', JSON.stringify(updated))
-    toast.success('装扮已删除')
+    localStorage.setItem('dressUpOutfits_v3', JSON.stringify(updated))
+    toast.success('已删除')
   }
 
   const randomize = () => {
     setSkinTone(Math.floor(Math.random() * SKIN_TONES.length))
     setHairStyle(Math.floor(Math.random() * 8))
-    setHairColor(
-      ['#2C1810', '#8B4513', '#FFD700', '#FF4500', '#000000', '#A0522D'][
-        Math.floor(Math.random() * 6)
-      ]
-    )
+    setHairColor(['#2C1810', '#5a3a1f', '#8B4513', '#D4A574', '#FFD700', '#FF4500', '#000000', '#E3C7A1'][Math.floor(Math.random() * 8)])
     setTopStyle(Math.floor(Math.random() * 8))
-    setTopColor(
-      ['#FF69B4', '#87CEEB', '#98FB98', '#DDA0DD', '#F0E68C', '#FF6347'][
-        Math.floor(Math.random() * 6)
-      ]
-    )
+    setTopColor(['#F5F5F5', '#1a1a1a', '#8B1A1A', '#2E4C7B', '#556B2F', '#E8B4B8', '#D4A574', '#4A4A4A'][Math.floor(Math.random() * 8)])
     setBottomStyle(Math.floor(Math.random() * 8))
-    setBottomColor(
-      ['#4169E1', '#2F4F4F', '#8B4513', '#000080', '#800000', '#556B2F'][
-        Math.floor(Math.random() * 6)
-      ]
-    )
+    setBottomColor(['#2E4C7B', '#1a1a1a', '#3E2816', '#4A4A4A', '#6B4423', '#3d5a28', '#5B4632', '#1E3A5F'][Math.floor(Math.random() * 8)])
     setShoesStyle(Math.floor(Math.random() * 8))
-    setShoesColor(
-      ['#8B4513', '#000000', '#FFFFFF', '#FF69B4', '#4169E1', '#FFD700'][
-        Math.floor(Math.random() * 6)
-      ]
-    )
+    setShoesColor(['#FFFFFF', '#1a1a1a', '#6B4423', '#8B1A1A', '#D4A574', '#4A4A4A', '#8B4513', '#2E4C7B'][Math.floor(Math.random() * 8)])
     setAccessory(Math.floor(Math.random() * 8))
-    toast.success('随机搭配完成！')
+    setScene(Math.floor(Math.random() * SCENES.length))
+    toast.success('🎲 随机搭配')
   }
 
-  const currentSkin = SKIN_TONES[skinTone]
+  const skin = SKIN_TONES[skinTone]
+  const currentScene = SCENES[scene]
 
-  // 渲染头发
-  const renderHair = () => {
+  // ── Rendering ──
+  const renderCharacter = () => {
+    // Realistic proportions: head ~1/7 of total height
+    // Total height: 520 units. Head: 75, neck: 15, torso: 130, legs: 200, feet: 20
+    return (
+      <svg viewBox="0 0 280 540" className="drop-shadow-2xl" style={{ maxHeight: 520 }}>
+        <defs>
+          {/* Skin gradients */}
+          <radialGradient id="skinFace" cx="50%" cy="45%" r="55%">
+            <stop offset="0%" stopColor={skin.highlight} />
+            <stop offset="60%" stopColor={skin.base} />
+            <stop offset="100%" stopColor={skin.shadow} />
+          </radialGradient>
+          <linearGradient id="skinBody" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={skin.shadow} />
+            <stop offset="50%" stopColor={skin.base} />
+            <stop offset="100%" stopColor={skin.highlight} />
+          </linearGradient>
+          <linearGradient id="skinArm" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={skin.shadow} stopOpacity="0.8" />
+            <stop offset="50%" stopColor={skin.base} />
+            <stop offset="100%" stopColor={skin.highlight} />
+          </linearGradient>
+          <linearGradient id="skinLeg" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={skin.shadow} />
+            <stop offset="50%" stopColor={skin.base} />
+            <stop offset="100%" stopColor={skin.highlight} />
+          </linearGradient>
+
+          {/* Hair gradient (depth) */}
+          <linearGradient id="hairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={lighten(hairColor, 25)} />
+            <stop offset="40%" stopColor={hairColor} />
+            <stop offset="100%" stopColor={darken(hairColor, 20)} />
+          </linearGradient>
+
+          {/* Clothing fabric gradients */}
+          <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={lighten(topColor, 15)} />
+            <stop offset="50%" stopColor={topColor} />
+            <stop offset="100%" stopColor={darken(topColor, 15)} />
+          </linearGradient>
+          <linearGradient id="bottomGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={lighten(bottomColor, 12)} />
+            <stop offset="50%" stopColor={bottomColor} />
+            <stop offset="100%" stopColor={darken(bottomColor, 18)} />
+          </linearGradient>
+          <linearGradient id="shoesGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={lighten(shoesColor, 15)} />
+            <stop offset="100%" stopColor={darken(shoesColor, 20)} />
+          </linearGradient>
+
+          {/* Denim texture */}
+          <pattern id="denim" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+            <rect width="4" height="4" fill={bottomColor} />
+            <line x1="0" y1="0" x2="4" y2="4" stroke={darken(bottomColor, 10)} strokeWidth="0.5" opacity="0.4" />
+            <line x1="0" y1="4" x2="4" y2="0" stroke={lighten(bottomColor, 8)} strokeWidth="0.3" opacity="0.3" />
+          </pattern>
+          {/* Knit pattern */}
+          <pattern id="knit" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <rect width="6" height="6" fill={topColor} />
+            <path d="M0 3 L3 0 L6 3 L3 6 Z" stroke={lighten(topColor, 10)} strokeWidth="0.5" fill="none" opacity="0.5" />
+          </pattern>
+
+          {/* Drop shadow */}
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+            <feOffset dx="1" dy="2" result="offsetblur" />
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.4" />
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Ground shadow beneath character */}
+        <ellipse cx="140" cy="510" rx="60" ry="10" fill="#000" opacity="0.25" />
+
+        {/* ── Legs (drawn first, behind body) ── */}
+        {renderLegs()}
+
+        {/* ── Shoes ── */}
+        {renderShoes()}
+
+        {/* ── Bottom (pants/skirt) ── */}
+        {renderBottom()}
+
+        {/* ── Torso + Arms (skin) ── */}
+        {/* Torso shape */}
+        <path d="M 105 195 Q 140 185 175 195 L 180 330 L 100 330 Z"
+              fill="url(#skinBody)" />
+        {/* Neck */}
+        <rect x="128" y="180" width="24" height="18" fill="url(#skinBody)" rx="3" />
+        {/* Neck shadow */}
+        <rect x="128" y="195" width="24" height="4" fill={skin.shadow} opacity="0.5" rx="2" />
+
+        {/* Arms */}
+        <path d="M 105 200 Q 88 210 82 260 L 78 330 Q 78 345 88 345 L 98 345 L 102 280 Q 108 230 110 205 Z"
+              fill="url(#skinArm)" />
+        <path d="M 175 200 Q 192 210 198 260 L 202 330 Q 202 345 192 345 L 182 345 L 178 280 Q 172 230 170 205 Z"
+              fill="url(#skinArm)" />
+
+        {/* ── Top (shirt/jacket) ── */}
+        {renderTop()}
+
+        {/* ── Head ── */}
+        <g>
+          {/* Face shape with jaw */}
+          <path
+            d="M 108 110 Q 105 145 115 170 Q 125 182 140 183 Q 155 182 165 170 Q 175 145 172 110 Q 170 85 140 82 Q 110 85 108 110 Z"
+            fill="url(#skinFace)"
+          />
+          {/* Ears */}
+          <ellipse cx="107" cy="138" rx="6" ry="10" fill={skin.base} />
+          <ellipse cx="173" cy="138" rx="6" ry="10" fill={skin.base} />
+          <ellipse cx="107" cy="138" rx="3" ry="6" fill={skin.shadow} opacity="0.5" />
+          <ellipse cx="173" cy="138" rx="3" ry="6" fill={skin.shadow} opacity="0.5" />
+
+          {/* Neck shadow on face (chin) */}
+          <path d="M 125 170 Q 140 180 155 170 Q 150 185 140 187 Q 130 185 125 170 Z"
+                fill={skin.shadow} opacity="0.25" />
+
+          {/* Eyes (realistic) */}
+          <ellipse cx="125" cy="135" rx="7" ry="4" fill="#fff" />
+          <ellipse cx="155" cy="135" rx="7" ry="4" fill="#fff" />
+          <circle cx="125" cy="135" r="3.5" fill="#3a2817" />
+          <circle cx="155" cy="135" r="3.5" fill="#3a2817" />
+          <circle cx="125.5" cy="134" r="1.2" fill="#fff" />
+          <circle cx="155.5" cy="134" r="1.2" fill="#fff" />
+          {/* Eyelashes top */}
+          <path d="M 118 133 Q 125 130 132 133" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          <path d="M 148 133 Q 155 130 162 133" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          {/* Eyebrows */}
+          <path d="M 117 125 Q 125 122 133 125" stroke={darken(hairColor, 10)} strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 147 125 Q 155 122 163 125" stroke={darken(hairColor, 10)} strokeWidth="2" fill="none" strokeLinecap="round" />
+
+          {/* Nose */}
+          <path d="M 140 140 Q 138 150 137 157 Q 140 160 143 157 Q 142 150 140 140"
+                stroke={skin.shadow} strokeWidth="0.8" fill={skin.shadow} opacity="0.25" />
+          <ellipse cx="138.5" cy="158" rx="1.5" ry="1" fill={skin.shadow} opacity="0.5" />
+          <ellipse cx="141.5" cy="158" rx="1.5" ry="1" fill={skin.shadow} opacity="0.5" />
+
+          {/* Mouth */}
+          {gender === 'female' ? (
+            <>
+              <path d="M 131 168 Q 140 172 149 168 Q 145 175 140 176 Q 135 175 131 168 Z"
+                    fill="#C9546A" opacity="0.85" />
+              <path d="M 131 168 Q 140 165 149 168" stroke="#A83D54" strokeWidth="0.6" fill="none" />
+            </>
+          ) : (
+            <path d="M 132 170 Q 140 173 148 170" stroke="#8B4A3C" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          )}
+
+          {/* Blush (female) */}
+          {gender === 'female' && (
+            <>
+              <ellipse cx="120" cy="155" rx="8" ry="4" fill="#E89A9A" opacity="0.4" />
+              <ellipse cx="160" cy="155" rx="8" ry="4" fill="#E89A9A" opacity="0.4" />
+            </>
+          )}
+        </g>
+
+        {/* ── Hair ── */}
+        {renderHair()}
+
+        {/* ── Accessory on head/face ── */}
+        {renderAccessory()}
+      </svg>
+    )
+  }
+
+  function renderHair() {
+    const c = 'url(#hairGrad)'
     if (gender === 'female') {
       switch (hairStyle) {
-        case 0:
+        case 0: // 长直发
           return (
             <g>
-              <path
-                d="M50 45 Q45 20 100 15 Q155 20 150 45 L150 120 Q150 140 130 150 L70 150 Q50 140 50 120 Z"
-                fill={hairColor}
-              />
-              <path d="M55 50 Q55 30 100 25 Q145 30 145 50" fill={hairColor} />
+              <path d="M 102 90 Q 100 70 140 68 Q 180 70 178 90 L 180 95 Q 175 80 140 78 Q 105 80 100 95 Z" fill={c} />
+              <path d="M 100 90 L 95 220 Q 95 240 100 245 L 115 245 L 118 135 Q 115 110 100 100 Z" fill={c} />
+              <path d="M 180 90 L 185 220 Q 185 240 180 245 L 165 245 L 162 135 Q 165 110 180 100 Z" fill={c} />
+              <path d="M 105 88 Q 118 76 140 80 Q 165 75 175 88" fill={c} />
+              {/* Highlight strands */}
+              <path d="M 105 95 Q 103 160 108 220" stroke={lighten(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
+              <path d="M 170 98 Q 175 160 172 220" stroke={lighten(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
             </g>
           )
-        case 1:
+        case 1: // 齐肩短发
           return (
             <g>
-              <path
-                d="M55 45 Q50 20 100 15 Q150 20 145 45 L145 70 Q145 85 130 90 L70 90 Q55 85 55 70 Z"
-                fill={hairColor}
-              />
+              <path d="M 100 90 Q 100 70 140 68 Q 180 70 180 90 L 182 160 Q 178 175 170 175 L 110 175 Q 102 175 98 160 Z" fill={c} />
+              <path d="M 105 88 Q 125 80 140 90 Q 155 80 175 88" stroke={darken(hairColor, 10)} strokeWidth="1" fill="none" opacity="0.5" />
             </g>
           )
-        case 2:
+        case 2: // 高马尾
           return (
             <g>
-              <path
-                d="M55 45 Q50 20 100 15 Q150 20 145 45 L145 65 Q145 75 130 80 L70 80 Q55 75 55 65 Z"
-                fill={hairColor}
-              />
-              <path
-                d="M130 50 Q160 50 155 100 Q150 140 145 160"
-                stroke={hairColor}
-                strokeWidth="15"
-                fill="none"
-                strokeLinecap="round"
-              />
+              <path d="M 105 88 Q 100 68 140 65 Q 180 68 175 88 L 178 128 Q 175 138 140 138 Q 105 138 102 128 Z" fill={c} />
+              <path d="M 120 68 Q 140 55 160 68 Q 175 65 170 55 Q 140 40 110 55 Q 108 65 120 68 Z" fill={c} />
+              <path d="M 155 75 Q 180 85 195 130 Q 200 180 190 210 Q 185 215 180 210 Q 175 180 175 130 Q 170 85 155 75 Z" fill={c} />
             </g>
           )
-        case 3:
+        case 3: // 双麻花辫
           return (
             <g>
-              <path
-                d="M55 45 Q50 20 100 15 Q150 20 145 45 L145 65 Q145 75 130 80 L70 80 Q55 75 55 65 Z"
-                fill={hairColor}
-              />
-              <path
-                d="M60 60 Q30 70 35 130"
-                stroke={hairColor}
-                strokeWidth="12"
-                fill="none"
-                strokeLinecap="round"
-              />
-              <path
-                d="M140 60 Q170 70 165 130"
-                stroke={hairColor}
-                strokeWidth="12"
-                fill="none"
-                strokeLinecap="round"
-              />
+              <path d="M 102 90 Q 100 70 140 68 Q 180 70 178 90 L 180 130 Q 175 140 140 140 Q 105 140 100 130 Z" fill={c} />
+              <path d="M 90 125 Q 80 160 82 210 Q 85 225 92 225 Q 100 225 98 210 Q 95 165 105 128 Z" fill={c} />
+              <path d="M 190 125 Q 200 160 198 210 Q 195 225 188 225 Q 180 225 182 210 Q 185 165 175 128 Z" fill={c} />
+              {/* Braid detail */}
+              <ellipse cx="87" cy="160" rx="6" ry="4" fill={darken(hairColor, 15)} opacity="0.4" />
+              <ellipse cx="87" cy="185" rx="6" ry="4" fill={darken(hairColor, 15)} opacity="0.4" />
+              <ellipse cx="193" cy="160" rx="6" ry="4" fill={darken(hairColor, 15)} opacity="0.4" />
+              <ellipse cx="193" cy="185" rx="6" ry="4" fill={darken(hairColor, 15)} opacity="0.4" />
             </g>
           )
-        case 4:
+        case 4: // 丸子头
           return (
             <g>
-              <path
-                d="M55 50 Q50 25 100 20 Q150 25 145 50 L145 70 Q145 80 130 85 L70 85 Q55 80 55 70 Z"
-                fill={hairColor}
-              />
-              <circle cx="100" cy="15" r="18" fill={hairColor} />
+              <path d="M 105 88 Q 100 68 140 65 Q 180 68 175 88 L 177 130 Q 173 140 140 140 Q 107 140 103 130 Z" fill={c} />
+              <ellipse cx="140" cy="55" rx="25" ry="22" fill={c} />
+              <ellipse cx="130" cy="50" rx="8" ry="6" fill={lighten(hairColor, 15)} opacity="0.6" />
             </g>
           )
-        case 5:
+        case 5: // 大波浪
           return (
             <g>
-              <path
-                d="M50 45 Q45 20 100 15 Q155 20 150 45 L150 130 Q155 145 145 155 Q135 145 130 160 Q120 145 110 160 Q100 145 90 160 Q80 145 70 160 Q60 145 55 155 Q45 145 50 130 Z"
-                fill={hairColor}
-              />
+              <path d="M 100 90 Q 98 65 140 60 Q 182 65 180 90 L 184 190 Q 183 220 175 240 Q 168 245 160 235 Q 165 200 160 170 L 160 260 Q 155 280 148 280 Q 145 265 142 220 L 140 280 Q 138 290 132 288 Q 127 270 124 220 L 120 260 Q 114 280 105 270 Q 110 220 104 175 Q 102 205 100 235 Q 92 245 88 235 L 90 190 Q 92 150 96 100 Z" fill={c} />
             </g>
           )
-        case 6: // 编发
+        case 6: // 锁骨发
           return (
             <g>
-              <path
-                d="M50 45 Q30 50 35 150 Q40 160 50 150 Q55 140 50 45 Z" // Left braid
-                fill={hairColor}
-              />
-              <path
-                d="M150 45 Q170 50 165 150 Q160 160 150 150 Q145 140 150 45 Z" // Right braid
-                fill={hairColor}
-              />
-              <path
-                d="M50 45 Q45 20 100 15 Q155 20 150 45 L150 70 Q100 60 50 70 Z" // Top
-                fill={hairColor}
-              />
+              <path d="M 102 90 Q 100 68 140 65 Q 180 68 178 90 L 180 200 Q 175 220 160 220 L 120 220 Q 105 220 100 200 Z" fill={c} />
+              <path d="M 108 92 Q 140 80 172 92 L 170 180" stroke={lighten(hairColor, 15)} strokeWidth="1" fill="none" opacity="0.6" />
             </g>
           )
-        case 7: // 直发
+        case 7: // 空气刘海
           return (
             <g>
-              <path
-                d="M50 45 Q45 20 100 15 Q155 20 150 45 L155 160 L135 160 L135 80 L65 80 L65 160 L45 160 L50 45 Z"
-                fill={hairColor}
-              />
-              <path d="M50 50 Q50 20 100 15 Q150 20 150 50" fill={hairColor} />
+              <path d="M 100 90 Q 98 65 140 60 Q 182 65 180 90 L 182 210 Q 180 230 168 235 L 112 235 Q 100 230 98 210 Z" fill={c} />
+              <path d="M 108 100 Q 140 112 172 100 Q 168 120 140 122 Q 112 120 108 100 Z" fill={c} />
+              <path d="M 108 100 Q 140 115 172 100" stroke={lighten(hairColor, 15)} strokeWidth="0.8" fill="none" opacity="0.6" />
             </g>
           )
-        default:
-          return null
       }
     } else {
       switch (hairStyle) {
-        case 0:
+        case 0: // 短寸
+          return <path d="M 108 92 Q 105 75 140 72 Q 175 75 172 92 L 174 115 Q 170 120 140 122 Q 110 120 106 115 Z" fill={c} />
+        case 1: // 油头
           return (
             <g>
-              <path
-                d="M60 50 Q55 25 100 20 Q145 25 140 50 L140 70 Q140 80 125 82 L75 82 Q60 80 60 70 Z"
-                fill={hairColor}
-              />
+              <path d="M 108 92 Q 105 70 140 68 Q 175 70 172 92 L 174 115 Q 170 120 140 118 Q 110 120 106 115 Z" fill={c} />
+              <path d="M 115 78 Q 140 66 165 78" stroke={lighten(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.7" />
+              <path d="M 125 88 Q 140 82 155 88" stroke={lighten(hairColor, 20)} strokeWidth="1" fill="none" opacity="0.6" />
             </g>
           )
-        case 1:
+        case 2: // 毛寸
           return (
             <g>
-              <path
-                d="M65 55 Q60 35 100 30 Q140 35 135 55 L135 68 Q135 75 120 77 L80 77 Q65 75 65 68 Z"
-                fill={hairColor}
-              />
+              <path d="M 107 90 Q 104 70 140 68 Q 176 70 173 90 L 175 116 Q 171 120 140 120 Q 109 120 105 116 Z" fill={c} />
+              {/* Spiky texture */}
+              <path d="M 115 75 L 118 82 M 125 72 L 127 80 M 135 70 L 137 78 M 145 70 L 147 78 M 155 72 L 157 80 M 165 75 L 167 82" stroke={darken(hairColor, 15)} strokeWidth="1" />
             </g>
           )
-        case 2:
+        case 3: // 中分
           return (
             <g>
-              <path
-                d="M60 55 Q55 30 100 25 Q145 30 140 55 L140 65 Q140 72 125 75 L75 75 Q60 72 60 65 Z"
-                fill={hairColor}
-              />
+              <path d="M 105 90 Q 102 70 140 65 Q 178 70 175 90 L 177 125 Q 172 130 140 130 Q 108 130 103 125 Z" fill={c} />
+              <path d="M 140 70 L 140 100" stroke={skin.shadow} strokeWidth="1.5" />
             </g>
           )
-        case 3:
+        case 4: // 偏分微卷
           return (
             <g>
-              <path
-                d="M55 55 Q50 30 100 25 Q150 30 145 55 L145 75 Q145 85 125 88 L75 88 Q55 85 55 75 Z"
-                fill={hairColor}
-              />
-              <line x1="100" y1="25" x2="100" y2="55" stroke={currentSkin} strokeWidth="2" />
+              <path d="M 104 90 Q 102 68 140 65 Q 178 68 176 90 L 178 130 Q 172 135 140 132 Q 108 135 102 130 Z" fill={c} />
+              <path d="M 115 78 Q 135 70 155 85 Q 170 75 172 95" stroke={skin.shadow} strokeWidth="1.2" fill="none" opacity="0.4" />
             </g>
           )
-        case 4:
+        case 5: // 蓬松烫
           return (
             <g>
-              <path
-                d="M55 55 Q50 30 100 25 Q150 30 145 55 L145 75 Q145 85 125 88 L75 88 Q55 85 55 75 Z"
-                fill={hairColor}
-              />
-              <path d="M70 30 Q85 28 100 55" stroke={currentSkin} strokeWidth="2" fill="none" />
-            </g>
-          )
-        case 5:
-          return (
-            <g>
-              <path
-                d="M55 50 Q50 25 100 20 Q150 25 145 50 L145 80 Q150 85 145 90 Q140 85 138 92 Q130 85 128 92 Q120 88 100 90 Q80 88 72 92 Q70 85 62 92 Q60 85 55 90 Q50 85 55 80 Z"
-                fill={hairColor}
-              />
+              <path d="M 100 92 Q 95 60 140 58 Q 185 60 180 92 L 185 135 Q 180 140 140 138 Q 100 140 95 135 Z" fill={c} />
+              <circle cx="115" cy="75" r="8" fill={c} />
+              <circle cx="140" cy="62" r="9" fill={c} />
+              <circle cx="165" cy="75" r="8" fill={c} />
+              <circle cx="105" cy="95" r="7" fill={c} />
+              <circle cx="175" cy="95" r="7" fill={c} />
             </g>
           )
         case 6: // 莫西干
           return (
             <g>
-              <path d="M80 50 Q80 10 100 5 Q120 10 120 50 L120 70 L80 70 Z" fill={hairColor} />
-              <path d="M70 70 L70 80 Q100 85 130 80 L130 70" fill={hairColor} opacity="0.5" />
+              <path d="M 108 115 Q 105 105 115 105 L 165 105 Q 175 105 172 115 L 172 122 Q 140 120 108 122 Z" fill={darken(hairColor, 20)} />
+              <path d="M 128 108 Q 125 60 140 55 Q 155 60 152 108 Z" fill={c} />
             </g>
           )
-        case 7: // 扎发
+        case 7: // 辫子
           return (
             <g>
-              <circle cx="100" cy="20" r="15" fill={hairColor} />
-              <path
-                d="M60 50 Q55 25 100 20 Q145 25 140 50 L140 70 Q140 80 125 82 L75 82 Q60 80 60 70 Z"
-                fill={hairColor}
-              />
+              <path d="M 108 90 Q 105 72 140 70 Q 175 72 172 90 L 174 118 Q 170 122 140 122 Q 110 122 106 118 Z" fill={c} />
+              <ellipse cx="120" cy="85" rx="4" ry="3" fill={darken(hairColor, 15)} />
+              <ellipse cx="140" cy="82" rx="4" ry="3" fill={darken(hairColor, 15)} />
+              <ellipse cx="160" cy="85" rx="4" ry="3" fill={darken(hairColor, 15)} />
+              <ellipse cx="130" cy="100" rx="4" ry="3" fill={darken(hairColor, 15)} />
+              <ellipse cx="150" cy="100" rx="4" ry="3" fill={darken(hairColor, 15)} />
             </g>
           )
-        default:
-          return null
       }
     }
+    return null
   }
 
-  // 渲染上装
-  const renderTop = () => {
-    if (gender === 'female') {
+  function renderTop() {
+    const isFemale = gender === 'female'
+    const styles = isFemale ? TOP_STYLES_FEMALE : TOP_STYLES_MALE
+    const fill = 'url(#topGrad)'
+    const shadow = darken(topColor, 20)
+
+    if (isFemale) {
       switch (topStyle) {
-        case 0:
+        case 0: // 基础T恤
           return (
-            <g>
-              <path
-                d="M60 130 L55 150 L55 220 L145 220 L145 150 L140 130 Q120 125 100 130 Q80 125 60 130 Z"
-                fill={topColor}
-              />
-              <path d="M55 150 L35 160 L40 180 L55 175" fill={topColor} />
-              <path d="M145 150 L165 160 L160 180 L145 175" fill={topColor} />
+            <g filter="url(#softShadow)">
+              <path d="M 100 200 L 82 230 L 85 270 L 100 268 L 100 340 L 180 340 L 180 268 L 195 270 L 198 230 L 180 200 Q 170 195 150 200 L 145 210 L 135 210 L 130 200 Q 110 195 100 200 Z" fill={fill} />
+              <path d="M 115 200 Q 140 210 165 200" stroke={shadow} strokeWidth="1" fill="none" opacity="0.4" />
+              {/* Fabric fold */}
+              <path d="M 140 210 L 138 300" stroke={shadow} strokeWidth="0.5" opacity="0.3" />
             </g>
           )
-        case 1:
+        case 1: // 丝质衬衫
           return (
-            <g>
-              <path
-                d="M60 130 L55 150 L55 220 L145 220 L145 150 L140 130 Q120 125 100 130 Q80 125 60 130 Z"
-                fill={topColor}
-              />
-              <path d="M55 150 L35 160 L40 190 L55 185" fill={topColor} />
-              <path d="M145 150 L165 160 L160 190 L145 185" fill={topColor} />
-              <line
-                x1="100"
-                y1="130"
-                x2="100"
-                y2="220"
-                stroke="#FFFFFF"
-                strokeWidth="2"
-                opacity="0.5"
-              />
-              <circle cx="100" cy="145" r="3" fill="#FFFFFF" />
-              <circle cx="100" cy="165" r="3" fill="#FFFFFF" />
-              <circle cx="100" cy="185" r="3" fill="#FFFFFF" />
+            <g filter="url(#softShadow)">
+              <path d="M 100 205 L 85 235 L 88 275 L 100 273 L 100 345 L 180 345 L 180 273 L 192 275 L 195 235 L 180 205 Q 160 198 140 203 Q 120 198 100 205 Z" fill={fill} />
+              {/* Collar */}
+              <path d="M 130 203 L 140 222 L 150 203 Q 145 210 140 210 Q 135 210 130 203 Z" fill={lighten(topColor, 8)} />
+              {/* Buttons */}
+              <circle cx="140" cy="235" r="1.8" fill={lighten(topColor, 20)} />
+              <circle cx="140" cy="255" r="1.8" fill={lighten(topColor, 20)} />
+              <circle cx="140" cy="275" r="1.8" fill={lighten(topColor, 20)} />
+              <circle cx="140" cy="295" r="1.8" fill={lighten(topColor, 20)} />
+              {/* Silk highlight */}
+              <path d="M 120 220 Q 140 260 120 310" stroke={lighten(topColor, 25)} strokeWidth="2" fill="none" opacity="0.4" />
             </g>
           )
-        case 2:
+        case 2: // 连衣裙
           return (
-            <g>
-              <path
-                d="M65 130 L60 150 L50 280 L150 280 L140 150 L135 130 Q120 125 100 130 Q80 125 65 130 Z"
-                fill={topColor}
-              />
-              <path d="M60 150 L40 160 L45 180 L60 175" fill={topColor} />
-              <path d="M140 150 L160 160 L155 180 L140 175" fill={topColor} />
+            <g filter="url(#softShadow)">
+              <path d="M 100 200 L 80 240 Q 75 360 65 440 L 215 440 Q 205 360 200 240 L 180 200 Q 160 195 140 202 Q 120 195 100 200 Z" fill={fill} />
+              {/* Waist */}
+              <path d="M 85 270 Q 140 285 195 270" stroke={shadow} strokeWidth="1" fill="none" opacity="0.5" />
+              {/* Neckline */}
+              <path d="M 120 205 Q 140 220 160 205" fill={shadow} opacity="0.3" />
+              {/* Skirt flow */}
+              <path d="M 85 330 Q 140 350 195 330" stroke={shadow} strokeWidth="0.8" fill="none" opacity="0.4" />
             </g>
           )
-        case 3:
+        case 3: // 针织开衫
           return (
-            <g>
-              <path
-                d="M70 130 L65 150 L65 220 L135 220 L135 150 L130 130 Q115 125 100 130 Q85 125 70 130 Z"
-                fill={topColor}
-              />
-              <line x1="80" y1="130" x2="85" y2="110" stroke={topColor} strokeWidth="8" />
-              <line x1="120" y1="130" x2="115" y2="110" stroke={topColor} strokeWidth="8" />
+            <g filter="url(#softShadow)">
+              <path d="M 100 200 L 80 235 L 84 278 L 100 275 L 100 350 L 180 350 L 180 275 L 196 278 L 200 235 L 180 200 Q 160 195 140 202 Q 120 195 100 200 Z" fill="url(#knit)" />
+              {/* Cardigan opening */}
+              <line x1="140" y1="202" x2="140" y2="350" stroke={darken(topColor, 25)} strokeWidth="1.5" />
+              <circle cx="135" cy="225" r="2" fill={darken(topColor, 30)} />
+              <circle cx="135" cy="250" r="2" fill={darken(topColor, 30)} />
+              <circle cx="135" cy="275" r="2" fill={darken(topColor, 30)} />
+              <circle cx="135" cy="300" r="2" fill={darken(topColor, 30)} />
             </g>
           )
-        case 4:
+        case 4: // 卫衣
           return (
-            <g>
-              <path
-                d="M55 130 L50 150 L50 230 L150 230 L150 150 L145 130 Q120 125 100 130 Q80 125 55 130 Z"
-                fill={topColor}
-              />
-              <path d="M50 150 L25 165 L30 200 L50 195" fill={topColor} />
-              <path d="M150 150 L175 165 L170 200 L150 195" fill={topColor} />
-              <path d="M80 130 Q100 150 120 130" fill="none" stroke={topColor} strokeWidth="15" />
-              <ellipse
-                cx="100"
-                cy="190"
-                rx="20"
-                ry="15"
-                fill={topColor}
-                stroke="#FFFFFF"
-                strokeWidth="1"
-                opacity="0.5"
-              />
+            <g filter="url(#softShadow)">
+              <path d="M 92 205 L 75 240 L 78 285 L 95 283 L 92 350 L 188 350 L 185 283 L 202 285 L 205 240 L 188 205 Q 165 198 140 205 Q 115 198 92 205 Z" fill={fill} />
+              {/* Hood */}
+              <path d="M 110 170 Q 140 160 170 170 L 180 205 Q 140 198 100 205 Z" fill={darken(topColor, 8)} />
+              {/* Hood strings */}
+              <line x1="130" y1="205" x2="130" y2="240" stroke={darken(topColor, 20)} strokeWidth="1.2" />
+              <line x1="150" y1="205" x2="150" y2="240" stroke={darken(topColor, 20)} strokeWidth="1.2" />
+              <circle cx="130" cy="242" r="2" fill={darken(topColor, 30)} />
+              <circle cx="150" cy="242" r="2" fill={darken(topColor, 30)} />
+              {/* Front pocket */}
+              <path d="M 105 290 L 105 330 L 175 330 L 175 290 Z" fill="none" stroke={darken(topColor, 15)} strokeWidth="1" opacity="0.6" />
             </g>
           )
-        case 5:
+        case 5: // 小香风外套
           return (
-            <g>
-              <path
-                d="M55 130 L50 150 L50 225 L150 225 L150 150 L145 130 Q120 125 100 130 Q80 125 55 130 Z"
-                fill={topColor}
-              />
-              <path d="M50 150 L25 165 L30 200 L50 195" fill={topColor} />
-              <path d="M150 150 L175 165 L170 200 L150 195" fill={topColor} />
-              <path
-                d="M60 160 L140 160 M60 175 L140 175 M60 190 L140 190 M60 205 L140 205"
-                stroke="#FFFFFF"
-                strokeWidth="2"
-                opacity="0.3"
-              />
+            <g filter="url(#softShadow)">
+              <path d="M 95 200 L 78 232 L 82 280 L 98 278 L 95 345 L 185 345 L 182 278 L 198 280 L 202 232 L 185 200 Q 162 195 140 203 Q 118 195 95 200 Z" fill={fill} />
+              {/* Tweed texture */}
+              <circle cx="110" cy="240" r="1" fill={lighten(topColor, 20)} opacity="0.6" />
+              <circle cx="125" cy="260" r="1" fill={darken(topColor, 15)} opacity="0.6" />
+              <circle cx="155" cy="245" r="1" fill={lighten(topColor, 20)} opacity="0.6" />
+              <circle cx="170" cy="270" r="1" fill={darken(topColor, 15)} opacity="0.6" />
+              <circle cx="115" cy="290" r="1" fill={lighten(topColor, 20)} opacity="0.6" />
+              <circle cx="165" cy="295" r="1" fill={darken(topColor, 15)} opacity="0.6" />
+              <circle cx="140" cy="310" r="1" fill={lighten(topColor, 20)} opacity="0.6" />
+              {/* Gold buttons */}
+              <circle cx="120" cy="250" r="2.5" fill="#D4A574" stroke="#8B6F37" strokeWidth="0.5" />
+              <circle cx="160" cy="250" r="2.5" fill="#D4A574" stroke="#8B6F37" strokeWidth="0.5" />
+              <circle cx="120" cy="300" r="2.5" fill="#D4A574" stroke="#8B6F37" strokeWidth="0.5" />
+              <circle cx="160" cy="300" r="2.5" fill="#D4A574" stroke="#8B6F37" strokeWidth="0.5" />
             </g>
           )
-        case 6: // 礼服
+        case 6: // 吊带背心
           return (
-            <g>
-              <path
-                d="M55 140 L45 160 L20 280 L180 280 L155 160 L145 140 Q100 150 55 140 Z"
-                fill={topColor}
-              />
-              <path d="M55 140 L55 130 Q100 120 145 130 L145 140" fill={topColor} opacity="0.7" />
-              <line x1="55" y1="130" x2="55" y2="110" stroke={topColor} strokeWidth="2" />
-              <line x1="145" y1="130" x2="145" y2="110" stroke={topColor} strokeWidth="2" />
-            </g>
-          )
-        case 7: // 运动装
-          return (
-            <g>
-              <path
-                d="M65 130 L60 150 L60 210 L140 210 L140 150 L135 130 Q120 125 100 130 Q80 125 65 130 Z"
-                fill={topColor}
-              />
-              <path d="M60 150 L40 160 L45 180 L60 175" fill={topColor} />
-              <path d="M140 150 L160 160 L155 180 L140 175" fill={topColor} />
-              <line x1="75" y1="130" x2="75" y2="210" stroke="#FFF" strokeWidth="2" opacity="0.5" />
-              <line
-                x1="125"
-                y1="130"
-                x2="125"
-                y2="210"
-                stroke="#FFF"
-                strokeWidth="2"
-                opacity="0.5"
-              />
-            </g>
-          )
-        default:
-          return null
-      }
-    } else {
-      switch (topStyle) {
-        case 0:
-          return (
-            <g>
-              <path
-                d="M55 130 L50 150 L50 230 L150 230 L150 150 L145 130 Q120 120 100 125 Q80 120 55 130 Z"
-                fill={topColor}
-              />
-              <path d="M50 150 L25 165 L30 195 L50 190" fill={topColor} />
-              <path d="M150 150 L175 165 L170 195 L150 190" fill={topColor} />
-            </g>
-          )
-        case 1:
-          return (
-            <g>
-              <path
-                d="M55 130 L50 150 L50 230 L150 230 L150 150 L145 130 Q120 120 100 125 Q80 120 55 130 Z"
-                fill={topColor}
-              />
-              <path d="M50 150 L25 165 L30 205 L50 200" fill={topColor} />
-              <path d="M150 150 L175 165 L170 205 L150 200" fill={topColor} />
-              <line
-                x1="100"
-                y1="125"
-                x2="100"
-                y2="230"
-                stroke="#FFFFFF"
-                strokeWidth="2"
-                opacity="0.5"
-              />
-              <path
-                d="M85 125 L100 145 L115 125"
-                fill={topColor}
-                stroke="#FFFFFF"
-                strokeWidth="1"
-              />
-            </g>
-          )
-        case 2:
-          return (
-            <g>
-              <path
-                d="M50 130 L45 150 L45 235 L155 235 L155 150 L150 130 Q125 115 100 120 Q75 115 50 130 Z"
-                fill={topColor}
-              />
-              <path d="M45 150 L20 170 L25 210 L45 205" fill={topColor} />
-              <path d="M155 150 L180 170 L175 210 L155 205" fill={topColor} />
-              <path d="M75 130 Q100 155 125 130" fill="none" stroke={topColor} strokeWidth="18" />
-              <ellipse
-                cx="100"
-                cy="195"
-                rx="22"
-                ry="18"
-                fill={topColor}
-                stroke="#FFFFFF"
-                strokeWidth="1"
-                opacity="0.5"
-              />
-            </g>
-          )
-        case 3:
-          return (
-            <g>
-              <path
-                d="M50 130 L45 150 L45 235 L155 235 L155 150 L150 130 Q125 115 100 120 Q75 115 50 130 Z"
-                fill={topColor}
-              />
-              <path d="M45 150 L20 170 L25 210 L45 205" fill={topColor} />
-              <path d="M155 150 L180 170 L175 210 L155 205" fill={topColor} />
-              <path d="M100 120 L85 235 M100 120 L115 235" stroke="#333" strokeWidth="2" />
-              <path d="M85 125 L100 145 L115 125" fill="#FFFFFF" />
-              <rect x="95" y="148" width="10" height="5" fill="#333" />
-            </g>
-          )
-        case 4:
-          return (
-            <g>
-              <path
-                d="M50 130 L45 150 L45 230 L155 230 L155 150 L150 130 Q125 115 100 120 Q75 115 50 130 Z"
-                fill={topColor}
-              />
-              <path d="M45 150 L20 170 L25 205 L45 200" fill={topColor} />
-              <path d="M155 150 L180 170 L175 205 L155 200" fill={topColor} />
-              <line x1="100" y1="120" x2="100" y2="230" stroke="#FFD700" strokeWidth="3" />
-              <rect
-                x="60"
-                y="180"
-                width="25"
-                height="25"
-                rx="3"
-                fill={topColor}
-                stroke="#333"
-                strokeWidth="1"
-              />
-              <rect
-                x="115"
-                y="180"
-                width="25"
-                height="25"
-                rx="3"
-                fill={topColor}
-                stroke="#333"
-                strokeWidth="1"
-              />
-            </g>
-          )
-        case 5:
-          return (
-            <g>
-              <path
-                d="M50 130 L45 150 L45 230 L155 230 L155 150 L150 130 Q125 115 100 120 Q75 115 50 130 Z"
-                fill={topColor}
-              />
-              <path d="M45 150 L20 170 L25 205 L45 200" fill={topColor} />
-              <path d="M155 150 L180 170 L175 205 L155 200" fill={topColor} />
-              <path
-                d="M55 165 L145 165 M55 185 L145 185 M55 205 L145 205"
-                stroke="#FFFFFF"
-                strokeWidth="2"
-                opacity="0.3"
-              />
-            </g>
-          )
-        case 6: // 运动背心
-          return (
-            <g>
-              <path
-                d="M65 130 L60 150 L60 220 L140 220 L140 150 L135 130 Q120 125 100 130 Q80 125 65 130 Z"
-                fill={topColor}
-              />
-              <path d="M65 130 Q80 160 100 160 Q120 160 135 130" fill="#FFF" opacity="0.2" />
+            <g filter="url(#softShadow)">
+              <path d="M 105 215 L 100 340 L 180 340 L 175 215 Q 155 210 140 215 Q 125 210 105 215 Z" fill={fill} />
+              {/* Straps */}
+              <path d="M 112 215 Q 115 195 125 190" stroke={topColor} strokeWidth="4" fill="none" />
+              <path d="M 168 215 Q 165 195 155 190" stroke={topColor} strokeWidth="4" fill="none" />
+              {/* Cleavage line */}
+              <path d="M 125 215 Q 140 225 155 215" stroke={shadow} strokeWidth="0.8" fill="none" opacity="0.5" />
             </g>
           )
         case 7: // 风衣
           return (
-            <g>
-              <path
-                d="M50 130 L40 150 L35 250 L165 250 L160 150 L150 130 Q125 120 100 125 Q75 120 50 130 Z"
-                fill={topColor}
-              />
-              <path d="M40 150 L20 165 L25 205 L45 200" fill={topColor} />
-              <path d="M160 150 L180 165 L175 205 L155 200" fill={topColor} />
-              <line
-                x1="100"
-                y1="125"
-                x2="100"
-                y2="250"
-                stroke="#000"
-                strokeWidth="1"
-                opacity="0.3"
-              />
-              <path d="M85 125 L100 150 L115 125" fill={topColor} stroke="#000" strokeWidth="0.5" />
+            <g filter="url(#softShadow)">
+              <path d="M 92 200 L 72 240 L 68 380 L 212 380 L 208 240 L 188 200 Q 162 195 140 202 Q 118 195 92 200 Z" fill={fill} />
+              {/* Lapel */}
+              <path d="M 120 205 L 140 230 L 160 205 L 158 250 L 142 270 L 122 250 Z" fill={darken(topColor, 12)} />
+              {/* Belt */}
+              <rect x="70" y="300" width="140" height="8" fill={darken(topColor, 25)} />
+              <rect x="133" y="298" width="14" height="12" fill={darken(topColor, 35)} />
+              <circle cx="140" cy="304" r="2" fill="#D4A574" />
+              {/* Buttons */}
+              <circle cx="126" cy="255" r="2" fill={darken(topColor, 30)} />
+              <circle cx="126" cy="280" r="2" fill={darken(topColor, 30)} />
+              <circle cx="154" cy="255" r="2" fill={darken(topColor, 30)} />
+              <circle cx="154" cy="280" r="2" fill={darken(topColor, 30)} />
             </g>
           )
-        default:
-          return null
+      }
+    } else {
+      // Male tops
+      switch (topStyle) {
+        case 0: // 纯棉T恤
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 98 200 L 80 232 L 85 278 L 100 276 L 100 350 L 180 350 L 180 276 L 195 278 L 200 232 L 182 200 Q 160 195 140 200 Q 120 195 98 200 Z" fill={fill} />
+              <path d="M 120 200 Q 140 210 160 200" stroke={shadow} strokeWidth="1.5" fill="none" />
+            </g>
+          )
+        case 1: // 牛津衬衫
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 95 200 L 78 235 L 82 280 L 98 278 L 95 355 L 185 355 L 182 278 L 198 280 L 202 235 L 185 200 Q 160 195 140 203 Q 118 195 95 200 Z" fill={fill} />
+              {/* Collar */}
+              <path d="M 120 200 L 140 220 L 160 200 L 156 215 L 140 228 L 124 215 Z" fill={lighten(topColor, 10)} stroke={shadow} strokeWidth="0.5" />
+              {/* Button placket */}
+              <line x1="140" y1="220" x2="140" y2="355" stroke={shadow} strokeWidth="1" opacity="0.5" />
+              <circle cx="140" cy="240" r="1.5" fill={darken(topColor, 25)} />
+              <circle cx="140" cy="265" r="1.5" fill={darken(topColor, 25)} />
+              <circle cx="140" cy="290" r="1.5" fill={darken(topColor, 25)} />
+              <circle cx="140" cy="315" r="1.5" fill={darken(topColor, 25)} />
+              <circle cx="140" cy="340" r="1.5" fill={darken(topColor, 25)} />
+              {/* Chest pocket */}
+              <path d="M 105 245 L 125 245 L 125 260 L 105 260 Z" fill="none" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            </g>
+          )
+        case 2: // 连帽卫衣
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 92 205 L 75 240 L 78 285 L 95 283 L 92 355 L 188 355 L 185 283 L 202 285 L 205 240 L 188 205 Q 165 198 140 205 Q 115 198 92 205 Z" fill={fill} />
+              {/* Hood */}
+              <path d="M 105 165 Q 140 155 175 165 L 185 205 Q 140 198 95 205 Z" fill={darken(topColor, 8)} />
+              <line x1="128" y1="205" x2="128" y2="240" stroke={darken(topColor, 25)} strokeWidth="1.2" />
+              <line x1="152" y1="205" x2="152" y2="240" stroke={darken(topColor, 25)} strokeWidth="1.2" />
+              <circle cx="128" cy="242" r="2" fill={darken(topColor, 35)} />
+              <circle cx="152" cy="242" r="2" fill={darken(topColor, 35)} />
+              {/* Kangaroo pocket */}
+              <path d="M 100 290 Q 140 300 180 290 L 180 335 L 100 335 Z" fill="none" stroke={darken(topColor, 20)} strokeWidth="1" opacity="0.6" />
+            </g>
+          )
+        case 3: // 皮夹克
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 92 200 L 75 235 L 80 285 L 96 283 L 92 355 L 188 355 L 184 283 L 200 285 L 205 235 L 188 200 Q 162 195 140 202 Q 118 195 92 200 Z" fill={fill} />
+              {/* Leather highlights */}
+              <path d="M 85 225 Q 90 260 95 285" stroke={lighten(topColor, 30)} strokeWidth="1.5" fill="none" opacity="0.5" />
+              <path d="M 185 225 Q 190 260 195 285" stroke={lighten(topColor, 30)} strokeWidth="1.5" fill="none" opacity="0.5" />
+              {/* Asymmetric zipper */}
+              <line x1="145" y1="205" x2="158" y2="355" stroke="#888" strokeWidth="2" />
+              <line x1="145" y1="205" x2="158" y2="355" stroke={darken(topColor, 35)} strokeWidth="0.5" />
+              {/* Collar */}
+              <path d="M 115 200 L 140 225 L 165 200 L 160 215 L 140 233 L 120 215 Z" fill={darken(topColor, 15)} />
+              {/* Zipper pockets */}
+              <line x1="105" y1="295" x2="130" y2="300" stroke={lighten(topColor, 15)} strokeWidth="1.5" />
+              <line x1="165" y1="300" x2="185" y2="295" stroke={lighten(topColor, 15)} strokeWidth="1.5" />
+            </g>
+          )
+        case 4: // Polo衫
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 98 200 L 82 232 L 86 278 L 100 276 L 100 345 L 180 345 L 180 276 L 194 278 L 198 232 L 182 200 Q 160 195 140 200 Q 120 195 98 200 Z" fill={fill} />
+              {/* Polo collar */}
+              <path d="M 122 200 L 140 218 L 158 200 L 155 212 L 140 224 L 125 212 Z" fill={lighten(topColor, 10)} stroke={shadow} strokeWidth="0.5" />
+              {/* Placket */}
+              <line x1="140" y1="220" x2="140" y2="255" stroke={shadow} strokeWidth="1" opacity="0.5" />
+              <circle cx="140" cy="232" r="1.5" fill={darken(topColor, 25)} />
+              <circle cx="140" cy="248" r="1.5" fill={darken(topColor, 25)} />
+              {/* Brand mark */}
+              <rect x="108" y="245" width="8" height="5" fill={darken(topColor, 30)} opacity="0.5" />
+            </g>
+          )
+        case 5: // 西装外套
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 90 200 L 74 235 L 70 355 L 210 355 L 206 235 L 190 200 Q 162 195 140 202 Q 118 195 90 200 Z" fill={fill} />
+              {/* Lapels */}
+              <path d="M 108 200 L 140 240 L 172 200 L 168 265 L 140 280 L 112 265 Z" fill={darken(topColor, 15)} />
+              <path d="M 108 200 L 140 240 L 172 200" stroke={shadow} strokeWidth="0.8" fill="none" />
+              {/* Pocket squares */}
+              <rect x="150" y="258" width="8" height="5" fill={lighten(topColor, 40)} opacity="0.9" />
+              {/* Buttons */}
+              <circle cx="140" cy="295" r="2.5" fill={darken(topColor, 40)} />
+              <circle cx="140" cy="320" r="2.5" fill={darken(topColor, 40)} />
+              {/* Side pockets */}
+              <line x1="98" y1="325" x2="130" y2="328" stroke={shadow} strokeWidth="1" />
+              <line x1="182" y1="325" x2="150" y2="328" stroke={shadow} strokeWidth="1" />
+            </g>
+          )
+        case 6: // 针织毛衣
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 92 200 L 75 235 L 80 280 L 95 278 L 92 355 L 188 355 L 184 278 L 200 280 L 205 235 L 188 200 Q 165 195 140 203 Q 115 195 92 200 Z" fill="url(#knit)" />
+              {/* Ribbed collar */}
+              <path d="M 115 200 Q 140 215 165 200" fill={darken(topColor, 10)} />
+              <path d="M 120 200 Q 140 213 160 200" stroke={darken(topColor, 20)} strokeWidth="0.5" fill="none" />
+              {/* Ribbed hem */}
+              <path d="M 95 345 L 95 360 M 110 345 L 110 360 M 125 345 L 125 360 M 140 345 L 140 360 M 155 345 L 155 360 M 170 345 L 170 360 M 185 345 L 185 360" stroke={darken(topColor, 15)} strokeWidth="0.5" opacity="0.6" />
+            </g>
+          )
+        case 7: // 工装夹克
+          return (
+            <g filter="url(#softShadow)">
+              <path d="M 94 200 L 78 235 L 82 280 L 98 278 L 94 350 L 186 350 L 182 278 L 198 280 L 202 235 L 186 200 Q 162 195 140 202 Q 118 195 94 200 Z" fill={fill} />
+              {/* Chest pockets */}
+              <rect x="105" y="240" width="25" height="30" fill="none" stroke={shadow} strokeWidth="1" />
+              <rect x="150" y="240" width="25" height="30" fill="none" stroke={shadow} strokeWidth="1" />
+              <line x1="117" y1="240" x2="117" y2="270" stroke={shadow} strokeWidth="0.5" opacity="0.5" />
+              <line x1="162" y1="240" x2="162" y2="270" stroke={shadow} strokeWidth="0.5" opacity="0.5" />
+              {/* Buttons */}
+              <circle cx="117" cy="245" r="1.5" fill={lighten(topColor, 15)} />
+              <circle cx="162" cy="245" r="1.5" fill={lighten(topColor, 15)} />
+              {/* Center button line */}
+              <line x1="140" y1="205" x2="140" y2="350" stroke={shadow} strokeWidth="1" opacity="0.5" />
+              <circle cx="140" cy="220" r="2" fill={lighten(topColor, 15)} />
+              <circle cx="140" cy="290" r="2" fill={lighten(topColor, 15)} />
+              <circle cx="140" cy="325" r="2" fill={lighten(topColor, 15)} />
+            </g>
+          )
       }
     }
+    return null
   }
 
-  // 渲染下装
-  const renderBottom = () => {
-    const needsBottom = gender === 'male' || topStyle !== 2
-    if (!needsBottom) return null
+  function renderBottom() {
+    const isDress = gender === 'female' && topStyle === 2
+    if (isDress) return null
+
+    const fill = bottomStyle === 0 || bottomStyle === 5 ? 'url(#denim)' : 'url(#bottomGrad)'
+    const shadow = darken(bottomColor, 20)
+
     switch (bottomStyle) {
-      case 0:
+      case 0: // 直筒牛仔
         return (
-          <g>
-            <path
-              d="M55 220 L55 340 L95 340 L100 260 L105 340 L145 340 L145 220 Z"
-              fill={bottomColor}
-            />
+          <g filter="url(#softShadow)">
+            <path d="M 98 335 L 92 490 L 128 490 L 135 395 L 145 395 L 152 490 L 188 490 L 182 335 Z" fill={fill} />
+            {/* Waistband */}
+            <rect x="97" y="335" width="86" height="8" fill={darken(bottomColor, 15)} />
+            {/* Belt loops */}
+            <rect x="110" y="333" width="3" height="12" fill={darken(bottomColor, 25)} />
+            <rect x="140" y="333" width="3" height="12" fill={darken(bottomColor, 25)} />
+            <rect x="168" y="333" width="3" height="12" fill={darken(bottomColor, 25)} />
+            {/* Pockets */}
+            <path d="M 100 345 L 115 355 L 115 365 L 100 360 Z" fill="none" stroke={shadow} strokeWidth="0.8" opacity="0.7" />
+            <path d="M 180 345 L 165 355 L 165 365 L 180 360 Z" fill="none" stroke={shadow} strokeWidth="0.8" opacity="0.7" />
+            {/* Zipper */}
+            <line x1="140" y1="345" x2="140" y2="380" stroke={darken(bottomColor, 30)} strokeWidth="1" opacity="0.6" />
+            {/* Knee fade */}
+            <ellipse cx="115" cy="430" rx="12" ry="8" fill={lighten(bottomColor, 15)} opacity="0.3" />
+            <ellipse cx="165" cy="430" rx="12" ry="8" fill={lighten(bottomColor, 15)} opacity="0.3" />
+            {/* Stitching */}
+            <line x1="115" y1="345" x2="115" y2="490" stroke="#D4A574" strokeWidth="0.3" opacity="0.4" />
+            <line x1="165" y1="345" x2="165" y2="490" stroke="#D4A574" strokeWidth="0.3" opacity="0.4" />
           </g>
         )
-      case 1:
+      case 1: // 阔腿裤
         return (
-          <g>
-            <path
-              d="M55 220 L55 280 L95 280 L100 250 L105 280 L145 280 L145 220 Z"
-              fill={bottomColor}
-            />
+          <g filter="url(#softShadow)">
+            <path d="M 98 335 L 82 495 L 132 495 L 138 395 L 142 395 L 148 495 L 198 495 L 182 335 Z" fill="url(#bottomGrad)" />
+            <rect x="97" y="335" width="86" height="6" fill={darken(bottomColor, 15)} />
+            <line x1="140" y1="345" x2="140" y2="495" stroke={shadow} strokeWidth="0.5" opacity="0.4" />
+            {/* Side seams */}
+            <path d="M 98 340 Q 90 410 82 495" stroke={shadow} strokeWidth="0.5" fill="none" opacity="0.4" />
+            <path d="M 182 340 Q 190 410 198 495" stroke={shadow} strokeWidth="0.5" fill="none" opacity="0.4" />
           </g>
         )
-      case 2:
+      case 2: // 百褶裙
         return (
-          <g>
-            <path
-              d="M55 220 L55 340 L95 340 L100 260 L105 340 L145 340 L145 220 Z"
-              fill={bottomColor}
-            />
-            <path
-              d="M60 240 L90 240 M110 240 L140 240"
-              stroke="#FFFFFF"
-              strokeWidth="1"
-              opacity="0.3"
-            />
-            <circle cx="70" cy="230" r="2" fill="#FFD700" />
-            <circle cx="130" cy="230" r="2" fill="#FFD700" />
+          <g filter="url(#softShadow)">
+            <path d="M 95 335 L 65 430 L 215 430 L 185 335 Z" fill="url(#bottomGrad)" />
+            {/* Pleats */}
+            <path d="M 110 340 L 95 425" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            <path d="M 125 340 L 118 427" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            <path d="M 140 340 L 140 427" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            <path d="M 155 340 L 162 427" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            <path d="M 170 340 L 185 425" stroke={shadow} strokeWidth="0.8" opacity="0.6" />
+            {/* Waistband */}
+            <rect x="95" y="335" width="90" height="8" fill={darken(bottomColor, 15)} />
           </g>
         )
-      case 3:
+      case 3: // 短裤
         return (
-          <g>
-            <path
-              d="M55 220 L50 340 L95 340 L100 260 L105 340 L150 340 L145 220 Z"
-              fill={bottomColor}
-            />
-            <path d="M55 250 L70 250 M130 250 L145 250" stroke="#FFFFFF" strokeWidth="2" />
+          <g filter="url(#softShadow)">
+            <path d="M 98 335 L 92 420 L 130 420 L 138 395 L 142 395 L 150 420 L 188 420 L 182 335 Z" fill="url(#bottomGrad)" />
+            <rect x="97" y="335" width="86" height="7" fill={darken(bottomColor, 15)} />
+            <line x1="140" y1="345" x2="140" y2="395" stroke={shadow} strokeWidth="0.5" opacity="0.5" />
+            <path d="M 100 345 L 115 352 L 113 362" fill="none" stroke={shadow} strokeWidth="0.5" />
+            <path d="M 180 345 L 165 352 L 167 362" fill="none" stroke={shadow} strokeWidth="0.5" />
           </g>
         )
-      case 4:
+      case 4: // 西装裤
         return (
-          <g>
-            <path d="M55 220 L45 320 L155 320 L145 220 Z" fill={bottomColor} />
+          <g filter="url(#softShadow)">
+            <path d="M 100 335 L 94 490 L 130 490 L 138 395 L 142 395 L 150 490 L 186 490 L 180 335 Z" fill="url(#bottomGrad)" />
+            <rect x="99" y="335" width="82" height="5" fill={darken(bottomColor, 15)} />
+            {/* Center crease */}
+            <line x1="115" y1="345" x2="112" y2="488" stroke={lighten(bottomColor, 15)} strokeWidth="0.8" opacity="0.5" />
+            <line x1="165" y1="345" x2="168" y2="488" stroke={lighten(bottomColor, 15)} strokeWidth="0.8" opacity="0.5" />
           </g>
         )
-      case 5:
+      case 5: // 工装裤
         return (
-          <g>
-            <path
-              d="M58 220 L55 340 L95 340 L100 260 L105 340 L145 340 L142 220 Z"
-              fill={bottomColor}
-            />
-            <line x1="75" y1="220" x2="75" y2="340" stroke="#333" strokeWidth="1" opacity="0.3" />
-            <line x1="125" y1="220" x2="125" y2="340" stroke="#333" strokeWidth="1" opacity="0.3" />
+          <g filter="url(#softShadow)">
+            <path d="M 96 335 L 88 490 L 130 490 L 138 395 L 142 395 L 150 490 L 192 490 L 184 335 Z" fill={fill} />
+            <rect x="95" y="335" width="90" height="8" fill={darken(bottomColor, 15)} />
+            {/* Cargo pockets */}
+            <rect x="90" y="400" width="22" height="30" fill={bottomColor} stroke={shadow} strokeWidth="1" />
+            <rect x="168" y="400" width="22" height="30" fill={bottomColor} stroke={shadow} strokeWidth="1" />
+            <path d="M 95 405 L 107 405" stroke={lighten(bottomColor, 10)} strokeWidth="1" />
+            <path d="M 173 405 L 185 405" stroke={lighten(bottomColor, 10)} strokeWidth="1" />
+            <circle cx="101" cy="428" r="1" fill={darken(bottomColor, 30)} />
+            <circle cx="179" cy="428" r="1" fill={darken(bottomColor, 30)} />
           </g>
         )
-      case 6: // 百褶裙
+      case 6: // 紧身裤
         return (
-          <g>
-            <path d="M55 220 L45 290 L155 290 L145 220 Z" fill={bottomColor} />
-            <path
-              d="M65 220 L60 290 M75 220 L75 290 M85 220 L90 290 M100 220 L100 290 M115 220 L110 290 M125 220 L125 290 M135 220 L140 290"
-              stroke="#000"
-              strokeWidth="1"
-              opacity="0.1"
-            />
+          <g filter="url(#softShadow)">
+            <path d="M 100 335 L 100 490 L 135 490 L 138 395 L 142 395 L 145 490 L 180 490 L 180 335 Z" fill="url(#bottomGrad)" />
+            <rect x="99" y="335" width="82" height="5" fill={darken(bottomColor, 15)} />
+            {/* Contour lines */}
+            <path d="M 105 360 Q 118 420 105 485" stroke={lighten(bottomColor, 15)} strokeWidth="0.5" fill="none" opacity="0.4" />
+            <path d="M 175 360 Q 162 420 175 485" stroke={lighten(bottomColor, 15)} strokeWidth="0.5" fill="none" opacity="0.4" />
           </g>
         )
-      case 7: // 工装裤
+      case 7: // 短裙
         return (
-          <g>
-            <path
-              d="M55 220 L50 340 L95 340 L100 260 L105 340 L150 340 L145 220 Z"
-              fill={bottomColor}
-            />
-            <rect
-              x="50"
-              y="270"
-              width="10"
-              height="20"
-              fill={bottomColor}
-              stroke="#000"
-              strokeWidth="0.5"
-            />
-            <rect
-              x="140"
-              y="270"
-              width="10"
-              height="20"
-              fill={bottomColor}
-              stroke="#000"
-              strokeWidth="0.5"
-            />
+          <g filter="url(#softShadow)">
+            <path d="M 95 335 L 85 415 L 195 415 L 185 335 Z" fill="url(#bottomGrad)" />
+            <rect x="95" y="335" width="90" height="7" fill={darken(bottomColor, 15)} />
+            <line x1="140" y1="345" x2="140" y2="413" stroke={shadow} strokeWidth="0.5" opacity="0.4" />
           </g>
         )
-      default:
-        return null
     }
+    return null
   }
 
-  // 渲染鞋子
-  const renderShoes = () => {
-    const y =
-      gender === 'female' && topStyle === 2
-        ? 280
-        : bottomStyle === 1 || bottomStyle === 4
-        ? 280
-        : 340
+  function renderShoes() {
+    // Feet position
+    const isShortBottom = bottomStyle === 2 || bottomStyle === 3 || bottomStyle === 7
+    const isDress = gender === 'female' && topStyle === 2
+    const y = isDress ? 485 : isShortBottom ? bottomStyle === 3 ? 422 : 415 : 490
+    const shoesFill = 'url(#shoesGrad)'
+    const sh = darken(shoesColor, 25)
+
     switch (shoesStyle) {
-      case 0:
+      case 0: // 白色运动鞋
         return (
-          <g>
-            <ellipse cx="75" cy={y + 10} rx="20" ry="10" fill={shoesColor} />
-            <ellipse cx="125" cy={y + 10} rx="20" ry="10" fill={shoesColor} />
-            <path d={`M60 ${y + 8} L90 ${y + 8}`} stroke="#FFFFFF" strokeWidth="2" />
-            <path d={`M110 ${y + 8} L140 ${y + 8}`} stroke="#FFFFFF" strokeWidth="2" />
+          <g filter="url(#softShadow)">
+            <ellipse cx="118" cy={y + 8} rx="18" ry="7" fill={shoesFill} />
+            <path d={`M 105 ${y + 2} Q 118 ${y - 4} 132 ${y + 2} L 135 ${y + 8} L 101 ${y + 8} Z`} fill={shoesFill} />
+            <path d={`M 105 ${y + 2} Q 118 ${y - 4} 132 ${y + 2}`} stroke={sh} strokeWidth="0.8" fill="none" />
+            {/* Swoosh */}
+            <path d={`M 107 ${y + 1} Q 118 ${y - 2} 128 ${y + 3}`} stroke="#333" strokeWidth="1.2" fill="none" />
+            {/* Sole */}
+            <rect x="100" y={y + 8} width="36" height="4" fill="#fff" stroke="#bbb" strokeWidth="0.5" />
+
+            <ellipse cx="162" cy={y + 8} rx="18" ry="7" fill={shoesFill} />
+            <path d={`M 149 ${y + 2} Q 162 ${y - 4} 176 ${y + 2} L 179 ${y + 8} L 145 ${y + 8} Z`} fill={shoesFill} />
+            <path d={`M 149 ${y + 2} Q 162 ${y - 4} 176 ${y + 2}`} stroke={sh} strokeWidth="0.8" fill="none" />
+            <path d={`M 151 ${y + 1} Q 162 ${y - 2} 172 ${y + 3}`} stroke="#333" strokeWidth="1.2" fill="none" />
+            <rect x="144" y={y + 8} width="36" height="4" fill="#fff" stroke="#bbb" strokeWidth="0.5" />
           </g>
         )
-      case 1:
+      case 1: // 皮革短靴
         return (
-          <g>
-            <path
-              d={`M55 ${y} L55 ${y + 15} L95 ${y + 15} L95 ${y} Q75 ${y - 5} 55 ${y} Z`}
-              fill={shoesColor}
-            />
-            <path
-              d={`M105 ${y} L105 ${y + 15} L145 ${y + 15} L145 ${y} Q125 ${y - 5} 105 ${y} Z`}
-              fill={shoesColor}
-            />
+          <g filter="url(#softShadow)">
+            <path d={`M 102 ${y - 15} L 102 ${y + 8} L 135 ${y + 8} L 135 ${y - 5} Q 125 ${y - 18} 115 ${y - 15} Z`} fill={shoesFill} />
+            <path d={`M 145 ${y - 15} L 145 ${y + 8} L 178 ${y + 8} L 178 ${y - 5} Q 168 ${y - 18} 158 ${y - 15} Z`} fill={shoesFill} />
+            {/* Leather shine */}
+            <path d={`M 108 ${y - 10} Q 115 ${y - 5} 112 ${y + 5}`} stroke={lighten(shoesColor, 30)} strokeWidth="1" fill="none" opacity="0.5" />
+            <path d={`M 151 ${y - 10} Q 158 ${y - 5} 155 ${y + 5}`} stroke={lighten(shoesColor, 30)} strokeWidth="1" fill="none" opacity="0.5" />
+            {/* Heel */}
+            <rect x="102" y={y + 8} width="33" height="4" fill={sh} />
+            <rect x="145" y={y + 8} width="33" height="4" fill={sh} />
           </g>
         )
-      case 2:
+      case 2: // 高跟鞋
         return (
-          <g>
-            <path
-              d={`M60 ${y} L60 ${y + 8} L90 ${y + 8} L85 ${y} Q72 ${y - 5} 60 ${y} Z`}
-              fill={shoesColor}
-            />
-            <path
-              d={`M110 ${y} L110 ${y + 8} L140 ${y + 8} L135 ${y} Q122 ${y - 5} 110 ${y} Z`}
-              fill={shoesColor}
-            />
-            <line x1="65" y1={y + 8} x2="60" y2={y + 20} stroke={shoesColor} strokeWidth="4" />
-            <line x1="115" y1={y + 8} x2="110" y2={y + 20} stroke={shoesColor} strokeWidth="4" />
+          <g filter="url(#softShadow)">
+            <path d={`M 105 ${y + 3} Q 118 ${y - 5} 133 ${y + 3} L 133 ${y + 8} L 105 ${y + 8} Z`} fill={shoesFill} />
+            <rect x="128" y={y + 8} width="3" height="15" fill={sh} />
+            <path d={`M 148 ${y + 3} Q 162 ${y - 5} 177 ${y + 3} L 177 ${y + 8} L 148 ${y + 8} Z`} fill={shoesFill} />
+            <rect x="172" y={y + 8} width="3" height="15" fill={sh} />
           </g>
         )
-      case 3:
+      case 3: // 牛津鞋
         return (
-          <g>
-            <path
-              d={`M55 ${y - 30} L55 ${y + 12} L95 ${y + 12} L95 ${y - 30} Z`}
-              fill={shoesColor}
-            />
-            <path
-              d={`M105 ${y - 30} L105 ${y + 12} L145 ${y + 12} L145 ${y - 30} Z`}
-              fill={shoesColor}
-            />
+          <g filter="url(#softShadow)">
+            <path d={`M 102 ${y + 2} Q 118 ${y - 3} 134 ${y + 2} L 134 ${y + 10} L 102 ${y + 10} Z`} fill={shoesFill} />
+            <path d={`M 145 ${y + 2} Q 162 ${y - 3} 178 ${y + 2} L 178 ${y + 10} L 145 ${y + 10} Z`} fill={shoesFill} />
+            {/* Laces */}
+            <line x1="113" y1={y} x2="123" y2={y} stroke={lighten(shoesColor, 20)} strokeWidth="0.8" />
+            <line x1="113" y1={y + 3} x2="123" y2={y + 3} stroke={lighten(shoesColor, 20)} strokeWidth="0.8" />
+            <line x1="156" y1={y} x2="166" y2={y} stroke={lighten(shoesColor, 20)} strokeWidth="0.8" />
+            <line x1="156" y1={y + 3} x2="166" y2={y + 3} stroke={lighten(shoesColor, 20)} strokeWidth="0.8" />
+            {/* Sole */}
+            <rect x="102" y={y + 10} width="32" height="3" fill={sh} />
+            <rect x="145" y={y + 10} width="33" height="3" fill={sh} />
           </g>
         )
-      case 4:
+      case 4: // 凉鞋
         return (
-          <g>
-            <ellipse cx="75" cy={y + 8} rx="18" ry="8" fill={shoesColor} />
-            <ellipse cx="125" cy={y + 8} rx="18" ry="8" fill={shoesColor} />
+          <g filter="url(#softShadow)">
+            <ellipse cx="118" cy={y + 10} rx="16" ry="4" fill={shoesFill} />
+            <ellipse cx="162" cy={y + 10} rx="16" ry="4" fill={shoesFill} />
+            {/* Straps */}
+            <path d={`M 108 ${y} Q 118 ${y - 5} 128 ${y}`} stroke={shoesColor} strokeWidth="3" fill="none" />
+            <path d={`M 108 ${y + 5} Q 118 ${y + 2} 128 ${y + 5}`} stroke={shoesColor} strokeWidth="3" fill="none" />
+            <path d={`M 152 ${y} Q 162 ${y - 5} 172 ${y}`} stroke={shoesColor} strokeWidth="3" fill="none" />
+            <path d={`M 152 ${y + 5} Q 162 ${y + 2} 172 ${y + 5}`} stroke={shoesColor} strokeWidth="3" fill="none" />
           </g>
         )
-      case 5:
+      case 5: // 帆布鞋
         return (
-          <g>
-            <ellipse cx="75" cy={y + 8} rx="20" ry="10" fill={shoesColor} />
-            <ellipse cx="125" cy={y + 8} rx="20" ry="10" fill={shoesColor} />
-            <path d={`M65 ${y + 3} L85 ${y + 3}`} stroke="#FFFFFF" strokeWidth="4" />
-            <path d={`M115 ${y + 3} L135 ${y + 3}`} stroke="#FFFFFF" strokeWidth="4" />
+          <g filter="url(#softShadow)">
+            <path d={`M 102 ${y} L 102 ${y + 10} L 134 ${y + 10} L 134 ${y} Q 118 ${y - 4} 102 ${y} Z`} fill={shoesFill} />
+            <path d={`M 145 ${y} L 145 ${y + 10} L 178 ${y + 10} L 178 ${y} Q 162 ${y - 4} 145 ${y} Z`} fill={shoesFill} />
+            {/* Toe cap */}
+            <path d={`M 102 ${y + 8} Q 110 ${y + 5} 118 ${y + 8}`} fill="#fff" stroke="#999" strokeWidth="0.5" />
+            <path d={`M 145 ${y + 8} Q 153 ${y + 5} 161 ${y + 8}`} fill="#fff" stroke="#999" strokeWidth="0.5" />
+            {/* Laces */}
+            <path d={`M 112 ${y + 2} L 124 ${y + 2} M 112 ${y + 4} L 124 ${y + 4}`} stroke="#fff" strokeWidth="0.8" />
+            <path d={`M 155 ${y + 2} L 167 ${y + 2} M 155 ${y + 4} L 167 ${y + 4}`} stroke="#fff" strokeWidth="0.8" />
+            {/* White sole */}
+            <rect x="100" y={y + 10} width="36" height="4" fill="#f5f5f5" stroke="#bbb" strokeWidth="0.5" />
+            <rect x="143" y={y + 10} width="37" height="4" fill="#f5f5f5" stroke="#bbb" strokeWidth="0.5" />
           </g>
         )
-      case 6: // 帆布鞋
+      case 6: // 乐福鞋
         return (
-          <g>
-            <path d={`M60 ${y} L60 ${y + 12} L90 ${y + 12} L90 ${y} Z`} fill={shoesColor} />
-            <path d={`M110 ${y} L110 ${y + 12} L140 ${y + 12} L140 ${y} Z`} fill={shoesColor} />
-            <circle cx="75" cy={y + 6} r="3" fill="#FFF" />
-            <circle cx="125" cy={y + 6} r="3" fill="#FFF" />
-            <path d={`M60 ${y + 12} L90 ${y + 12}`} stroke="#FFF" strokeWidth="4" />
-            <path d={`M110 ${y + 12} L140 ${y + 12}`} stroke="#FFF" strokeWidth="4" />
+          <g filter="url(#softShadow)">
+            <path d={`M 102 ${y + 2} Q 118 ${y - 3} 134 ${y + 2} L 134 ${y + 10} L 102 ${y + 10} Z`} fill={shoesFill} />
+            <path d={`M 145 ${y + 2} Q 162 ${y - 3} 178 ${y + 2} L 178 ${y + 10} L 145 ${y + 10} Z`} fill={shoesFill} />
+            {/* Horsebit */}
+            <rect x="113" y={y} width="10" height="3" fill="#D4A574" rx="1" />
+            <rect x="156" y={y} width="10" height="3" fill="#D4A574" rx="1" />
+            {/* Leather shine */}
+            <path d={`M 108 ${y + 3} Q 118 ${y - 1} 128 ${y + 5}`} stroke={lighten(shoesColor, 30)} strokeWidth="1" fill="none" opacity="0.5" />
+            <path d={`M 151 ${y + 3} Q 162 ${y - 1} 172 ${y + 5}`} stroke={lighten(shoesColor, 30)} strokeWidth="1" fill="none" opacity="0.5" />
+            <rect x="102" y={y + 10} width="32" height="3" fill={sh} />
+            <rect x="145" y={y + 10} width="33" height="3" fill={sh} />
           </g>
         )
       case 7: // 马丁靴
         return (
-          <g>
-            <path
-              d={`M60 ${y - 10} L60 ${y + 12} L90 ${y + 12} L90 ${y - 10} Z`}
-              fill={shoesColor}
-            />
-            <path
-              d={`M110 ${y - 10} L110 ${y + 12} L140 ${y + 12} L140 ${y - 10} Z`}
-              fill={shoesColor}
-            />
-            <line
-              x1="65"
-              y1={y - 5}
-              x2="85"
-              y2={y - 5}
-              stroke="#FFF"
-              strokeWidth="1"
-              opacity="0.5"
-            />
-            <line x1="65" y1={y} x2="85" y2={y} stroke="#FFF" strokeWidth="1" opacity="0.5" />
-            <line
-              x1="65"
-              y1={y + 5}
-              x2="85"
-              y2={y + 5}
-              stroke="#FFF"
-              strokeWidth="1"
-              opacity="0.5"
-            />
-            <line
-              x1="115"
-              y1={y - 5}
-              x2="135"
-              y2={y - 5}
-              stroke="#FFF"
-              strokeWidth="1"
-              opacity="0.5"
-            />
-            <line x1="115" y1={y} x2="135" y2={y} stroke="#FFF" strokeWidth="1" opacity="0.5" />
-            <line
-              x1="115"
-              y1={y + 5}
-              x2="135"
-              y2={y + 5}
-              stroke="#FFF"
-              strokeWidth="1"
-              opacity="0.5"
-            />
+          <g filter="url(#softShadow)">
+            <path d={`M 102 ${y - 20} L 102 ${y + 10} L 135 ${y + 10} L 135 ${y - 10} Q 125 ${y - 22} 115 ${y - 20} Z`} fill={shoesFill} />
+            <path d={`M 145 ${y - 20} L 145 ${y + 10} L 178 ${y + 10} L 178 ${y - 10} Q 168 ${y - 22} 158 ${y - 20} Z`} fill={shoesFill} />
+            {/* Laces */}
+            {[0, 1, 2, 3, 4].map(i => (
+              <g key={i}>
+                <line x1="108" y1={y - 15 + i * 5} x2="128" y2={y - 15 + i * 5} stroke={lighten(shoesColor, 30)} strokeWidth="0.8" />
+                <line x1="151" y1={y - 15 + i * 5} x2="171" y2={y - 15 + i * 5} stroke={lighten(shoesColor, 30)} strokeWidth="0.8" />
+              </g>
+            ))}
+            {/* Stitching around sole */}
+            <path d={`M 102 ${y + 8} L 135 ${y + 8}`} stroke="#D4A574" strokeWidth="0.3" strokeDasharray="2,1" />
+            <path d={`M 145 ${y + 8} L 178 ${y + 8}`} stroke="#D4A574" strokeWidth="0.3" strokeDasharray="2,1" />
+            {/* Yellow sole signature */}
+            <rect x="100" y={y + 10} width="37" height="4" fill="#D4A574" />
+            <rect x="143" y={y + 10} width="38" height="4" fill="#D4A574" />
           </g>
         )
-      default:
-        return null
     }
+    return null
   }
 
-  // 渲染配饰
-  const renderAccessory = () => {
+  function renderLegs() {
+    const isDress = gender === 'female' && topStyle === 2
+    const isShort = bottomStyle === 2 || bottomStyle === 3 || bottomStyle === 7
+    if (!isDress && !isShort) return null
+
+    const legTop = 330
+    const legBottom = isDress ? 485 : bottomStyle === 3 ? 422 : 415
+    return (
+      <g>
+        <path d={`M 115 ${legTop} L 110 ${legBottom} L 135 ${legBottom} L 138 ${legTop + 5} Z`} fill="url(#skinLeg)" />
+        <path d={`M 165 ${legTop} L 170 ${legBottom} L 145 ${legBottom} L 142 ${legTop + 5} Z`} fill="url(#skinLeg)" />
+        {/* Leg contours */}
+        <path d={`M 115 ${legTop + 30} Q 125 ${legBottom / 2 + 150} 115 ${legBottom - 10}`} stroke={skin.shadow} strokeWidth="0.5" fill="none" opacity="0.3" />
+        <path d={`M 165 ${legTop + 30} Q 155 ${legBottom / 2 + 150} 165 ${legBottom - 10}`} stroke={skin.shadow} strokeWidth="0.5" fill="none" opacity="0.3" />
+      </g>
+    )
+  }
+
+  function renderAccessory() {
     switch (accessory) {
-      case 0:
-        return null
-      case 1:
+      case 0: return null
+      case 1: // 金属眼镜
         return (
           <g>
-            <circle cx="85" cy="72" r="12" fill="none" stroke="#333" strokeWidth="2" />
-            <circle cx="115" cy="72" r="12" fill="none" stroke="#333" strokeWidth="2" />
-            <line x1="97" y1="72" x2="103" y2="72" stroke="#333" strokeWidth="2" />
-            <line x1="73" y1="72" x2="60" y2="68" stroke="#333" strokeWidth="2" />
-            <line x1="127" y1="72" x2="140" y2="68" stroke="#333" strokeWidth="2" />
+            <circle cx="125" cy="135" r="11" fill="none" stroke="#555" strokeWidth="1.5" />
+            <circle cx="155" cy="135" r="11" fill="none" stroke="#555" strokeWidth="1.5" />
+            <line x1="136" y1="135" x2="144" y2="135" stroke="#555" strokeWidth="1.5" />
+            <line x1="114" y1="135" x2="108" y2="132" stroke="#555" strokeWidth="1.2" />
+            <line x1="166" y1="135" x2="172" y2="132" stroke="#555" strokeWidth="1.2" />
+            {/* Lens glare */}
+            <path d="M 120 130 Q 125 128 128 131" stroke="#fff" strokeWidth="1" opacity="0.6" fill="none" />
+            <path d="M 150 130 Q 155 128 158 131" stroke="#fff" strokeWidth="1" opacity="0.6" fill="none" />
           </g>
         )
-      case 2:
+      case 2: // 墨镜
         return (
           <g>
-            <ellipse cx="85" cy="72" rx="14" ry="10" fill="#333" />
-            <ellipse cx="115" cy="72" rx="14" ry="10" fill="#333" />
-            <line x1="99" y1="72" x2="101" y2="72" stroke="#333" strokeWidth="3" />
-            <line x1="71" y1="70" x2="55" y2="65" stroke="#333" strokeWidth="2" />
-            <line x1="129" y1="70" x2="145" y2="65" stroke="#333" strokeWidth="2" />
+            <ellipse cx="125" cy="135" rx="12" ry="8" fill="#1a1a1a" />
+            <ellipse cx="155" cy="135" rx="12" ry="8" fill="#1a1a1a" />
+            <path d="M 137 134 L 143 134" stroke="#1a1a1a" strokeWidth="2" />
+            <path d="M 113 132 L 107 130" stroke="#1a1a1a" strokeWidth="1.5" />
+            <path d="M 167 132 L 173 130" stroke="#1a1a1a" strokeWidth="1.5" />
+            {/* Reflection */}
+            <ellipse cx="120" cy="131" rx="3" ry="2" fill="#fff" opacity="0.3" />
+            <ellipse cx="150" cy="131" rx="3" ry="2" fill="#fff" opacity="0.3" />
           </g>
         )
-      case 3:
+      case 3: // 棒球帽
         return (
           <g>
-            <ellipse cx="100" cy="35" rx="50" ry="10" fill="#333" />
-            <path d="M60 35 Q60 10 100 5 Q140 10 140 35" fill="#333" />
+            <path d="M 95 90 Q 140 70 185 90 L 185 110 L 95 110 Z" fill="#1a1a1a" />
+            <ellipse cx="140" cy="110" rx="55" ry="6" fill="#1a1a1a" />
+            {/* Brim front */}
+            <ellipse cx="140" cy="115" rx="55" ry="4" fill="#0a0a0a" />
+            {/* Logo */}
+            <circle cx="140" cy="92" r="5" fill="#fff" />
+            <text x="140" y="96" textAnchor="middle" fontSize="8" fill="#1a1a1a" fontWeight="bold">N</text>
           </g>
         )
-      case 4:
+      case 4: // 贝雷帽
         return (
           <g>
-            <circle cx="58" cy="85" r="5" fill="#FFD700" />
-            <circle cx="142" cy="85" r="5" fill="#FFD700" />
+            <ellipse cx="140" cy="68" rx="40" ry="22" fill="#8B1A1A" />
+            <ellipse cx="140" cy="70" rx="38" ry="18" fill="#A82323" opacity="0.7" />
+            <circle cx="158" cy="55" r="5" fill="#5C0F0F" />
           </g>
         )
-      case 5:
+      case 5: // 手拿包
         return (
           <g>
-            <path d="M75 115 Q100 135 125 115" stroke="#FFD700" strokeWidth="2" fill="none" />
-            <circle cx="100" cy="130" r="6" fill="#FFD700" />
+            <rect x="38" y="310" width="34" height="24" rx="2" fill="#3a2816" stroke="#1a0f08" strokeWidth="1" />
+            <rect x="40" y="312" width="30" height="2" fill="#D4A574" />
+            <circle cx="55" cy="322" r="2" fill="#D4A574" />
+            <path d="M 55 322 L 55 328" stroke="#D4A574" strokeWidth="0.8" />
           </g>
         )
-      case 6: // 围巾
+      case 6: // 斜挎包
         return (
           <g>
-            <path d="M70 125 Q100 145 130 125 L130 145 Q100 165 70 145 Z" fill="#D32F2F" />
-            <rect x="90" y="145" width="20" height="40" fill="#D32F2F" />
+            <path d="M 140 180 Q 225 220 215 295" stroke="#5C3825" strokeWidth="3" fill="none" />
+            <rect x="195" y="290" width="30" height="35" rx="3" fill="#8B4513" stroke="#3a2816" strokeWidth="1" />
+            <rect x="205" y="290" width="10" height="5" fill="#5C3825" />
+            <circle cx="210" cy="305" r="2" fill="#D4A574" />
           </g>
         )
-      case 7: // 领结
+      case 7: // 耳机
         return (
           <g>
-            <path d="M85 125 L115 125 L125 115 L75 115 Z" fill="#000" />
-            <circle cx="100" cy="125" r="5" fill="#000" />
+            <path d="M 105 85 Q 140 45 175 85" stroke="#1a1a1a" strokeWidth="5" fill="none" strokeLinecap="round" />
+            <ellipse cx="103" cy="105" rx="8" ry="12" fill="#1a1a1a" />
+            <ellipse cx="177" cy="105" rx="8" ry="12" fill="#1a1a1a" />
+            <ellipse cx="103" cy="105" rx="5" ry="8" fill="#3a3a3a" />
+            <ellipse cx="177" cy="105" rx="5" ry="8" fill="#3a3a3a" />
           </g>
         )
-      default:
-        return null
     }
+    return null
   }
 
   const hairNames = gender === 'female' ? HAIR_STYLES_FEMALE : HAIR_STYLES_MALE
@@ -969,350 +1069,298 @@ export default function DressUpPage() {
 
         <div className="card">
           <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-2">
-            🎀 换装游戏
+            ✨ 真实搭配工作室
           </h1>
-          <p className="text-gray-600 text-center mb-6">打扮你的虚拟形象，保存你喜欢的搭配！</p>
+          <p className="text-gray-600 text-center mb-6">打造你的造型，选择场景拍张大片</p>
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* 左侧：人物预览 */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Left: Character in scene */}
             <div className="space-y-4">
-              {/* 性别选择 */}
-              <div className="flex justify-center gap-4 mb-4">
-                <button
-                  onClick={() => setGender('female')}
-                  className={`px-6 py-2 rounded-full transition-all ${
-                    gender === 'female'
-                      ? 'bg-pink-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  👩 女生
-                </button>
-                <button
-                  onClick={() => setGender('male')}
-                  className={`px-6 py-2 rounded-full transition-all ${
-                    gender === 'male'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  👨 男生
-                </button>
+              {/* Gender selector */}
+              <div className="flex justify-center gap-4">
+                <button onClick={() => setGender('female')}
+                  className={`px-6 py-2 rounded-full transition-all ${gender === 'female' ? 'bg-pink-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >👩 女生</button>
+                <button onClick={() => setGender('male')}
+                  className={`px-6 py-2 rounded-full transition-all ${gender === 'male' ? 'bg-blue-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >👨 男生</button>
               </div>
 
-              {/* 人物展示 */}
-              <div className="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 rounded-3xl p-6 flex justify-center">
-                <svg viewBox="0 0 200 380" width="200" height="380" className="drop-shadow-lg">
-                  {renderHair()}
-                  <ellipse cx="100" cy="150" rx="40" ry="50" fill={currentSkin} />
-                  <ellipse cx="55" cy="170" rx="10" ry="35" fill={currentSkin} />
-                  <ellipse cx="145" cy="170" rx="10" ry="35" fill={currentSkin} />
-                  <rect x="75" y="200" width="15" height="140" rx="7" fill={currentSkin} />
-                  <rect x="110" y="200" width="15" height="140" rx="7" fill={currentSkin} />
-                  <circle cx="100" cy="70" r="35" fill={currentSkin} />
-                  {renderTop()}
-                  {renderBottom()}
-                  {renderShoes()}
-                  {renderAccessory()}
-                  <circle cx="88" cy="68" r="3" fill="#333" />
-                  <circle cx="112" cy="68" r="3" fill="#333" />
-                  <path
-                    d="M93 85 Q100 92 107 85"
-                    stroke="#E57373"
-                    strokeWidth="2"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                  <ellipse cx="80" cy="78" rx="8" ry="4" fill="#FFCDD2" opacity="0.6" />
-                  <ellipse cx="120" cy="78" rx="8" ry="4" fill="#FFCDD2" opacity="0.6" />
-                </svg>
+              {/* Scene stage with character */}
+              <div
+                className="relative rounded-3xl overflow-hidden shadow-2xl"
+                style={{ aspectRatio: '4/5', background: currentScene.sky }}
+              >
+                {/* Ground */}
+                <div
+                  className="absolute bottom-0 left-0 right-0"
+                  style={{ height: '28%', background: currentScene.ground }}
+                />
+
+                {/* Scene-specific decorations */}
+                {scene === 0 && (
+                  <>
+                    {/* City: skyline silhouettes */}
+                    <div className="absolute bottom-[28%] left-0 right-0 flex items-end h-24 opacity-70">
+                      <div style={{ width: '18%', height: '50%', background: '#2a2a3a' }} />
+                      <div style={{ width: '12%', height: '75%', background: '#1f1f2e' }} />
+                      <div style={{ width: '15%', height: '40%', background: '#2a2a3a' }} />
+                      <div style={{ width: '20%', height: '80%', background: '#1a1a2e' }} />
+                      <div style={{ width: '10%', height: '55%', background: '#2a2a3a' }} />
+                      <div style={{ width: '15%', height: '65%', background: '#1f1f2e' }} />
+                      <div style={{ width: '10%', height: '45%', background: '#2a2a3a' }} />
+                    </div>
+                    {/* Street lamp */}
+                    <div className="absolute left-[8%] bottom-[28%] w-1 h-32 bg-gray-700" />
+                    <div className="absolute left-[6%] top-[40%] w-4 h-4 bg-yellow-200 rounded-full opacity-80" style={{ boxShadow: '0 0 20px #fde047' }} />
+                  </>
+                )}
+                {scene === 1 && (
+                  <>
+                    {/* Cafe: window frame + shelf */}
+                    <div className="absolute top-[5%] left-[5%] right-[5%] h-[60%] border-4 border-[#4a2f18] rounded-lg bg-gradient-to-b from-amber-100/30 to-orange-200/20" />
+                    <div className="absolute top-[45%] left-0 right-0 h-4 bg-[#4a2f18]" />
+                    {/* Hanging lights */}
+                    <div className="absolute top-0 left-[25%] w-0.5 h-12 bg-gray-600" />
+                    <div className="absolute top-12 left-[23%] w-4 h-5 bg-yellow-300 rounded-b-full" style={{ boxShadow: '0 0 20px #fbbf24' }} />
+                    <div className="absolute top-0 right-[25%] w-0.5 h-12 bg-gray-600" />
+                    <div className="absolute top-12 right-[23%] w-4 h-5 bg-yellow-300 rounded-b-full" style={{ boxShadow: '0 0 20px #fbbf24' }} />
+                  </>
+                )}
+                {scene === 2 && (
+                  <>
+                    {/* Beach: sea line + palm silhouette */}
+                    <div className="absolute top-[60%] left-0 right-0 h-[12%] bg-[#3b82a6]" />
+                    <div className="absolute top-[58%] left-0 right-0 h-[3%] bg-white/30" />
+                    {/* Sun */}
+                    <div className="absolute top-[12%] right-[12%] w-16 h-16 bg-yellow-100 rounded-full" style={{ boxShadow: '0 0 40px rgba(254, 240, 138, 0.8)' }} />
+                    {/* Palm */}
+                    <div className="absolute top-[35%] right-[4%] w-2 h-32 bg-[#3a2516]" />
+                    <div className="absolute top-[30%] right-0 text-5xl">🌴</div>
+                  </>
+                )}
+                {scene === 3 && (
+                  <>
+                    {/* Office: window grid */}
+                    <div className="absolute inset-0 grid grid-cols-4 opacity-15">
+                      {[...Array(16)].map((_, i) => <div key={i} className="border border-gray-500" />)}
+                    </div>
+                    <div className="absolute top-[55%] left-0 right-0 h-1 bg-gray-600" />
+                  </>
+                )}
+                {scene === 4 && (
+                  <>
+                    {/* Park: trees */}
+                    <div className="absolute top-[25%] left-[5%] text-7xl">🌳</div>
+                    <div className="absolute top-[30%] right-[5%] text-6xl">🌲</div>
+                    <div className="absolute top-[50%] left-[20%] text-3xl">🌼</div>
+                    <div className="absolute top-[55%] right-[20%] text-3xl">🌻</div>
+                  </>
+                )}
+                {scene === 5 && (
+                  <>
+                    {/* Night: neon signs */}
+                    <div className="absolute top-[20%] left-[8%] text-pink-400 text-lg font-bold" style={{ textShadow: '0 0 15px #f472b6' }}>NEON</div>
+                    <div className="absolute top-[35%] right-[8%] text-cyan-300 text-lg font-bold" style={{ textShadow: '0 0 15px #67e8f9' }}>CAFE</div>
+                    <div className="absolute top-[25%] right-[15%] text-yellow-300 text-sm" style={{ textShadow: '0 0 12px #fde047' }}>★★★</div>
+                    {/* Neon strip */}
+                    <div className="absolute top-[60%] left-0 right-0 h-0.5 bg-pink-400" style={{ boxShadow: '0 0 8px #f472b6' }} />
+                  </>
+                )}
+
+                {/* Character */}
+                <div className="absolute inset-0 flex items-end justify-center pb-[4%]">
+                  {renderCharacter()}
+                </div>
+
+                {/* Scene label */}
+                <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                  <span>{currentScene.emoji}</span>
+                  <span>{currentScene.name}</span>
+                </div>
               </div>
 
-              {/* 肤色选择 */}
-              <div className="flex justify-center gap-2">
-                <span className="text-sm text-gray-600 mr-2">肤色:</span>
-                {SKIN_TONES.map((color, index) => (
-                  <button
-                    key={color}
-                    onClick={() => setSkinTone(index)}
-                    className={`w-8 h-8 rounded-full transition-all ${
-                      skinTone === index ? 'ring-2 ring-primary ring-offset-2' : ''
-                    }`}
-                    style={{ backgroundColor: color }}
+              {/* Skin tone selector */}
+              <div className="flex justify-center items-center gap-2">
+                <span className="text-sm text-gray-600">肤色:</span>
+                {SKIN_TONES.map((tone, i) => (
+                  <button key={i} onClick={() => setSkinTone(i)}
+                    className={`w-9 h-9 rounded-full border-2 transition-all ${skinTone === i ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'border-white shadow'}`}
+                    style={{ background: `radial-gradient(circle at 30% 30%, ${tone.highlight}, ${tone.base}, ${tone.shadow})` }}
                   />
                 ))}
               </div>
 
-              {/* 操作按钮 */}
+              {/* Action buttons */}
               <div className="flex justify-center gap-3 flex-wrap">
-                <button onClick={randomize} className="btn-secondary">
-                  🎲 随机搭配
-                </button>
-                <button onClick={() => setShowSaveDialog(true)} className="btn-primary">
-                  💾 保存装扮
-                </button>
+                <button onClick={randomize} className="btn-secondary">🎲 随机搭配</button>
+                <button onClick={() => setShowSaveDialog(true)} className="btn-primary">💾 保存造型</button>
               </div>
             </div>
 
-            {/* 右侧：选择面板 */}
+            {/* Right: Control panel */}
             <div className="space-y-4">
-              {/* 分类标签 */}
+              {/* Tabs */}
               <div className="flex gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto">
                 {[
+                  { key: 'scene', label: '场景', icon: '🎬' },
                   { key: 'hair', label: '发型', icon: '💇' },
                   { key: 'top', label: '上装', icon: '👕' },
                   { key: 'bottom', label: '下装', icon: '👖' },
                   { key: 'shoes', label: '鞋子', icon: '👟' },
                   { key: 'accessory', label: '配饰', icon: '👓' },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as typeof activeTab)}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm transition-all whitespace-nowrap ${
-                      activeTab === tab.key
-                        ? 'bg-white shadow text-primary font-semibold'
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    {tab.icon} {tab.label}
-                  </button>
+                ].map(tab => (
+                  <button key={tab.key} onClick={() => setActiveTab(tab.key as typeof activeTab)}
+                    className={`flex-1 py-2 px-2 rounded-lg text-xs transition-all whitespace-nowrap ${activeTab === tab.key ? 'bg-white shadow text-primary font-semibold' : 'text-gray-600 hover:text-gray-800'}`}
+                  >{tab.icon} {tab.label}</button>
                 ))}
               </div>
 
-              {/* 选项内容 */}
-              <div className="bg-gray-50 rounded-xl p-4 min-h-[200px]">
+              <div className="bg-gray-50 rounded-xl p-4 min-h-[220px]">
+                {activeTab === 'scene' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {SCENES.map((s, i) => (
+                      <button key={i} onClick={() => setScene(i)}
+                        className={`relative rounded-xl overflow-hidden aspect-video transition-all ${scene === i ? 'ring-4 ring-primary scale-105' : 'hover:scale-105'}`}
+                        style={{ background: s.sky }}
+                      >
+                        <div className="absolute bottom-0 left-0 right-0 h-[30%]" style={{ background: s.ground }} />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-4xl drop-shadow">{s.emoji}</span>
+                        </div>
+                        <div className="absolute bottom-1 left-1 right-1 text-center text-white text-xs font-medium drop-shadow">
+                          {s.name}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {activeTab === 'hair' && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {hairNames.map((name, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setHairStyle(index)}
-                          className={`p-3 rounded-xl text-sm transition-all ${
-                            hairStyle === index
-                              ? 'bg-primary text-white'
-                              : 'bg-white hover:bg-gray-100'
-                          }`}
-                        >
-                          {name}
-                        </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      {hairNames.map((name, i) => (
+                        <button key={i} onClick={() => setHairStyle(i)}
+                          className={`p-3 rounded-xl text-sm transition-all ${hairStyle === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
+                        >{name}</button>
                       ))}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm text-gray-600">发色:</span>
-                      <input
-                        type="color"
-                        value={hairColor}
-                        onChange={(e) => setHairColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer"
-                      />
-                      <div className="flex gap-1">
-                        {['#2C1810', '#8B4513', '#FFD700', '#FF4500', '#000000', '#A0522D'].map(
-                          (color) => (
-                            <button
-                              key={color}
-                              onClick={() => setHairColor(color)}
-                              className={`w-8 h-8 rounded-full ${
-                                hairColor === color ? 'ring-2 ring-primary' : ''
-                              }`}
-                              style={{ backgroundColor: color }}
-                            />
-                          )
-                        )}
+                      <input type="color" value={hairColor} onChange={e => setHairColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border" />
+                      <div className="flex gap-1 flex-wrap">
+                        {['#2C1810', '#5a3a1f', '#8B4513', '#D4A574', '#FFD700', '#FF4500', '#000000', '#E3C7A1'].map(c => (
+                          <button key={c} onClick={() => setHairColor(c)}
+                            className={`w-8 h-8 rounded-full border-2 transition ${hairColor === c ? 'ring-2 ring-primary' : 'border-white shadow-sm'}`}
+                            style={{ backgroundColor: c }} />
+                        ))}
                       </div>
                     </div>
                   </div>
                 )}
+
                 {activeTab === 'top' && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {topNames.map((name, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setTopStyle(index)}
-                          className={`p-3 rounded-xl text-sm transition-all ${
-                            topStyle === index
-                              ? 'bg-primary text-white'
-                              : 'bg-white hover:bg-gray-100'
-                          }`}
-                        >
-                          {name}
-                        </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      {topNames.map((name, i) => (
+                        <button key={i} onClick={() => setTopStyle(i)}
+                          className={`p-3 rounded-xl text-sm transition-all ${topStyle === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
+                        >{name}</button>
                       ))}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm text-gray-600">颜色:</span>
-                      <input
-                        type="color"
-                        value={topColor}
-                        onChange={(e) => setTopColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer"
-                      />
+                      <input type="color" value={topColor} onChange={e => setTopColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border" />
                       <div className="flex gap-1 flex-wrap">
-                        {[
-                          '#FF69B4',
-                          '#87CEEB',
-                          '#98FB98',
-                          '#DDA0DD',
-                          '#F0E68C',
-                          '#FF6347',
-                          '#FFFFFF',
-                          '#000000',
-                        ].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setTopColor(color)}
-                            className={`w-8 h-8 rounded-full border ${
-                              topColor === color ? 'ring-2 ring-primary' : ''
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
+                        {['#F5F5F5', '#1a1a1a', '#8B1A1A', '#2E4C7B', '#556B2F', '#E8B4B8', '#D4A574', '#4A4A4A'].map(c => (
+                          <button key={c} onClick={() => setTopColor(c)}
+                            className={`w-8 h-8 rounded-full border-2 transition ${topColor === c ? 'ring-2 ring-primary' : 'border-white shadow-sm'}`}
+                            style={{ backgroundColor: c }} />
                         ))}
                       </div>
                     </div>
                   </div>
                 )}
+
                 {activeTab === 'bottom' && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {BOTTOM_STYLES.map((name, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setBottomStyle(index)}
-                          className={`p-3 rounded-xl text-sm transition-all ${
-                            bottomStyle === index
-                              ? 'bg-primary text-white'
-                              : 'bg-white hover:bg-gray-100'
-                          }`}
-                        >
-                          {name}
-                        </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      {BOTTOM_STYLES.map((name, i) => (
+                        <button key={i} onClick={() => setBottomStyle(i)}
+                          className={`p-3 rounded-xl text-sm transition-all ${bottomStyle === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
+                        >{name}</button>
                       ))}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm text-gray-600">颜色:</span>
-                      <input
-                        type="color"
-                        value={bottomColor}
-                        onChange={(e) => setBottomColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer"
-                      />
+                      <input type="color" value={bottomColor} onChange={e => setBottomColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border" />
                       <div className="flex gap-1 flex-wrap">
-                        {[
-                          '#4169E1',
-                          '#2F4F4F',
-                          '#8B4513',
-                          '#000080',
-                          '#800000',
-                          '#556B2F',
-                          '#000000',
-                          '#1E90FF',
-                        ].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setBottomColor(color)}
-                            className={`w-8 h-8 rounded-full ${
-                              bottomColor === color ? 'ring-2 ring-primary' : ''
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
+                        {['#2E4C7B', '#1a1a1a', '#3E2816', '#4A4A4A', '#6B4423', '#3d5a28', '#5B4632', '#1E3A5F'].map(c => (
+                          <button key={c} onClick={() => setBottomColor(c)}
+                            className={`w-8 h-8 rounded-full border-2 transition ${bottomColor === c ? 'ring-2 ring-primary' : 'border-white shadow-sm'}`}
+                            style={{ backgroundColor: c }} />
                         ))}
                       </div>
                     </div>
                   </div>
                 )}
+
                 {activeTab === 'shoes' && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {SHOES_STYLES.map((name, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setShoesStyle(index)}
-                          className={`p-3 rounded-xl text-sm transition-all ${
-                            shoesStyle === index
-                              ? 'bg-primary text-white'
-                              : 'bg-white hover:bg-gray-100'
-                          }`}
-                        >
-                          {name}
-                        </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      {SHOES_STYLES.map((name, i) => (
+                        <button key={i} onClick={() => setShoesStyle(i)}
+                          className={`p-3 rounded-xl text-sm transition-all ${shoesStyle === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
+                        >{name}</button>
                       ))}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-sm text-gray-600">颜色:</span>
-                      <input
-                        type="color"
-                        value={shoesColor}
-                        onChange={(e) => setShoesColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer"
-                      />
+                      <input type="color" value={shoesColor} onChange={e => setShoesColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border" />
                       <div className="flex gap-1 flex-wrap">
-                        {[
-                          '#8B4513',
-                          '#000000',
-                          '#FFFFFF',
-                          '#FF69B4',
-                          '#4169E1',
-                          '#FFD700',
-                          '#FF0000',
-                          '#808080',
-                        ].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setShoesColor(color)}
-                            className={`w-8 h-8 rounded-full border ${
-                              shoesColor === color ? 'ring-2 ring-primary' : ''
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
+                        {['#FFFFFF', '#1a1a1a', '#6B4423', '#8B1A1A', '#D4A574', '#4A4A4A', '#8B4513', '#2E4C7B'].map(c => (
+                          <button key={c} onClick={() => setShoesColor(c)}
+                            className={`w-8 h-8 rounded-full border-2 transition ${shoesColor === c ? 'ring-2 ring-primary' : 'border-white shadow-sm'}`}
+                            style={{ backgroundColor: c }} />
                         ))}
                       </div>
                     </div>
                   </div>
                 )}
+
                 {activeTab === 'accessory' && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {ACCESSORIES.map((name, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setAccessory(index)}
-                        className={`p-3 rounded-xl text-sm transition-all ${
-                          accessory === index
-                            ? 'bg-primary text-white'
-                            : 'bg-white hover:bg-gray-100'
-                        }`}
-                      >
-                        {name}
-                      </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ACCESSORIES.map((name, i) => (
+                      <button key={i} onClick={() => setAccessory(i)}
+                        className={`p-3 rounded-xl text-sm transition-all ${accessory === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
+                      >{name}</button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* 已保存的装扮 */}
+              {/* Saved outfits */}
               {savedOutfits.length > 0 && (
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <h3 className="font-semibold mb-3">💾 已保存的装扮</h3>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <span>💾</span> 我的造型集
+                  </h3>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {savedOutfits.map((outfit) => (
-                      <div
-                        key={outfit.id}
-                        className="flex items-center justify-between bg-white rounded-lg p-3"
-                      >
-                        <span className="font-medium">{outfit.name}</span>
+                    {savedOutfits.map(outfit => (
+                      <div key={outfit.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-100">
+                        <div>
+                          <div className="font-medium text-sm">{outfit.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {outfit.gender === 'female' ? '👩' : '👨'} {SCENES[outfit.scene || 0]?.emoji} {SCENES[outfit.scene || 0]?.name}
+                          </div>
+                        </div>
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => loadOutfit(outfit)}
-                            className="text-primary hover:text-primary/80 text-sm"
-                          >
-                            加载
-                          </button>
-                          <button
-                            onClick={() => deleteOutfit(outfit.id)}
-                            className="text-red-500 hover:text-red-600 text-sm"
-                          >
-                            删除
-                          </button>
+                          <button onClick={() => loadOutfit(outfit)} className="text-primary hover:text-primary/80 text-sm">加载</button>
+                          <button onClick={() => deleteOutfit(outfit.id)} className="text-red-500 hover:text-red-600 text-sm">删除</button>
                         </div>
                       </div>
                     ))}
@@ -1323,25 +1371,20 @@ export default function DressUpPage() {
           </div>
         </div>
 
-        {/* 保存弹窗 */}
+        {/* Save dialog */}
         {showSaveDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-              <h3 className="text-xl font-bold mb-4">💾 保存装扮</h3>
+              <h3 className="text-xl font-bold mb-4">💾 保存造型</h3>
               <input
-                type="text"
-                value={outfitName}
-                onChange={(e) => setOutfitName(e.target.value)}
-                placeholder="给这套装扮起个名字..."
+                type="text" value={outfitName} onChange={e => setOutfitName(e.target.value)}
+                placeholder="给这套造型起个名字..."
                 className="w-full p-3 border rounded-xl mb-4 focus:border-primary focus:outline-none"
+                autoFocus
               />
               <div className="flex gap-3">
-                <button onClick={() => setShowSaveDialog(false)} className="flex-1 btn-secondary">
-                  取消
-                </button>
-                <button onClick={saveOutfit} className="flex-1 btn-primary">
-                  保存
-                </button>
+                <button onClick={() => setShowSaveDialog(false)} className="flex-1 btn-secondary">取消</button>
+                <button onClick={saveOutfit} className="flex-1 btn-primary">保存</button>
               </div>
             </div>
           </div>
@@ -1349,4 +1392,35 @@ export default function DressUpPage() {
       </div>
     </div>
   )
+}
+
+// ── Color helpers ───────────────────────────────────────────
+function lighten(hex: string, percent: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  const nr = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)))
+  const ng = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)))
+  const nb = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)))
+  return rgbToHex(nr, ng, nb)
+}
+
+function darken(hex: string, percent: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  const nr = Math.max(0, Math.floor(r * (1 - percent / 100)))
+  const ng = Math.max(0, Math.floor(g * (1 - percent / 100)))
+  const nb = Math.max(0, Math.floor(b * (1 - percent / 100)))
+  return rgbToHex(nr, ng, nb)
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean
+  return {
+    r: parseInt(full.substring(0, 2), 16),
+    g: parseInt(full.substring(2, 4), 16),
+    b: parseInt(full.substring(4, 6), 16),
+  }
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('')
 }
