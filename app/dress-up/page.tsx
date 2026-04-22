@@ -85,6 +85,33 @@ const BOTTOM_STYLES = ['直筒牛仔', '阔腿裤', '百褶裙', '短裤', '西�
 const SHOES_STYLES = ['白色运动鞋', '皮革短靴', '高跟鞋', '牛津鞋', '凉鞋', '帆布鞋', '乐福鞋', '马丁靴']
 const ACCESSORIES = ['无', '金属眼镜', '墨镜', '棒球帽', '贝雷帽', '手拿包', '斜挎包', '耳机']
 
+// ── Makeup & face options (female) ──
+const LIP_COLORS = [
+  { name: '裸粉', color: '#D4A5A8' },
+  { name: '蜜桃', color: '#E8909C' },
+  { name: '正红', color: '#C9304A' },
+  { name: '豆沙', color: '#B86A6B' },
+  { name: '酒红', color: '#8A2E3E' },
+  { name: '玫瑰', color: '#D64665' },
+]
+
+const EYE_COLORS = [
+  { name: '深棕', color: '#3a2817' },
+  { name: '琥珀', color: '#8B5A2B' },
+  { name: '榛果', color: '#6B4423' },
+  { name: '海蓝', color: '#2E5A7A' },
+  { name: '翠绿', color: '#3a6b3a' },
+  { name: '灰绿', color: '#5A6B5A' },
+]
+
+const BLUSH_COLORS = [
+  { name: '无', color: '' },
+  { name: '嫩粉', color: '#F8B8BE' },
+  { name: '蜜桃', color: '#FFC5A5' },
+  { name: '玫瑰', color: '#E89A9A' },
+  { name: '珊瑚', color: '#F79C82' },
+]
+
 export default function DressUpPage() {
   const toast = useToast()
   const [gender, setGender] = useState<'male' | 'female'>('female')
@@ -99,10 +126,14 @@ export default function DressUpPage() {
   const [shoesColor, setShoesColor] = useState('#FFFFFF')
   const [accessory, setAccessory] = useState(0)
   const [scene, setScene] = useState(0)
+  // Makeup state (mostly for female, but blush works for both)
+  const [lipColor, setLipColor] = useState(0)
+  const [eyeColor, setEyeColor] = useState(0)
+  const [blushColor, setBlushColor] = useState(1)
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([])
   const [outfitName, setOutfitName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory' | 'scene'>('scene')
+  const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory' | 'scene' | 'makeup'>('scene')
 
   useEffect(() => {
     const saved = localStorage.getItem('dressUpOutfits_v3')
@@ -283,44 +314,132 @@ export default function DressUpPage() {
           <path d="M 125 170 Q 140 180 155 170 Q 150 185 140 187 Q 130 185 125 170 Z"
                 fill={skin.shadow} opacity="0.25" />
 
-          {/* Eyes (realistic) */}
-          <ellipse cx="125" cy="135" rx="7" ry="4" fill="#fff" />
-          <ellipse cx="155" cy="135" rx="7" ry="4" fill="#fff" />
-          <circle cx="125" cy="135" r="3.5" fill="#3a2817" />
-          <circle cx="155" cy="135" r="3.5" fill="#3a2817" />
-          <circle cx="125.5" cy="134" r="1.2" fill="#fff" />
-          <circle cx="155.5" cy="134" r="1.2" fill="#fff" />
-          {/* Eyelashes top */}
-          <path d="M 118 133 Q 125 130 132 133" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-          <path d="M 148 133 Q 155 130 162 133" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
-          {/* Eyebrows */}
-          <path d="M 117 125 Q 125 122 133 125" stroke={darken(hairColor, 10)} strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M 147 125 Q 155 122 163 125" stroke={darken(hairColor, 10)} strokeWidth="2" fill="none" strokeLinecap="round" />
+          {/* Eye sockets (subtle shadow) */}
+          <ellipse cx="125" cy="135" rx="9" ry="5" fill={skin.shadow} opacity="0.18" />
+          <ellipse cx="155" cy="135" rx="9" ry="5" fill={skin.shadow} opacity="0.18" />
 
-          {/* Nose */}
-          <path d="M 140 140 Q 138 150 137 157 Q 140 160 143 157 Q 142 150 140 140"
-                stroke={skin.shadow} strokeWidth="0.8" fill={skin.shadow} opacity="0.25" />
-          <ellipse cx="138.5" cy="158" rx="1.5" ry="1" fill={skin.shadow} opacity="0.5" />
-          <ellipse cx="141.5" cy="158" rx="1.5" ry="1" fill={skin.shadow} opacity="0.5" />
+          {/* Eyes - almond shape (more realistic) */}
+          <path d="M 116 135 Q 119 131 125 131 Q 131 131 134 135 Q 131 138 125 138 Q 119 138 116 135 Z" fill="#fff" />
+          <path d="M 146 135 Q 149 131 155 131 Q 161 131 164 135 Q 161 138 155 138 Q 149 138 146 135 Z" fill="#fff" />
 
-          {/* Mouth */}
+          {/* Iris with gradient */}
+          <defs>
+            <radialGradient id="irisL" cx="50%" cy="45%" r="55%">
+              <stop offset="0%" stopColor={lighten(EYE_COLORS[eyeColor].color, 30)} />
+              <stop offset="70%" stopColor={EYE_COLORS[eyeColor].color} />
+              <stop offset="100%" stopColor={darken(EYE_COLORS[eyeColor].color, 30)} />
+            </radialGradient>
+            <radialGradient id="irisR" cx="50%" cy="45%" r="55%">
+              <stop offset="0%" stopColor={lighten(EYE_COLORS[eyeColor].color, 30)} />
+              <stop offset="70%" stopColor={EYE_COLORS[eyeColor].color} />
+              <stop offset="100%" stopColor={darken(EYE_COLORS[eyeColor].color, 30)} />
+            </radialGradient>
+          </defs>
+          <circle cx="125" cy="135" r="3.5" fill="url(#irisL)" clipPath="inset(0)" />
+          <circle cx="155" cy="135" r="3.5" fill="url(#irisR)" clipPath="inset(0)" />
+
+          {/* Pupil */}
+          <circle cx="125" cy="135.5" r="1.6" fill="#000" />
+          <circle cx="155" cy="135.5" r="1.6" fill="#000" />
+          {/* Catchlight (glint) */}
+          <circle cx="126.5" cy="133.5" r="1.1" fill="#fff" />
+          <circle cx="156.5" cy="133.5" r="1.1" fill="#fff" />
+          <circle cx="124" cy="134.5" r="0.4" fill="#fff" opacity="0.7" />
+          <circle cx="154" cy="134.5" r="0.4" fill="#fff" opacity="0.7" />
+
+          {/* Upper eyelashes */}
           {gender === 'female' ? (
             <>
-              <path d="M 131 168 Q 140 172 149 168 Q 145 175 140 176 Q 135 175 131 168 Z"
-                    fill="#C9546A" opacity="0.85" />
-              <path d="M 131 168 Q 140 165 149 168" stroke="#A83D54" strokeWidth="0.6" fill="none" />
+              <path d="M 116 135 Q 122 128 134 135" stroke="#1a1008" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+              <path d="M 146 135 Q 152 128 164 135" stroke="#1a1008" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+              {/* Individual lash hairs */}
+              <line x1="118" y1="133" x2="116" y2="129" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="123" y1="131" x2="122" y2="127" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="128" y1="131" x2="128" y2="127" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="132" y1="132" x2="133" y2="128" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="148" y1="133" x2="146" y2="129" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="153" y1="131" x2="152" y2="127" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="158" y1="131" x2="158" y2="127" stroke="#1a1008" strokeWidth="0.8" />
+              <line x1="162" y1="132" x2="163" y2="128" stroke="#1a1008" strokeWidth="0.8" />
+              {/* Eyeliner wing */}
+              <path d="M 134 135 L 137 133" stroke="#1a1008" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M 146 135 L 143 133" stroke="#1a1008" strokeWidth="1.5" strokeLinecap="round" />
+              {/* Eyeshadow hint */}
+              <path d="M 116 133 Q 125 128 134 133" stroke={LIP_COLORS[lipColor].color} strokeWidth="1" fill="none" opacity="0.25" />
+              <path d="M 146 133 Q 155 128 164 133" stroke={LIP_COLORS[lipColor].color} strokeWidth="1" fill="none" opacity="0.25" />
             </>
           ) : (
-            <path d="M 132 170 Q 140 173 148 170" stroke="#8B4A3C" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          )}
-
-          {/* Blush (female) */}
-          {gender === 'female' && (
             <>
-              <ellipse cx="120" cy="155" rx="8" ry="4" fill="#E89A9A" opacity="0.4" />
-              <ellipse cx="160" cy="155" rx="8" ry="4" fill="#E89A9A" opacity="0.4" />
+              <path d="M 117 134 Q 123 131 133 134" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+              <path d="M 147 134 Q 153 131 163 134" stroke="#1a1008" strokeWidth="1.2" fill="none" strokeLinecap="round" />
             </>
           )}
+          {/* Lower lashline */}
+          <path d="M 118 137 Q 125 139 132 137" stroke={skin.shadow} strokeWidth="0.5" fill="none" opacity="0.7" />
+          <path d="M 148 137 Q 155 139 162 137" stroke={skin.shadow} strokeWidth="0.5" fill="none" opacity="0.7" />
+
+          {/* Eyebrows (thicker, more defined) */}
+          <path d="M 115 125 Q 123 120 132 123 Q 134 125 132 126 Q 123 123 115 127 Z" fill={darken(hairColor, 15)} />
+          <path d="M 148 123 Q 157 120 165 125 Q 165 127 157 123 Q 148 126 148 127 Z" fill={darken(hairColor, 15)} />
+          {/* Brow hair strokes */}
+          <line x1="118" y1="125" x2="120" y2="122" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+          <line x1="123" y1="123" x2="125" y2="121" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+          <line x1="128" y1="123" x2="130" y2="121" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+          <line x1="150" y1="123" x2="152" y2="121" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+          <line x1="155" y1="122" x2="157" y2="120" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+          <line x1="160" y1="123" x2="162" y2="121" stroke={darken(hairColor, 20)} strokeWidth="0.6" />
+
+          {/* Nose - more anatomical */}
+          <path d="M 138 140 Q 137 145 136 152 Q 135 156 137 158"
+                stroke={skin.shadow} strokeWidth="0.6" fill="none" opacity="0.4" />
+          <path d="M 142 140 Q 143 145 144 152 Q 145 156 143 158"
+                stroke={skin.shadow} strokeWidth="0.6" fill="none" opacity="0.4" />
+          {/* Nose tip + nostrils */}
+          <path d="M 135 158 Q 140 161 145 158 Q 143 162 140 162 Q 137 162 135 158 Z"
+                fill={skin.shadow} opacity="0.2" />
+          <ellipse cx="138" cy="160" rx="1.2" ry="0.8" fill={skin.shadow} opacity="0.55" />
+          <ellipse cx="142" cy="160" rx="1.2" ry="0.8" fill={skin.shadow} opacity="0.55" />
+          {/* Nose highlight (bridge) */}
+          <path d="M 140 135 L 140 156" stroke={skin.highlight} strokeWidth="0.8" opacity="0.5" />
+
+          {/* Lips */}
+          {gender === 'female' ? (
+            <g>
+              {/* Upper lip with cupid's bow */}
+              <path d="M 130 168 Q 134 166 137 167 Q 138 165 140 165 Q 142 165 143 167 Q 146 166 150 168 Q 147 171 140 171 Q 133 171 130 168 Z"
+                    fill={LIP_COLORS[lipColor].color} opacity="0.9" />
+              {/* Lower lip */}
+              <path d="M 130 168 Q 140 175 150 168 Q 148 177 140 178 Q 132 177 130 168 Z"
+                    fill={LIP_COLORS[lipColor].color} />
+              {/* Lip line (center) */}
+              <path d="M 130 169 Q 140 171 150 169" stroke={darken(LIP_COLORS[lipColor].color, 25)} strokeWidth="0.6" fill="none" />
+              {/* Lip highlight */}
+              <ellipse cx="140" cy="173" rx="3.5" ry="1" fill="#fff" opacity="0.35" />
+              <ellipse cx="137" cy="167" rx="1.5" ry="0.6" fill="#fff" opacity="0.3" />
+            </g>
+          ) : (
+            <g>
+              <path d="M 132 170 Q 140 172 148 170 Q 146 174 140 174 Q 134 174 132 170 Z"
+                    fill="#9A5E4E" opacity="0.75" />
+              <path d="M 132 170 Q 140 171 148 170" stroke="#7A3E2E" strokeWidth="0.5" fill="none" />
+            </g>
+          )}
+
+          {/* Blush - soft layered */}
+          {BLUSH_COLORS[blushColor].color && (
+            <g>
+              <ellipse cx="120" cy="155" rx="10" ry="5" fill={BLUSH_COLORS[blushColor].color} opacity="0.35" />
+              <ellipse cx="160" cy="155" rx="10" ry="5" fill={BLUSH_COLORS[blushColor].color} opacity="0.35" />
+              {/* Inner darker spot */}
+              <ellipse cx="120" cy="155" rx="5" ry="2.5" fill={BLUSH_COLORS[blushColor].color} opacity="0.4" />
+              <ellipse cx="160" cy="155" rx="5" ry="2.5" fill={BLUSH_COLORS[blushColor].color} opacity="0.4" />
+            </g>
+          )}
+
+          {/* Face highlight (forehead/cheekbone) */}
+          <ellipse cx="140" cy="110" rx="18" ry="8" fill={skin.highlight} opacity="0.25" />
+          <ellipse cx="120" cy="145" rx="5" ry="8" fill={skin.highlight} opacity="0.15" />
+          <ellipse cx="160" cy="145" rx="5" ry="8" fill={skin.highlight} opacity="0.15" />
         </g>
 
         {/* ── Hair ── */}
@@ -339,20 +458,46 @@ export default function DressUpPage() {
         case 0: // 长直发
           return (
             <g>
-              <path d="M 102 90 Q 100 70 140 68 Q 180 70 178 90 L 180 95 Q 175 80 140 78 Q 105 80 100 95 Z" fill={c} />
-              <path d="M 100 90 L 95 220 Q 95 240 100 245 L 115 245 L 118 135 Q 115 110 100 100 Z" fill={c} />
-              <path d="M 180 90 L 185 220 Q 185 240 180 245 L 165 245 L 162 135 Q 165 110 180 100 Z" fill={c} />
-              <path d="M 105 88 Q 118 76 140 80 Q 165 75 175 88" fill={c} />
-              {/* Highlight strands */}
-              <path d="M 105 95 Q 103 160 108 220" stroke={lighten(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
-              <path d="M 170 98 Q 175 160 172 220" stroke={lighten(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
+              {/* Back silhouette */}
+              <path d="M 98 95 L 90 250 Q 92 260 102 262 L 178 262 Q 188 260 190 250 L 182 95 Q 140 82 98 95 Z" fill={darken(hairColor, 15)} />
+              {/* Main cap */}
+              <path d="M 100 95 Q 98 65 140 62 Q 182 65 180 95 L 182 100 Q 175 82 140 80 Q 105 82 98 100 Z" fill={c} />
+              {/* Left hair strand falling */}
+              <path d="M 98 95 Q 94 130 92 200 Q 92 245 100 250 L 120 250 L 122 140 Q 118 110 102 98 Z" fill={c} />
+              {/* Right hair strand falling */}
+              <path d="M 182 95 Q 186 130 188 200 Q 188 245 180 250 L 160 250 L 158 140 Q 162 110 178 98 Z" fill={c} />
+              {/* Front bangs (side sweep) */}
+              <path d="M 105 90 Q 120 74 142 82 Q 168 74 178 92 Q 170 100 140 98 Q 115 100 105 95 Z" fill={c} />
+              {/* Parting line (subtle) */}
+              <path d="M 135 70 Q 138 85 140 95" stroke={darken(hairColor, 25)} strokeWidth="0.8" fill="none" opacity="0.5" />
+              {/* Individual hair strand highlights */}
+              <path d="M 102 100 Q 99 160 106 230" stroke={lighten(hairColor, 30)} strokeWidth="1" fill="none" opacity="0.6" />
+              <path d="M 112 110 Q 110 170 116 235" stroke={lighten(hairColor, 20)} strokeWidth="0.7" fill="none" opacity="0.5" />
+              <path d="M 170 100 Q 173 160 166 230" stroke={lighten(hairColor, 30)} strokeWidth="1" fill="none" opacity="0.6" />
+              <path d="M 162 110 Q 164 170 159 235" stroke={lighten(hairColor, 20)} strokeWidth="0.7" fill="none" opacity="0.5" />
+              {/* Glossy top shine */}
+              <ellipse cx="140" cy="75" rx="30" ry="4" fill={lighten(hairColor, 40)} opacity="0.4" />
+              {/* Hair tip wisps */}
+              <path d="M 95 248 Q 92 256 90 262 M 105 250 Q 105 258 103 263 M 115 252 Q 115 260 113 265" stroke={darken(hairColor, 10)} strokeWidth="0.6" fill="none" opacity="0.7" />
+              <path d="M 185 248 Q 188 256 190 262 M 175 250 Q 175 258 177 263 M 165 252 Q 165 260 167 265" stroke={darken(hairColor, 10)} strokeWidth="0.6" fill="none" opacity="0.7" />
             </g>
           )
         case 1: // 齐肩短发
           return (
             <g>
-              <path d="M 100 90 Q 100 70 140 68 Q 180 70 180 90 L 182 160 Q 178 175 170 175 L 110 175 Q 102 175 98 160 Z" fill={c} />
-              <path d="M 105 88 Q 125 80 140 90 Q 155 80 175 88" stroke={darken(hairColor, 10)} strokeWidth="1" fill="none" opacity="0.5" />
+              <path d="M 98 92 Q 98 68 140 65 Q 182 68 182 92 L 184 165 Q 180 180 170 180 L 110 180 Q 100 180 96 165 Z" fill={c} />
+              {/* Inner shadow for depth */}
+              <path d="M 98 92 Q 140 82 182 92 L 182 100 Q 140 92 98 100 Z" fill={darken(hairColor, 15)} opacity="0.6" />
+              {/* Bangs */}
+              <path d="M 105 88 Q 122 76 140 86 Q 158 76 175 88 Q 168 96 140 98 Q 112 96 105 92 Z" fill={c} />
+              {/* Glossy shine */}
+              <ellipse cx="140" cy="78" rx="28" ry="3" fill={lighten(hairColor, 35)} opacity="0.45" />
+              {/* Layered ends */}
+              <path d="M 98 170 L 96 180 L 108 178 L 112 172 Z" fill={darken(hairColor, 10)} />
+              <path d="M 182 170 L 184 180 L 172 178 L 168 172 Z" fill={darken(hairColor, 10)} />
+              {/* Highlight strands */}
+              <path d="M 108 100 L 110 170" stroke={lighten(hairColor, 25)} strokeWidth="0.8" fill="none" opacity="0.6" />
+              <path d="M 172 100 L 170 170" stroke={lighten(hairColor, 25)} strokeWidth="0.8" fill="none" opacity="0.6" />
             </g>
           )
         case 2: // 高马尾
@@ -379,15 +524,54 @@ export default function DressUpPage() {
         case 4: // 丸子头
           return (
             <g>
-              <path d="M 105 88 Q 100 68 140 65 Q 180 68 175 88 L 177 130 Q 173 140 140 140 Q 107 140 103 130 Z" fill={c} />
-              <ellipse cx="140" cy="55" rx="25" ry="22" fill={c} />
-              <ellipse cx="130" cy="50" rx="8" ry="6" fill={lighten(hairColor, 15)} opacity="0.6" />
+              {/* Base wrap */}
+              <path d="M 103 90 Q 100 70 140 67 Q 180 70 177 90 L 179 132 Q 175 142 140 142 Q 105 142 101 132 Z" fill={c} />
+              {/* Bun base shadow ring */}
+              <ellipse cx="140" cy="68" rx="28" ry="24" fill={darken(hairColor, 20)} />
+              {/* Bun */}
+              <ellipse cx="140" cy="55" rx="26" ry="23" fill={c} />
+              {/* Bun texture strands */}
+              <path d="M 118 50 Q 140 40 162 50" stroke={darken(hairColor, 15)} strokeWidth="0.8" fill="none" opacity="0.5" />
+              <path d="M 120 58 Q 140 48 160 58" stroke={darken(hairColor, 15)} strokeWidth="0.8" fill="none" opacity="0.5" />
+              <path d="M 122 64 Q 140 56 158 64" stroke={darken(hairColor, 15)} strokeWidth="0.8" fill="none" opacity="0.5" />
+              {/* Bun highlight */}
+              <ellipse cx="132" cy="48" rx="10" ry="5" fill={lighten(hairColor, 35)} opacity="0.5" />
+              {/* Hair tie */}
+              <ellipse cx="140" cy="78" rx="14" ry="3" fill={darken(hairColor, 30)} opacity="0.7" />
+              {/* Baby hair wisps at hairline */}
+              <path d="M 108 88 Q 115 84 122 90 M 158 90 Q 165 84 172 88" stroke={darken(hairColor, 10)} strokeWidth="0.6" fill="none" opacity="0.7" />
+              {/* Loose strands (from bun) */}
+              <path d="M 120 40 Q 108 30 105 18" stroke={c} strokeWidth="2" fill="none" />
+              <path d="M 160 40 Q 172 30 175 18" stroke={c} strokeWidth="2" fill="none" />
+              {/* Forehead gloss */}
+              <ellipse cx="140" cy="95" rx="25" ry="3" fill={lighten(hairColor, 30)} opacity="0.4" />
             </g>
           )
         case 5: // 大波浪
           return (
             <g>
-              <path d="M 100 90 Q 98 65 140 60 Q 182 65 180 90 L 184 190 Q 183 220 175 240 Q 168 245 160 235 Q 165 200 160 170 L 160 260 Q 155 280 148 280 Q 145 265 142 220 L 140 280 Q 138 290 132 288 Q 127 270 124 220 L 120 260 Q 114 280 105 270 Q 110 220 104 175 Q 102 205 100 235 Q 92 245 88 235 L 90 190 Q 92 150 96 100 Z" fill={c} />
+              {/* Back silhouette (wide due to volume) */}
+              <path d="M 88 95 Q 80 180 78 280 L 202 280 Q 200 180 192 95 Q 140 85 88 95 Z" fill={darken(hairColor, 15)} />
+              {/* Main volume */}
+              <path d="M 92 98 Q 88 65 140 58 Q 192 65 188 98 L 195 200 Q 198 240 185 270 L 95 270 Q 82 240 85 200 Z" fill={c} />
+              {/* Wavy strand contours (right) */}
+              <path d="M 188 105 Q 200 130 195 155 Q 182 175 192 200 Q 205 225 190 260" stroke={darken(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
+              <path d="M 180 100 Q 190 130 183 160 Q 170 180 180 210 Q 190 240 175 265" stroke={darken(hairColor, 12)} strokeWidth="1" fill="none" opacity="0.5" />
+              {/* Wavy strand contours (left) */}
+              <path d="M 92 105 Q 80 130 85 155 Q 98 175 88 200 Q 75 225 90 260" stroke={darken(hairColor, 20)} strokeWidth="1.5" fill="none" opacity="0.6" />
+              <path d="M 100 100 Q 90 130 97 160 Q 110 180 100 210 Q 90 240 105 265" stroke={darken(hairColor, 12)} strokeWidth="1" fill="none" opacity="0.5" />
+              {/* Center waves */}
+              <path d="M 140 105 Q 135 140 142 175 Q 148 210 140 250" stroke={lighten(hairColor, 10)} strokeWidth="0.8" fill="none" opacity="0.4" />
+              {/* Side-swept bangs */}
+              <path d="M 105 85 Q 125 72 155 90 Q 172 78 178 90 Q 170 100 140 100 Q 112 100 105 90 Z" fill={c} />
+              {/* Lip-level volume lobes */}
+              <path d="M 78 220 Q 70 250 85 275 Q 90 278 95 265 Z" fill={c} />
+              <path d="M 202 220 Q 210 250 195 275 Q 190 278 185 265 Z" fill={c} />
+              {/* Glossy top */}
+              <ellipse cx="140" cy="72" rx="35" ry="5" fill={lighten(hairColor, 40)} opacity="0.5" />
+              {/* Sparkle highlights */}
+              <circle cx="108" cy="140" r="1.5" fill="#fff" opacity="0.6" />
+              <circle cx="172" cy="160" r="1.2" fill="#fff" opacity="0.5" />
             </g>
           )
         case 6: // 锁骨发
@@ -1205,6 +1389,7 @@ export default function DressUpPage() {
                 {[
                   { key: 'scene', label: '场景', icon: '🎬' },
                   { key: 'hair', label: '发型', icon: '💇' },
+                  { key: 'makeup', label: '妆容', icon: '💄' },
                   { key: 'top', label: '上装', icon: '👕' },
                   { key: 'bottom', label: '下装', icon: '👖' },
                   { key: 'shoes', label: '鞋子', icon: '👟' },
@@ -1339,6 +1524,63 @@ export default function DressUpPage() {
                         className={`p-3 rounded-xl text-sm transition-all ${accessory === i ? 'bg-primary text-white shadow-md' : 'bg-white hover:bg-gray-100'}`}
                       >{name}</button>
                     ))}
+                  </div>
+                )}
+
+                {activeTab === 'makeup' && (
+                  <div className="space-y-4">
+                    {/* Lip color */}
+                    {gender === 'female' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2">💋 唇色</label>
+                        <div className="grid grid-cols-6 gap-2">
+                          {LIP_COLORS.map((l, i) => (
+                            <button key={i} onClick={() => setLipColor(i)}
+                              className={`relative aspect-square rounded-full transition-all ${lipColor === i ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'hover:scale-105'}`}
+                              style={{ background: l.color, boxShadow: '0 2px 4px rgba(0,0,0,0.15) inset' }}
+                              title={l.name}
+                            >
+                              {lipColor === i && <span className="absolute inset-0 flex items-center justify-center text-xs text-white drop-shadow">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 text-center">{LIP_COLORS[lipColor].name}</div>
+                      </div>
+                    )}
+
+                    {/* Eye color */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">👁️ 瞳色</label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {EYE_COLORS.map((e, i) => (
+                          <button key={i} onClick={() => setEyeColor(i)}
+                            className={`relative aspect-square rounded-full transition-all ${eyeColor === i ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'hover:scale-105'}`}
+                            style={{ background: `radial-gradient(circle at 40% 40%, ${lighten(e.color, 30)}, ${e.color}, ${darken(e.color, 30)})` }}
+                            title={e.name}
+                          >
+                            {eyeColor === i && <span className="absolute inset-0 flex items-center justify-center text-xs text-white drop-shadow">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 text-center">{EYE_COLORS[eyeColor].name}</div>
+                    </div>
+
+                    {/* Blush */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">🌸 腮红</label>
+                      <div className="grid grid-cols-5 gap-2">
+                        {BLUSH_COLORS.map((b, i) => (
+                          <button key={i} onClick={() => setBlushColor(i)}
+                            className={`relative aspect-square rounded-full transition-all border-2 ${blushColor === i ? 'ring-2 ring-primary ring-offset-2 scale-110 border-white' : 'border-gray-200 hover:scale-105'}`}
+                            style={{ background: b.color || 'repeating-linear-gradient(45deg, #fff, #fff 3px, #eee 3px, #eee 6px)' }}
+                            title={b.name}
+                          >
+                            {blushColor === i && <span className="absolute inset-0 flex items-center justify-center text-xs text-white drop-shadow">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 text-center">{BLUSH_COLORS[blushColor].name}</div>
+                    </div>
                   </div>
                 )}
               </div>

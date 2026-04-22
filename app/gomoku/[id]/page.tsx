@@ -168,17 +168,16 @@ export default function GomokuGameRoom() {
   }
 
   // ── Undo Last Move ──
-  const handleUndo = async () => {
-    if (!gameState || gameState.history.length === 0 || !currentUser) return
-    // In PvE undo 2 moves (player + bot), in PvP undo 1
-    const undoCount = gameState.gameMode === 'pve' ? Math.min(2, gameState.history.length) : 1
-    const newHistory = gameState.history.slice(0, -undoCount)
+  // Apply undo locally + push to DB (used after consent / for PvE)
+  const applyUndo = async (undoCount: number) => {
+    if (!gameState || gameState.history.length === 0) return
+    const n = Math.min(undoCount, gameState.history.length)
+    const newHistory = gameState.history.slice(0, -n)
     const prevBoard = newHistory.length > 0
       ? newHistory[newHistory.length - 1].board.map(r => [...r])
       : createEmptyBoard()
     const prevMove = newHistory.length > 0 ? newHistory[newHistory.length - 1].move : null
 
-    // Figure out whose turn it should be
     let prevPlayer: 'black' | 'white' = 'black'
     if (newHistory.length > 0) {
       prevPlayer = newHistory[newHistory.length - 1].player === 'black' ? 'white' : 'black'
@@ -192,6 +191,7 @@ export default function GomokuGameRoom() {
       currentPlayer: prevPlayer,
       winner: null,
       status: 'playing',
+      undoRequest: null,
     }
     setGameState(next)
     try {
@@ -199,6 +199,62 @@ export default function GomokuGameRoom() {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  const handleUndo = async () => {
+    if (!gameState || gameState.history.length === 0 || !currentUser) return
+
+    // PvE: undo 2 moves (player + bot) immediately
+    if (gameState.gameMode === 'pve') {
+      await applyUndo(2)
+      return
+    }
+
+    // PvP: send request, require opponent approval
+    if (gameState.undoRequest) {
+      showToast('已有悔棋请求在进行中', 'warning')
+      return
+    }
+    const next: GomokuGameState = {
+      ...gameState,
+      undoRequest: { requesterId: currentUser, requestedAt: Date.now() },
+    }
+    setGameState(next)
+    try {
+      await supabase.from('gomoku_games').update({ game_state: next }).eq('id', id)
+      showToast('已发送悔棋请求，等待对方同意...', 'info')
+    } catch (err) {
+      console.error(err)
+      showToast('发送请求失败', 'error')
+    }
+  }
+
+  const approveUndo = async () => {
+    if (!gameState || !gameState.undoRequest) return
+    // Undo the single move that the requester made
+    await applyUndo(1)
+    showToast('已同意悔棋', 'success')
+  }
+
+  const rejectUndo = async () => {
+    if (!gameState || !gameState.undoRequest) return
+    const next: GomokuGameState = { ...gameState, undoRequest: null }
+    setGameState(next)
+    try {
+      await supabase.from('gomoku_games').update({ game_state: next }).eq('id', id)
+      showToast('已拒绝悔棋请求', 'info')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const cancelUndoRequest = async () => {
+    if (!gameState || !gameState.undoRequest) return
+    const next: GomokuGameState = { ...gameState, undoRequest: null }
+    setGameState(next)
+    try {
+      await supabase.from('gomoku_games').update({ game_state: next }).eq('id', id)
+    } catch (err) { console.error(err) }
   }
 
   // ── Loading States ──
@@ -351,14 +407,51 @@ export default function GomokuGameRoom() {
             </div>
           </div>
 
+          {/* Undo Request Dialog (PvP) */}
+          {gameState.undoRequest && (
+            <div className="mt-4 p-4 rounded-xl bg-amber-50 border-2 border-amber-300 animate-pulse">
+              {gameState.undoRequest.requesterId === currentUser ? (
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <span className="text-xl">⏳</span>
+                    <span className="text-sm font-medium">已发送悔棋请求，等待对方回应...</span>
+                  </div>
+                  <button
+                    onClick={cancelUndoRequest}
+                    className="text-sm px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 rounded-lg border border-gray-300"
+                  >撤回请求</button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <span className="text-xl">🤔</span>
+                    <span className="text-sm font-medium">
+                      {gameState.players.find(p => p.id === gameState.undoRequest!.requesterId)?.name || '对方'} 请求悔棋
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={approveUndo}
+                      className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm shadow active:scale-95"
+                    >✓ 同意</button>
+                    <button
+                      onClick={rejectUndo}
+                      className="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm shadow active:scale-95"
+                    >✗ 拒绝</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex justify-center gap-4 mt-4">
-            {status === 'playing' && history.length > 0 && (
+            {status === 'playing' && history.length > 0 && !gameState.undoRequest && (
               <button
                 onClick={handleUndo}
                 className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors border border-gray-200"
               >
-                悔棋
+                悔棋{gameState.gameMode === 'pvp' ? '（需对方同意）' : ''}
               </button>
             )}
             {status === 'finished' && (

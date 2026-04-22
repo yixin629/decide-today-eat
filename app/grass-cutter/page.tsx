@@ -14,6 +14,11 @@ interface Enemy {
   speed: number
   type: 'slime' | 'bat' | 'skull' | 'wolf' | 'boss'
   dmg: number
+  hitFlash?: number          // frames of white flash remaining
+  phase?: number             // boss phase (1, 2, 3)
+  lastMinionSpawn?: number
+  knockbackVx?: number
+  knockbackVy?: number
 }
 
 interface Projectile {
@@ -134,6 +139,9 @@ export default function GrassCutterPage() {
   const timeRef = useRef(0)
   const orbitAngleRef = useRef(0)
   const pausedForLevelRef = useRef(false)
+  const screenShakeRef = useRef(0)       // intensity of screen shake
+  const playerFlashRef = useRef(0)        // red flash when hit
+  const hasSpawnedBossRef = useRef<Set<number>>(new Set())
 
   useEffect(() => { posRef.current = pos }, [pos])
   useEffect(() => { facingRef.current = facing }, [facing])
@@ -205,6 +213,9 @@ export default function GrassCutterPage() {
     lastSpawnRef.current = 0
     timeRef.current = 0
     orbitAngleRef.current = 0
+    screenShakeRef.current = 0
+    playerFlashRef.current = 0
+    hasSpawnedBossRef.current = new Set()
   }
 
   // Level-up handler
@@ -316,8 +327,10 @@ export default function GrassCutterPage() {
     else if (minute > 2) type = r < 0.3 ? 'skull' : r < 0.55 ? 'bat' : 'slime'
     else if (minute > 1) type = r < 0.4 ? 'bat' : 'slime'
 
-    // Boss every 2 minutes
-    if (Math.floor(t / 120000) > 0 && t % 120000 < 200) {
+    // Boss every 1 minute (fire once per window)
+    const bossWindow = Math.floor(t / 60000)
+    if (bossWindow > 0 && !hasSpawnedBossRef.current.has(bossWindow)) {
+      hasSpawnedBossRef.current.add(bossWindow)
       spawnBoss()
       return
     }
@@ -543,12 +556,38 @@ export default function GrassCutterPage() {
         return { ...pr, x: pr.x + pr.vx, y: pr.y + pr.vy, life: pr.life - 1 }
       }).filter(pr => pr.life > 0 && pr.x > -50 && pr.x < W + 50 && pr.y > -50 && pr.y < H + 50))
 
-      // Move enemies toward player
+      // Move enemies toward player + boss phase logic + decay hitFlash
       const p = posRef.current
       setEnemies(prev => prev.map(e => {
         const dx = p.x - e.x, dy = p.y - e.y
         const d = Math.hypot(dx, dy) || 1
-        return { ...e, x: e.x + (dx / d) * e.speed, y: e.y + (dy / d) * e.speed }
+        const next: Enemy = {
+          ...e,
+          x: e.x + (dx / d) * e.speed,
+          y: e.y + (dy / d) * e.speed,
+          hitFlash: e.hitFlash ? e.hitFlash - 1 : 0,
+        }
+        // Boss spawns minions at low HP
+        if (e.type === 'boss') {
+          const phase = e.hp / e.maxHp < 0.33 ? 3 : e.hp / e.maxHp < 0.66 ? 2 : 1
+          next.phase = phase
+          next.speed = 0.7 + (phase - 1) * 0.3
+          if (phase >= 2 && (!e.lastMinionSpawn || now - e.lastMinionSpawn > 4000)) {
+            next.lastMinionSpawn = now
+            // Spawn 2 bats around boss
+            for (let i = 0; i < 2; i++) {
+              const ang = Math.random() * Math.PI * 2
+              setEnemies(ps => [...ps, {
+                id: Date.now() + Math.random() + i,
+                x: e.x + Math.cos(ang) * 30,
+                y: e.y + Math.sin(ang) * 30,
+                hp: 15, maxHp: 15,
+                speed: 1.5, type: 'bat', dmg: 10,
+              }])
+            }
+          }
+        }
+        return next
       }))
 
       // Collision: projectiles vs enemies
@@ -580,7 +619,9 @@ export default function GrassCutterPage() {
                 addFloat(pr.x, pr.y, '💥', '#fb923c')
                 consumed = true
               }
-              return { ...e, hp: e.hp - dmg }
+              // Damage number + hit flash
+              addFloat(e.x + (Math.random() - 0.5) * 10, e.y - 12, `-${Math.floor(dmg)}`, '#fde047')
+              return { ...e, hp: e.hp - dmg, hitFlash: 4 }
             }
             return e
           }))
@@ -596,12 +637,27 @@ export default function GrassCutterPage() {
         prev.forEach(e => {
           if (e.hp <= 0) {
             setKills(k => k + 1)
-            setScore(s => s + (e.type === 'boss' ? 200 : e.type === 'wolf' ? 15 : e.type === 'skull' ? 8 : e.type === 'bat' ? 4 : 2))
-            drops.push({
-              id: Date.now() + Math.random(),
-              x: e.x, y: e.y,
-              value: e.type === 'boss' ? 50 : e.type === 'wolf' ? 5 : e.type === 'skull' ? 3 : e.type === 'bat' ? 2 : 1,
-            })
+            setScore(s => s + (e.type === 'boss' ? 500 : e.type === 'wolf' ? 15 : e.type === 'skull' ? 8 : e.type === 'bat' ? 4 : 2))
+            if (e.type === 'boss') {
+              // Boss: big explosion of 10 gems scattered around
+              screenShakeRef.current = Math.max(screenShakeRef.current, 20)
+              for (let i = 0; i < 10; i++) {
+                const ang = (i / 10) * Math.PI * 2
+                drops.push({
+                  id: Date.now() + Math.random() + i,
+                  x: e.x + Math.cos(ang) * 30,
+                  y: e.y + Math.sin(ang) * 30,
+                  value: 10,
+                })
+              }
+              addFloat(e.x, e.y - 40, 'BOSS 击败!', '#fde047')
+            } else {
+              drops.push({
+                id: Date.now() + Math.random(),
+                x: e.x, y: e.y,
+                value: e.type === 'wolf' ? 5 : e.type === 'skull' ? 3 : e.type === 'bat' ? 2 : 1,
+              })
+            }
           } else {
             keep.push(e)
           }
@@ -617,6 +673,9 @@ export default function GrassCutterPage() {
         const hitting = enemiesRef.current.find(e => Math.hypot(e.x - currentPos.x, e.y - currentPos.y) < hitR)
         if (hitting) {
           lastDamageRef.current = now
+          // Screen shake + player flash effects
+          screenShakeRef.current = hitting.type === 'boss' ? 14 : 8
+          playerFlashRef.current = 12
           setHp(h => {
             const nh = h - hitting.dmg
             if (nh <= 0) {
@@ -674,6 +733,18 @@ export default function GrassCutterPage() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Reset transforms
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+
+    // Screen shake: translate canvas randomly based on intensity
+    const shake = screenShakeRef.current
+    if (shake > 0) {
+      const dx = (Math.random() - 0.5) * shake
+      const dy = (Math.random() - 0.5) * shake
+      ctx.translate(dx, dy)
+      screenShakeRef.current = Math.max(0, shake - 1)
+    }
+
     // Grass field background with tile pattern
     ctx.fillStyle = '#2d4a2b'
     ctx.fillRect(0, 0, W, H)
@@ -717,18 +788,36 @@ export default function GrassCutterPage() {
     // Enemies
     enemies.forEach(e => {
       const emoji = e.type === 'boss' ? '👿' : e.type === 'wolf' ? '🐺' : e.type === 'skull' ? '💀' : e.type === 'bat' ? '🦇' : '🟢'
-      const size = e.type === 'boss' ? 40 : 22
+      const bossPulse = e.type === 'boss' ? 1 + Math.sin(time / 150) * 0.05 : 1
+      const size = (e.type === 'boss' ? 52 : 22) * bossPulse
+      // Boss aura
+      if (e.type === 'boss') {
+        const phase = e.phase || 1
+        ctx.fillStyle = phase === 3 ? 'rgba(239, 68, 68, 0.3)' : phase === 2 ? 'rgba(249, 115, 22, 0.25)' : 'rgba(168, 85, 247, 0.2)'
+        ctx.beginPath(); ctx.arc(e.x, e.y, 40 * bossPulse, 0, Math.PI * 2); ctx.fill()
+      }
       ctx.font = `${size}px Arial`
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      ctx.fillText(emoji, e.x, e.y)
+      // Hit flash: draw white overlay
+      if (e.hitFlash && e.hitFlash > 0) {
+        ctx.save()
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.fillText(emoji, e.x, e.y)
+        ctx.globalCompositeOperation = 'source-atop'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+        ctx.fillRect(e.x - 30, e.y - 30, 60, 60)
+        ctx.restore()
+      } else {
+        ctx.fillText(emoji, e.x, e.y)
+      }
       // HP bar
       if (e.hp < e.maxHp) {
-        const bw = e.type === 'boss' ? 50 : 22
+        const bw = e.type === 'boss' ? 60 : 22
         const hpp = e.hp / e.maxHp
         ctx.fillStyle = '#00000088'
-        ctx.fillRect(e.x - bw / 2 - 1, e.y - size / 2 - 5, bw + 2, 4)
+        ctx.fillRect(e.x - bw / 2 - 1, e.y - size / 2 - 6, bw + 2, 5)
         ctx.fillStyle = hpp > 0.5 ? '#4ade80' : hpp > 0.25 ? '#fbbf24' : '#ef4444'
-        ctx.fillRect(e.x - bw / 2, e.y - size / 2 - 4, bw * hpp, 2)
+        ctx.fillRect(e.x - bw / 2, e.y - size / 2 - 5, bw * hpp, 3)
       }
     })
 
@@ -764,7 +853,20 @@ export default function GrassCutterPage() {
       }
     })
 
-    // Player
+    // Player - with damage flash + danger ring when HP low
+    const flash = playerFlashRef.current
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(239, 68, 68, ${flash / 24})`
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, PLAYER_R + 8, 0, Math.PI * 2); ctx.fill()
+      playerFlashRef.current = flash - 1
+    }
+    if (hp / stats.maxHp < 0.3) {
+      // Pulsing red ring when HP < 30%
+      const pulse = Math.sin(time / 100) * 0.3 + 0.5
+      ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, PLAYER_R + 6, 0, Math.PI * 2); ctx.stroke()
+    }
     ctx.font = '26px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
     ctx.fillText('🧑‍🌾', pos.x, pos.y)
 
@@ -784,7 +886,7 @@ export default function GrassCutterPage() {
       ctx.fillText(ft.text, ft.x, ft.y)
     })
     ctx.globalAlpha = 1
-  }, [pos, enemies, projectiles, xpGems, floatTexts, stats, weapons, time])
+  }, [pos, enemies, projectiles, xpGems, floatTexts, stats, weapons, time, hp])
 
   const minutes = Math.floor(time / 60000)
   const seconds = Math.floor((time % 60000) / 1000)
@@ -834,12 +936,49 @@ export default function GrassCutterPage() {
               </div>
             )}
 
-            {/* Pause */}
+            {/* Pause menu with stats */}
             {paused && started && !over && (
-              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-lg">
-                <div className="text-5xl mb-3">⏸</div>
-                <h2 className="text-xl font-bold text-white mb-4">暂停</h2>
-                <button onClick={() => setPaused(false)} className="px-6 py-2 bg-green-500 text-white rounded-lg font-bold">继续</button>
+              <div className="absolute inset-0 bg-black/85 flex flex-col items-center justify-center rounded-lg backdrop-blur-sm p-4 overflow-y-auto">
+                <div className="text-4xl mb-2">⏸</div>
+                <h2 className="text-xl font-black text-green-300 mb-4 tracking-widest">暂停</h2>
+
+                {/* Current stats */}
+                <div className="w-full max-w-xs bg-green-900/40 border border-green-500/30 rounded-xl p-3 mb-3">
+                  <div className="text-green-400/70 text-[10px] tracking-wider mb-2 font-mono">角色状态</div>
+                  <div className="grid grid-cols-2 gap-1 text-xs font-mono">
+                    <span className="text-gray-400">时间</span><span className="text-yellow-300 text-right">{timeStr}</span>
+                    <span className="text-gray-400">等级</span><span className="text-cyan-300 text-right">Lv.{level}</span>
+                    <span className="text-gray-400">击杀</span><span className="text-green-300 text-right">{kills}</span>
+                    <span className="text-gray-400">分数</span><span className="text-yellow-300 text-right">{score}</span>
+                    <span className="text-gray-400">最大生命</span><span className="text-red-300 text-right">{stats.maxHp}</span>
+                    <span className="text-gray-400">移动速度</span><span className="text-blue-300 text-right">{stats.speed.toFixed(2)}</span>
+                    <span className="text-gray-400">伤害倍率</span><span className="text-orange-300 text-right">×{stats.damageMul.toFixed(2)}</span>
+                    <span className="text-gray-400">冷却倍率</span><span className="text-purple-300 text-right">×{stats.cdrMul.toFixed(2)}</span>
+                    <span className="text-gray-400">范围倍率</span><span className="text-pink-300 text-right">×{stats.areaMul.toFixed(2)}</span>
+                    <span className="text-gray-400">拾取范围</span><span className="text-cyan-300 text-right">{stats.pickupRange}</span>
+                  </div>
+                </div>
+
+                {/* Weapons list */}
+                <div className="w-full max-w-xs bg-green-900/40 border border-green-500/30 rounded-xl p-3 mb-4">
+                  <div className="text-green-400/70 text-[10px] tracking-wider mb-2 font-mono">装备 ({weapons.length}/4)</div>
+                  <div className="space-y-1">
+                    {weapons.map(w => (
+                      <div key={w.kind} className="flex items-center justify-between text-xs bg-black/30 rounded px-2 py-1">
+                        <span className="flex items-center gap-1.5">
+                          <span>{WEAPON_INFO[w.kind].emoji}</span>
+                          <span className="text-white/90">{WEAPON_INFO[w.kind].name}</span>
+                        </span>
+                        <span className="text-yellow-300 font-bold">Lv.{w.level}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setPaused(false)} className="px-6 py-2 bg-gradient-to-b from-green-400 to-emerald-600 text-black rounded-lg font-black active:scale-95">▶ 继续</button>
+                  <button onClick={() => { setPaused(false); setOver(true) }} className="px-6 py-2 bg-red-500/30 text-red-200 border border-red-500/40 rounded-lg font-bold active:scale-95">放弃</button>
+                </div>
               </div>
             )}
 
@@ -934,13 +1073,17 @@ export default function GrassCutterPage() {
                 </div>
               </div>
 
-              {/* Weapons */}
-              <div className="mt-2 flex flex-wrap justify-center gap-1 text-xs font-mono">
+              {/* Weapons + pause button */}
+              <div className="mt-2 flex flex-wrap justify-center items-center gap-1 text-xs font-mono">
                 {weapons.map(w => (
                   <span key={w.kind} className="bg-white/10 px-2 py-1 rounded border border-white/10 text-white">
                     {WEAPON_INFO[w.kind].emoji} {WEAPON_INFO[w.kind].name} Lv.{w.level}
                   </span>
                 ))}
+                <button onClick={() => setPaused(true)}
+                  className="bg-white/10 px-2 py-1 rounded border border-white/10 text-white hover:bg-white/20 active:scale-95"
+                  title="暂停 (ESC)"
+                >⏸ 暂停</button>
               </div>
             </>
           )}
@@ -949,7 +1092,8 @@ export default function GrassCutterPage() {
           <div className="mt-4 text-xs text-gray-400 space-y-1 font-mono">
             <p className="text-green-300 font-bold">玩法：</p>
             <p>自动攻击，移动躲避敌人。吸收蓝色经验球升级，三选一强化武器或属性。</p>
-            <p>敌人越来越多越来越强，每 2 分钟降临 Boss。存活 5 分钟即可胜利！</p>
+            <p>每 1 分钟降临 Boss（多阶段，低血量会召唤小怪）。存活 5 分钟即可胜利！</p>
+            <p className="text-green-400/60">ESC 暂停 · HP 低于 30% 会出现红色警告环</p>
           </div>
         </div>
       </div>

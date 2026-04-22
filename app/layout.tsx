@@ -6,8 +6,7 @@ import UserAvatar from './components/UserAvatar'
 import AuthProvider from './components/AuthProvider'
 import { ToastProvider } from './components/ToastProvider'
 import AIChatbot from './components/AIChatbot'
-import ThemeSwitcher from './components/ThemeSwitcher'
-import ThemeSettings from './components/ThemeSettings'
+import UnifiedThemePanel from './components/UnifiedThemePanel'
 import HeartParticles from './components/HeartParticles'
 import PageLoadingEffect from './components/PageLoadingEffect'
 import RandomSurprise from './components/RandomSurprise'
@@ -31,8 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <UserAvatar />
             {children}
             <AIChatbot />
-            <ThemeSwitcher />
-            <ThemeSettings />
+            <UnifiedThemePanel />
             <HeartParticles />
           </AuthProvider>
         </ToastProvider>

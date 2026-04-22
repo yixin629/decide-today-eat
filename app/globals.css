@@ -215,41 +215,61 @@ body {
 
 /* 暗黑模式 */
 .dark-mode {
-  --bg-gradient: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-  --card-bg: rgba(31, 41, 55, 0.9);
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  --card-bg: rgba(30, 41, 59, 0.9);
 }
 
 .dark-mode body {
   background: var(--bg-gradient);
-  color: #f3f4f6;
+  color: #e2e8f0;
 }
 
 .dark-mode .card {
-  @apply bg-gray-800 bg-opacity-95 text-gray-100;
+  @apply bg-slate-800 bg-opacity-95 text-slate-100 border border-slate-700;
 }
 
-.dark-mode .text-gray-600 {
-  @apply text-gray-400;
+.dark-mode .text-gray-500 { @apply text-slate-400; }
+.dark-mode .text-gray-600 { @apply text-slate-400; }
+.dark-mode .text-gray-700 { @apply text-slate-300; }
+.dark-mode .text-gray-800 { @apply text-slate-200; }
+.dark-mode .text-gray-900 { @apply text-slate-100; }
+.dark-mode .text-black    { @apply text-slate-100; }
+
+.dark-mode .bg-white      { @apply bg-slate-800; }
+.dark-mode .bg-gray-50    { @apply bg-slate-900; }
+.dark-mode .bg-gray-100   { @apply bg-slate-700; }
+.dark-mode .bg-gray-200   { @apply bg-slate-600; }
+
+.dark-mode .border-gray-100 { @apply border-slate-700; }
+.dark-mode .border-gray-200 { @apply border-slate-700; }
+.dark-mode .border-gray-300 { @apply border-slate-600; }
+
+/* Inputs */
+.dark-mode input[type=text],
+.dark-mode input[type=email],
+.dark-mode input[type=password],
+.dark-mode input[type=search],
+.dark-mode input[type=color],
+.dark-mode textarea,
+.dark-mode select {
+  @apply bg-slate-700 text-slate-100 border-slate-600;
+}
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+  @apply text-slate-500;
 }
 
-.dark-mode .text-gray-700 {
-  @apply text-gray-300;
-}
+/* Labels in dark mode */
+.dark-mode label { @apply text-slate-300; }
 
-.dark-mode .text-gray-800 {
-  @apply text-gray-200;
-}
-
-.dark-mode .bg-white {
-  @apply bg-gray-800;
-}
-
-.dark-mode .bg-gray-50 {
-  @apply bg-gray-900;
-}
-
-.dark-mode .bg-gray-100 {
-  @apply bg-gray-700;
+/* Common bg gradients fade so text stays readable */
+.dark-mode .bg-gradient-to-r.from-pink-50,
+.dark-mode .bg-gradient-to-br.from-pink-50,
+.dark-mode .bg-gradient-to-r.from-blue-50,
+.dark-mode .bg-gradient-to-br.from-blue-50,
+.dark-mode .bg-gradient-to-br.from-pink-100 {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(51, 65, 85, 0.8));
+  color: #e2e8f0;
 }
 
 /* 护眼模式 */

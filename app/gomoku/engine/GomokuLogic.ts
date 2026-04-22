@@ -13,6 +13,11 @@ export interface GomokuPlayerInfo {
   isBot: boolean;
 }
 
+export interface UndoRequest {
+  requesterId: string;
+  requestedAt: number;
+}
+
 export interface GomokuGameState {
   board: Cell[][];
   currentPlayer: Player;
@@ -23,6 +28,7 @@ export interface GomokuGameState {
   players: GomokuPlayerInfo[];
   gameMode: 'pvp' | 'pve';
   hostId: string;
+  undoRequest?: UndoRequest | null;
 }
 
 export function createEmptyBoard(): Cell[][] {

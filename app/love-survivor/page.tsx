@@ -14,6 +14,29 @@ interface Enemy {
   speed: number
   shootCooldown?: number
   driftPhase?: number
+  hitFlash?: number
+  bossPhase?: number         // 1, 2, or 3
+  targetX?: number           // for boss horizontal movement
+  vx?: number
+  vy?: number
+}
+
+interface FloatText {
+  id: number; x: number; y: number
+  text: string; color: string
+  life: number; vy: number
+}
+
+interface Shockwave {
+  id: number; x: number; y: number
+  radius: number; maxRadius: number
+  life: number
+}
+
+interface WaveBanner {
+  text: string
+  subText: string
+  life: number
 }
 
 interface Bullet {
@@ -86,7 +109,13 @@ export default function ThunderFighterPage() {
   const [bullets, setBullets] = useState<Bullet[]>([])
   const [powerUps, setPowerUps] = useState<PowerUp[]>([])
   const [particles, setParticles] = useState<Particle[]>([])
+  const [floatTexts, setFloatTexts] = useState<FloatText[]>([])
+  const [shockwaves, setShockwaves] = useState<Shockwave[]>([])
+  const [waveBanner, setWaveBanner] = useState<WaveBanner | null>(null)
   const starsRef = useRef<Star[]>([])
+  const screenShakeRef = useRef(0)
+  const playerFlashRef = useRef(0)
+  const lastFormationRef = useRef(0)
 
   // Refs for game loop
   const posRef = useRef(pos)
@@ -154,6 +183,10 @@ export default function ThunderFighterPage() {
     setWeapon('vulcan'); setWeaponLv(1)
     setSpeed(5); setShield(false); setInvincible(false)
     setEnemies([]); setBullets([]); setPowerUps([]); setParticles([])
+    setFloatTexts([]); setShockwaves([]); setWaveBanner({ text: 'WAVE 1', subText: '起飞！击溃所有敌机', life: 90 })
+    screenShakeRef.current = 0
+    playerFlashRef.current = 0
+    lastFormationRef.current = 0
   }
 
   // ── Effects ──
@@ -176,6 +209,38 @@ export default function ThunderFighterPage() {
       })
     }
     setParticles(prev => [...prev, ...parts])
+    // Add shockwave for big explosions
+    if (big) {
+      setShockwaves(prev => [...prev, {
+        id: Date.now() + Math.random(), x, y,
+        radius: 5, maxRadius: 80, life: 25,
+      }])
+      screenShakeRef.current = Math.max(screenShakeRef.current, 10)
+    } else {
+      screenShakeRef.current = Math.max(screenShakeRef.current, 3)
+    }
+  }, [])
+
+  const addFloatText = useCallback((x: number, y: number, text: string, color: string) => {
+    setFloatTexts(prev => [...prev, {
+      id: Date.now() + Math.random(), x, y, text, color,
+      life: 30, vy: -1.2,
+    }])
+  }, [])
+
+  const showWaveBanner = useCallback((waveNum: number) => {
+    const subs = [
+      '击溃所有敌机',
+      '敌机增援！',
+      '小心，有狙击手',
+      '全面包围...',
+      '⚠️ BOSS 出现',
+    ]
+    setWaveBanner({
+      text: `WAVE ${waveNum}`,
+      subText: waveNum % 5 === 0 ? subs[4] : subs[(waveNum - 1) % 4],
+      life: 90,
+    })
   }, [])
 
   const spawnSmoke = useCallback((x: number, y: number) => {
@@ -218,10 +283,11 @@ export default function ThunderFighterPage() {
       setEnemies(prev => [...prev, {
         id: Date.now(), x: W / 2, y: -60,
         hp: 200 + w * 30, maxHp: 200 + w * 30,
-        type: 'boss', speed: 0.3,
-        shootCooldown: 0, driftPhase: 0,
+        type: 'boss', speed: 0.8,
+        shootCooldown: 0, driftPhase: 0, bossPhase: 1,
       }])
-      toast.error('⚠️ 巨型战舰接近！')
+      setWaveBanner({ text: `BOSS`, subText: `⚠️ 巨型战舰接近！三阶段战斗`, life: 100 })
+      screenShakeRef.current = 12
       return
     }
 
@@ -233,19 +299,51 @@ export default function ThunderFighterPage() {
     else if (r < 0.55) type = 'bomber'
     else type = 'fighter'
 
-    // Formation: sometimes spawn 3 fighters in a row
-    if (type === 'fighter' && Math.random() < 0.4) {
-      const startX = 60 + Math.random() * (W - 120)
-      for (let i = 0; i < 3; i++) {
-        setEnemies(prev => [...prev, {
-          id: Date.now() + i + Math.random(),
-          x: startX + i * 45,
-          y: -40 - i * 30,
-          hp: 15 + w * 2, maxHp: 15 + w * 2,
-          type: 'fighter',
-          speed: 2 + w * 0.1,
-          driftPhase: Math.random() * Math.PI * 2,
-        }])
+    // Formation spawning (V-shape, diagonal column, horizontal line)
+    if (type === 'fighter' && Math.random() < 0.5 && Date.now() - lastFormationRef.current > 3500) {
+      lastFormationRef.current = Date.now()
+      const formationRoll = Math.random()
+      const hp = 15 + w * 2
+      const sp = 2 + w * 0.1
+
+      if (formationRoll < 0.35) {
+        // V formation (5 fighters)
+        const centerX = 80 + Math.random() * (W - 160)
+        const positions = [[-60, -60], [-30, -30], [0, 0], [30, -30], [60, -60]]
+        positions.forEach(([dx, dy], i) => {
+          setEnemies(prev => [...prev, {
+            id: Date.now() + i + Math.random(),
+            x: centerX + dx, y: -40 + dy,
+            hp, maxHp: hp, type: 'fighter', speed: sp,
+            driftPhase: 0,
+          }])
+        })
+      } else if (formationRoll < 0.7) {
+        // Diagonal column
+        const fromLeft = Math.random() < 0.5
+        const startX = fromLeft ? 40 : W - 40
+        for (let i = 0; i < 4; i++) {
+          setEnemies(prev => [...prev, {
+            id: Date.now() + i + Math.random(),
+            x: startX + (fromLeft ? i * 40 : -i * 40),
+            y: -40 - i * 50,
+            hp, maxHp: hp, type: 'fighter', speed: sp,
+            driftPhase: Math.random() * Math.PI * 2,
+          }])
+        }
+      } else {
+        // Horizontal line (3-4 fighters)
+        const count = 3 + Math.floor(Math.random() * 2)
+        const gap = (W - 80) / (count + 1)
+        for (let i = 0; i < count; i++) {
+          setEnemies(prev => [...prev, {
+            id: Date.now() + i + Math.random(),
+            x: 40 + gap * (i + 1),
+            y: -40 - i * 10,
+            hp, maxHp: hp, type: 'fighter', speed: sp * 0.8,
+            driftPhase: Math.random() * Math.PI * 2,
+          }])
+        }
       }
       return
     }
@@ -261,7 +359,7 @@ export default function ThunderFighterPage() {
       shootCooldown: (type === 'heli' || type === 'bomber') ? 0 : undefined,
       driftPhase: Math.random() * Math.PI * 2,
     }])
-  }, [toast])
+  }, [])
 
   // ── Power-up Spawn ──
   const maybeSpawnPowerUp = useCallback((x: number, y: number) => {
@@ -399,20 +497,53 @@ export default function ThunderFighterPage() {
       // Update enemies
       setEnemies(prev => prev.map(e => {
         const phase = (e.driftPhase || 0) + 0.03
-        const driftX = e.type === 'fighter' ? Math.sin(phase) * 1.2 : 0
-        const newX = e.x + driftX
-        const newY = e.y + e.speed
+        let driftX = e.type === 'fighter' ? Math.sin(phase) * 1.2 : 0
+        let newY = e.y + e.speed
 
-        let shootCD = e.shootCooldown
-        if (shootCD !== undefined && newY > 30) {
-          shootCD += 16
-          const interval = e.type === 'boss' ? 700 : e.type === 'heli' ? 1500 : 2400
+        // Boss: hold position near top, sway horizontally
+        if (e.type === 'boss') {
+          const hpPct = e.hp / e.maxHp
+          const bossPhase = hpPct < 0.33 ? 3 : hpPct < 0.66 ? 2 : 1
+          // Approach and hold at y=80, sway left-right (faster in later phases)
+          if (newY < 80) {
+            newY = e.y + e.speed
+          } else {
+            newY = 80
+            driftX = Math.sin(phase * (bossPhase === 3 ? 2.5 : bossPhase === 2 ? 1.8 : 1)) * (1.5 + bossPhase * 0.4)
+          }
+          const newX = e.x + driftX
+
+          let shootCD = (e.shootCooldown || 0) + 16
+          const interval = bossPhase === 3 ? 400 : bossPhase === 2 ? 550 : 750
           if (shootCD > interval) {
             shootCD = 0
             const pp = posRef.current
             const ang = Math.atan2(pp.y - newY, pp.x - newX)
-            if (e.type === 'boss') {
-              // Boss: 3-way spread
+            if (bossPhase === 3) {
+              // Spiral barrage
+              const baseAng = (Date.now() / 120) % (Math.PI * 2)
+              for (let i = 0; i < 8; i++) {
+                const a = baseAng + (i / 8) * Math.PI * 2
+                setBullets(bs => [...bs, {
+                  id: Date.now() + Math.random() + i,
+                  x: newX, y: newY,
+                  vx: Math.cos(a) * 4, vy: Math.sin(a) * 4,
+                  damage: 18, color: '#ef4444', size: 5, isEnemy: true,
+                }])
+              }
+            } else if (bossPhase === 2) {
+              // 5-way fan
+              for (let i = -2; i <= 2; i++) {
+                const a = ang + i * 0.18
+                setBullets(bs => [...bs, {
+                  id: Date.now() + Math.random() + i,
+                  x: newX, y: newY,
+                  vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+                  damage: 15, color: '#ef4444', size: 5, isEnemy: true,
+                }])
+              }
+            } else {
+              // 3-way spread
               for (let i = -1; i <= 1; i++) {
                 const a = ang + i * 0.25
                 setBullets(bs => [...bs, {
@@ -422,19 +553,31 @@ export default function ThunderFighterPage() {
                   damage: 15, color: '#ef4444', size: 5, isEnemy: true,
                 }])
               }
-            } else {
-              setBullets(bs => [...bs, {
-                id: Date.now() + Math.random(),
-                x: newX, y: newY,
-                vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5,
-                damage: 12, color: '#ef4444', size: 4, isEnemy: true,
-              }])
             }
+          }
+          return { ...e, x: newX, y: newY, driftPhase: phase, shootCooldown: shootCD, bossPhase, hitFlash: e.hitFlash ? e.hitFlash - 1 : 0 }
+        }
+
+        const newX = e.x + driftX
+        let shootCD = e.shootCooldown
+        if (shootCD !== undefined && newY > 30) {
+          shootCD += 16
+          const interval = e.type === 'heli' ? 1500 : 2400
+          if (shootCD > interval) {
+            shootCD = 0
+            const pp = posRef.current
+            const ang = Math.atan2(pp.y - newY, pp.x - newX)
+            setBullets(bs => [...bs, {
+              id: Date.now() + Math.random(),
+              x: newX, y: newY,
+              vx: Math.cos(ang) * 4.5, vy: Math.sin(ang) * 4.5,
+              damage: 12, color: '#ef4444', size: 4, isEnemy: true,
+            }])
           }
         }
 
-        return { ...e, x: newX, y: newY, driftPhase: phase, shootCooldown: shootCD }
-      }).filter(e => e.y < H + 40))
+        return { ...e, x: newX, y: newY, driftPhase: phase, shootCooldown: shootCD, hitFlash: e.hitFlash ? e.hitFlash - 1 : 0 }
+      }).filter(e => e.type === 'boss' || e.y < H + 40))
 
       // Update particles
       setParticles(prev => prev.map(p => ({
@@ -443,6 +586,23 @@ export default function ThunderFighterPage() {
         vx: p.vx * 0.95, vy: p.vy * 0.95 + (p.kind === 'smoke' ? -0.05 : 0),
         life: p.life - 1,
       })).filter(p => p.life > 0))
+
+      // Update float texts
+      setFloatTexts(prev => prev.map(t => ({
+        ...t, y: t.y + t.vy, life: t.life - 1,
+      })).filter(t => t.life > 0))
+
+      // Update shockwaves
+      setShockwaves(prev => prev.map(s => ({
+        ...s,
+        radius: s.radius + (s.maxRadius - s.radius) * 0.25,
+        life: s.life - 1,
+      })).filter(s => s.life > 0))
+
+      // Update wave banner
+      if (waveBanner) {
+        setWaveBanner(prev => prev && prev.life > 0 ? { ...prev, life: prev.life - 1 } : null)
+      }
 
       // Update power-ups (drift down)
       setPowerUps(prev => prev.map(p => ({ ...p, y: p.y + 1.3 })).filter(p => p.y < H + 20))
@@ -460,25 +620,34 @@ export default function ThunderFighterPage() {
               // Laser pierces
               if (b.weapon !== 'laser') hit = true
               const newHp = e.hp - b.damage
+              // Damage number + hit flash
+              addFloatText(e.x + (Math.random() - 0.5) * 6, e.y - 10, `-${b.damage}`, '#fde047')
               if (newHp <= 0) {
                 addCombo()
                 const comboMul = 1 + comboRef.current * 0.05
                 const pts = Math.floor((e.type === 'boss' ? 200 : e.type === 'tank' ? 40 : e.type === 'heli' ? 30 : e.type === 'bomber' ? 25 : 15) * comboMul)
                 setScore(s => s + pts)
+                if (comboRef.current >= 3) {
+                  addFloatText(e.x, e.y - 25, `+${pts}`, comboRef.current >= 10 ? '#fde047' : '#ffffff')
+                }
                 setKills(k => {
                   const nk = k + 1
                   if (nk % 10 === 0) {
-                    setWave(w => w + 1)
-                    toast.success(`🌊 第 ${waveRef.current + 1} 波`)
+                    const next = waveRef.current + 1
+                    setWave(next)
+                    showWaveBanner(next)
                   }
                   return nk
                 })
                 spawnExplosion(e.x, e.y, e.type === 'boss' || e.type === 'tank')
+                if (e.type === 'boss') {
+                  screenShakeRef.current = 22
+                  addFloatText(e.x, e.y - 40, 'BOSS 击坠!', '#fde047')
+                }
                 maybeSpawnPowerUp(e.x, e.y)
                 return null as any
               }
-              spawnExplosion(e.x, e.y, false)
-              return { ...e, hp: newHp }
+              return { ...e, hp: newHp, hitFlash: 4 }
             }
             return e
           }).filter(Boolean) as Enemy[])
@@ -499,6 +668,9 @@ export default function ThunderFighterPage() {
               setEnemies(prev => prev.filter(x => x.id !== e.id))
             } else {
               const dmg = e.type === 'boss' ? 35 : e.type === 'tank' ? 25 : 15
+              screenShakeRef.current = Math.max(screenShakeRef.current, 15)
+              playerFlashRef.current = 14
+              addFloatText(p.x, p.y - 25, `-${dmg}`, '#ef4444')
               setHp(h => {
                 const nh = h - dmg
                 if (nh <= 0) {
@@ -510,7 +682,10 @@ export default function ThunderFighterPage() {
                 }
                 return Math.max(0, nh)
               })
-              setEnemies(prev => prev.filter(x => x.id !== e.id))
+              // Don't despawn boss on collision, just push back
+              if (e.type !== 'boss') {
+                setEnemies(prev => prev.filter(x => x.id !== e.id))
+              }
               spawnExplosion(p.x, p.y, true)
               setInvincible(true)
               setTimeout(() => setInvincible(false), 800)
@@ -528,6 +703,9 @@ export default function ThunderFighterPage() {
               setShield(false)
               spawnExplosion(p.x, p.y, false)
             } else {
+              screenShakeRef.current = Math.max(screenShakeRef.current, 8)
+              playerFlashRef.current = 10
+              addFloatText(p.x, p.y - 25, `-${b.damage}`, '#ef4444')
               setHp(h => {
                 const nh = h - b.damage
                 if (nh <= 0) {
@@ -592,6 +770,16 @@ export default function ThunderFighterPage() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    // Reset + screen shake
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    const shake = screenShakeRef.current
+    if (shake > 0) {
+      const dx = (Math.random() - 0.5) * shake
+      const dy = (Math.random() - 0.5) * shake
+      ctx.translate(dx, dy)
+      screenShakeRef.current = Math.max(0, shake - 1)
+    }
 
     // Dark space gradient background
     const bgGrad = ctx.createLinearGradient(0, 0, 0, H)
@@ -675,24 +863,54 @@ export default function ThunderFighterPage() {
     // Enemies
     enemies.forEach(e => {
       const emoji = e.type === 'boss' ? '🛸' : e.type === 'tank' ? '🚜' : e.type === 'heli' ? '🚁' : e.type === 'bomber' ? '🛩️' : '⚔️'
-      const size = e.type === 'boss' ? 48 : e.type === 'tank' ? 32 : 28
+      const pulse = e.type === 'boss' ? 1 + Math.sin(Date.now() / 200) * 0.04 : 1
+      const size = (e.type === 'boss' ? 52 : e.type === 'tank' ? 32 : 28) * pulse
+
+      // Boss aura ring (color depends on phase)
+      if (e.type === 'boss') {
+        const phase = e.bossPhase || 1
+        const auraColor = phase === 3 ? 'rgba(239, 68, 68, 0.35)' : phase === 2 ? 'rgba(251, 146, 60, 0.3)' : 'rgba(147, 51, 234, 0.25)'
+        ctx.fillStyle = auraColor
+        ctx.beginPath(); ctx.arc(e.x, e.y, 48 * pulse, 0, Math.PI * 2); ctx.fill()
+      }
+
       ctx.font = `${size}px Arial`
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-      // Flash red if low HP
+
+      // Low HP red glow
       const lowHp = e.hp / e.maxHp < 0.3
       if (lowHp && Math.floor(Date.now() / 100) % 2 === 0) {
         ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10
       }
-      ctx.fillText(emoji, e.x, e.y)
+
+      // Hit flash: white overlay briefly
+      if (e.hitFlash && e.hitFlash > 0) {
+        ctx.save()
+        ctx.fillText(emoji, e.x, e.y)
+        ctx.globalCompositeOperation = 'source-atop'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.fillRect(e.x - 30, e.y - 30, 60, 60)
+        ctx.restore()
+      } else {
+        ctx.fillText(emoji, e.x, e.y)
+      }
       ctx.shadowBlur = 0
 
       // HP bar
-      const bw = e.type === 'boss' ? 80 : 34
+      const bw = e.type === 'boss' ? 120 : 34
       const hpp = e.hp / e.maxHp
-      ctx.fillStyle = '#00000080'
-      ctx.fillRect(e.x - bw / 2 - 1, e.y - size / 2 - 7, bw + 2, 5)
-      ctx.fillStyle = hpp > 0.5 ? '#4ade80' : hpp > 0.25 ? '#fbbf24' : '#ef4444'
-      ctx.fillRect(e.x - bw / 2, e.y - size / 2 - 6, bw * hpp, 3)
+      ctx.fillStyle = '#00000088'
+      ctx.fillRect(e.x - bw / 2 - 1, e.y - size / 2 - 8, bw + 2, 6)
+      ctx.fillStyle = hpp > 0.66 ? '#a78bfa' : hpp > 0.33 ? '#fb923c' : '#ef4444'
+      ctx.fillRect(e.x - bw / 2, e.y - size / 2 - 7, bw * hpp, 4)
+
+      // Boss label
+      if (e.type === 'boss') {
+        const phase = e.bossPhase || 1
+        ctx.font = 'bold 10px "Courier New", monospace'
+        ctx.fillStyle = '#fde047'
+        ctx.fillText(`BOSS · PHASE ${phase}`, e.x, e.y - size / 2 - 18)
+      }
     })
 
     // Particles
@@ -711,9 +929,32 @@ export default function ThunderFighterPage() {
     })
     ctx.globalAlpha = 1
 
+    // Shockwave rings
+    shockwaves.forEach(s => {
+      const a = s.life / 25
+      ctx.strokeStyle = `rgba(255, 200, 100, ${a * 0.8})`
+      ctx.lineWidth = 3
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2); ctx.stroke()
+    })
+
+    // Player damage flash (red halo)
+    const pFlash = playerFlashRef.current
+    if (pFlash > 0) {
+      ctx.fillStyle = `rgba(239, 68, 68, ${pFlash / 28})`
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, PLAYER_SIZE + 12, 0, Math.PI * 2); ctx.fill()
+      playerFlashRef.current = pFlash - 1
+    }
+
+    // Low HP warning ring
+    if (hp / maxHp < 0.3 && !over) {
+      const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.5
+      ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, PLAYER_SIZE + 8, 0, Math.PI * 2); ctx.stroke()
+    }
+
     // Player
     if (!invincible || Math.floor(Date.now() / 80) % 2 === 0) {
-      // Jet body
       ctx.save()
       ctx.translate(pos.x, pos.y)
 
@@ -725,11 +966,9 @@ export default function ThunderFighterPage() {
       ctx.fill()
       ctx.shadowBlur = 0
 
-      // Body (metallic gradient fighter shape)
       ctx.font = '28px Arial'
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
       ctx.fillText('✈️', 0, 0)
-
       ctx.restore()
 
       // Shield ring
@@ -742,6 +981,20 @@ export default function ThunderFighterPage() {
       }
     }
 
+    // Float texts (damage numbers, score popups)
+    floatTexts.forEach(t => {
+      const a = Math.min(1, t.life / 20)
+      ctx.globalAlpha = a
+      ctx.font = 'bold 13px "Courier New", monospace'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = t.color
+      ctx.strokeStyle = '#000'
+      ctx.lineWidth = 2.5
+      ctx.strokeText(t.text, t.x, t.y)
+      ctx.fillText(t.text, t.x, t.y)
+    })
+    ctx.globalAlpha = 1
+
     // HUD: Combo counter
     if (combo > 2) {
       ctx.font = `bold ${20 + Math.min(combo, 20)}px "Courier New", monospace`
@@ -751,7 +1004,35 @@ export default function ThunderFighterPage() {
       ctx.fillText(`x${combo}`, W / 2, 40)
       ctx.shadowBlur = 0
     }
-  }, [pos, enemies, bullets, powerUps, particles, shield, invincible, combo, started, paused, over])
+
+    // Wave banner overlay
+    if (waveBanner && waveBanner.life > 0) {
+      const life = waveBanner.life
+      // Fade in for first 15 frames, fade out after frame 60
+      const alpha = life > 75 ? (90 - life) / 15 : life < 30 ? life / 30 : 1
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha))
+
+      // Ribbon background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+      ctx.fillRect(0, H / 2 - 50, W, 100)
+      ctx.fillStyle = 'rgba(253, 224, 71, 0.15)'
+      ctx.fillRect(0, H / 2 - 50, W, 3)
+      ctx.fillRect(0, H / 2 + 47, W, 3)
+
+      ctx.font = 'bold 38px "Courier New", monospace'
+      ctx.textAlign = 'center'
+      ctx.fillStyle = '#fde047'
+      ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 12
+      ctx.fillText(waveBanner.text, W / 2, H / 2 - 5)
+      ctx.shadowBlur = 0
+
+      ctx.font = 'bold 14px "Courier New", monospace'
+      ctx.fillStyle = '#e0e7ff'
+      ctx.fillText(waveBanner.subText, W / 2, H / 2 + 25)
+
+      ctx.globalAlpha = 1
+    }
+  }, [pos, enemies, bullets, powerUps, particles, shockwaves, floatTexts, waveBanner, shield, invincible, combo, started, paused, over, hp, maxHp])
 
   const weaponConfig = WEAPONS[weapon]
 
