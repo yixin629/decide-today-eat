@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
+import PageHeader from '../components/PageHeader'
+import LoadingSkeleton from '../components/LoadingSkeleton'
 
 const DEFAULT_FOODS = [
   // 基础美食
@@ -267,12 +269,10 @@ export default function FoodPage() {
         <BackButton href="/" text="返回首页" />
 
         {loading ? (
-          <div className="card text-center">
-            <div className="text-2xl">加载中...</div>
-          </div>
+          <LoadingSkeleton type="card" count={1} />
         ) : (
           <div className="card text-center">
-            <h1 className="text-4xl font-bold text-primary mb-8">🍱 今晚吃什么？ 🍱</h1>
+            <PageHeader title="今晚吃什么？" emoji="🍱" emojiDouble subtitle="让命运来决定你们的晚餐" className="!mb-6" />
 
             {/* Result Display */}
             <div className="mb-8 min-h-[160px] flex items-center justify-center">

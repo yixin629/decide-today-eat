@@ -9,6 +9,7 @@ import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
 import LoadingSkeleton from '../components/LoadingSkeleton'
 import AnniversaryReminders from '../components/AnniversaryReminders'
+import PageHeader from '../components/PageHeader'
 
 interface Anniversary {
   id: string
@@ -207,7 +208,7 @@ export default function AnniversariesPage() {
         <BackButton href="/" text="返回首页" />
 
         <div className="card">
-          <h1 className="text-4xl font-bold text-primary mb-8 text-center">💝 重要纪念日 💝</h1>
+          <PageHeader title="重要纪念日" emoji="💝" emojiDouble subtitle="永远铭记我们的每个特殊日子" />
 
           {/* Anniversary Reminders */}
           <AnniversaryReminders />

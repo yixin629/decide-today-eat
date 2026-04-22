@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import RandomMemory from './components/RandomMemory'
+import ThisDayMemories from './components/ThisDayMemories'
 
 interface Stats {
   photos: number
@@ -298,6 +299,9 @@ ${nextAnniversary.date}
           </div>
         )}
 
+        {/* "This Day in History" memories (photos/diary/anniversaries from same date past years) */}
+        <ThisDayMemories />
+
         {/* Feature Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Couple Chat - TOP PRIORITY */}
@@ -324,6 +328,17 @@ ${nextAnniversary.date}
                 我们的相册
               </h2>
               <p className="text-sm sm:text-base text-gray-600 text-center">记录每一个美好瞬间</p>
+            </div>
+          </Link>
+
+          {/* Shared Expense Tracker - NEW */}
+          <Link href="/expenses">
+            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200">
+              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💰</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
+                共同账本
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 text-center">平分不分手，记录每一笔花销</p>
             </div>
           </Link>
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import BackButton from '../components/BackButton'
+import PageHeader from '../components/PageHeader'
 import { useToast } from '../components/ToastProvider'
 
 interface LoveQuote {
@@ -128,15 +129,12 @@ export default function LoveQuotesPage() {
         ) : (
           <>
             <div className="card text-center mb-6">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <span className="text-3xl md:text-4xl animate-pulse">⭐</span>
-                <h1 className="text-3xl md:text-4xl font-bold text-primary">情话生成器</h1>
-                <span className="text-3xl md:text-4xl animate-bounce">🍐</span>
-              </div>
-
-              <p className="text-sm md:text-base text-gray-600 mb-8">
-                星星🌟代表zyx，梨🍐代表zly，我们的专属甜蜜空间
-              </p>
+              <PageHeader
+                title="情话生成器"
+                emoji="💕"
+                subtitle="⭐ 星星代表 zyx，🍐 梨代表 zly，我们的专属甜蜜空间"
+                className="!mb-6"
+              />
 
               {/* 当前情话显示 */}
               {currentQuote && (
