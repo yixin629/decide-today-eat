@@ -120,7 +120,8 @@ export default function Home() {
 
   const loadUnreadCounts = async () => {
     try {
-      const currentUser = localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
+      const currentUser =
+        localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
       if (!currentUser) return
 
       // Unread chat messages (sent by the other person, not read yet)
@@ -331,8 +332,8 @@ ${nextAnniversary.date}
             </div>
           </Link>
 
-          {/* Shared Expense Tracker - NEW */}
-          <Link href="/expenses">
+          {/* Shared Expense Tracker - HIDDEN */}
+          {/* <Link href="/expenses">
             <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200">
               <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💰</div>
               <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
@@ -340,7 +341,7 @@ ${nextAnniversary.date}
               </h2>
               <p className="text-sm sm:text-base text-gray-600 text-center">平分不分手，记录每一笔花销</p>
             </div>
-          </Link>
+          </Link> */}
 
           {/* Check In */}
           <Link href="/check-in">
