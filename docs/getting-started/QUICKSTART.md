@@ -1,124 +1,118 @@
 # 快速启动指南
 
-## 🎯 10分钟快速部署
+本指南用于在本地运行当前项目。完整项目说明见根目录 [README.md](../../README.md)。
 
-### 第一步：安装依赖 (2分钟)
+## 1. 准备环境
 
-请先确认 Node.js 版本为 20.9 或更高。
+- Node.js 20.9 或更高版本
+- npm
+- 一个 Supabase 项目
+
+在仓库根目录安装锁定版本的依赖：
 
 ```bash
-npm install
+npm ci
 ```
 
-### 第二步：配置 Supabase (5分钟)
-1. 访问 https://supabase.com 创建免费账号
-2. 创建新项目（等待2分钟）
-3. 复制 API 配置到 `.env.local`：
-   ```bash
-   copy .env.local.example .env.local
-   # 然后编辑 .env.local 填入你的配置
-   ```
-4. 在 Supabase SQL Editor 中运行 `database/setup/supabase-schema.sql`
-5. 再运行 `database/setup/complete-database-setup.sql`，补齐后续核心功能
+`postinstall` 会自动应用 `patches/` 中的兼容补丁。如果安装阶段提示补丁失败，不要忽略，应先确认依赖版本和补丁是否仍匹配。
 
-### 第三步：启动项目 (1分钟)
+## 2. 创建本地环境文件
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.local.example .env.local
+```
+
+macOS 或 Linux：
+
+```bash
+cp .env.local.example .env.local
+```
+
+至少填写：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=你的项目地址
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名客户端密钥
+```
+
+AI 助手需要时，再填写 `GROQ_API_KEY` 或 `CHATANYWHERE_API_KEY`。不要提交 `.env.local`。
+
+## 3. 初始化 Supabase
+
+全新数据库先在 Supabase SQL Editor 依次执行：
+
+1. `database/setup/supabase-schema.sql`
+2. `database/setup/complete-database-setup.sql`
+
+然后根据启用的功能执行独立迁移。两份 setup 脚本不包含聊天、个人资料、签到、共同账本、音乐和全部互动游戏表，映射关系见 [数据库脚本说明](../../database/README.md)。
+
+不要对已有数据库无差别执行全部 SQL。先备份，再核对表和字段。
+
+## 4. 配置 Storage
+
+需要上传照片时，创建 `photos` bucket；需要上传自定义头像时，创建 `avatars` bucket。当前代码通过公开 URL 展示这些文件，因此 bucket 和策略必须与实际认证方案匹配。
+
+详细步骤和安全说明见 [Supabase 配置指南](./SUPABASE_SETUP.md)。
+
+## 5. 启动
+
 ```bash
 npm run dev
 ```
-打开 http://localhost:3000 🎉
 
-## 📋 详细配置
+访问 [http://localhost:3000](http://localhost:3000)。
 
-需要详细的配置说明？请查看：
-- 📖 [README.md](../../README.md) - 完整文档
-- 🔧 [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) - Supabase 配置详解
+同一局域网内需要从手机访问时：
 
-## 🚀 一键部署到 Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/couple-website)
-
-点击按钮后：
-1. 连接 GitHub 账号
-2. 导入仓库
-3. 设置环境变量
-4. 点击部署
-
-## 💡 功能清单
-
-- [x] 📸 照片相册
-- [x] ⚫⚪ 五子棋游戏
-- [x] 💝 纪念日提醒
-- [x] 🍱 今晚吃什么
-- [x] 💌 甜蜜留言板
-- [x] ✨ 心愿清单
-
-## 🎨 自定义你的网站
-
-### 修改网站标题
-编辑 `app/layout.tsx`:
-```typescript
-export const metadata: Metadata = {
-  title: '我们的小世界 💕',  // 改成你想要的标题
-}
-```
-
-### 修改颜色主题
-编辑 `tailwind.config.ts`:
-```typescript
-colors: {
-  primary: '#ff6b9d',    // 主色
-  secondary: '#c44569',  // 副色
-  accent: '#ffa502',     // 强调色
-}
-```
-
-### 添加更多食物选项
-编辑 `app/food/page.tsx`，在 FOOD_OPTIONS 数组中添加。
-
-## 🔒 安全建议
-
-1. **不要分享你的 `.env.local` 文件**
-2. **将 `.env.local` 添加到 `.gitignore`**（已配置）
-3. **使用强密码保护 Supabase 项目**
-4. **考虑添加登录功能**（未来版本）
-
-## ❓ 遇到问题？
-
-### 依赖安装失败
 ```bash
-# 清理缓存重试
-npm cache clean --force
-npm install
+npm run dev -- --hostname 0.0.0.0
 ```
 
-### 端口被占用
-```bash
-# 使用其他端口
-npm run dev -- -p 3001
-```
+再通过 `http://电脑局域网IP:3000` 打开。只在可信网络中使用这种方式。
 
-### TypeScript 报错
+## 6. 提交前检查
+
 ```bash
-# 重新生成类型
+npm run lint
+npm run typecheck
 npm run build
 ```
 
-## 📱 移动端访问
+如果目标是 Cloudflare Workers，再运行：
 
-启动后，使用手机浏览器访问：
+```bash
+npm run cf:build
 ```
-http://你的电脑IP:3000
+
+## 常见问题
+
+### 缺少表或字段
+
+如果浏览器控制台出现 `relation does not exist` 或 `column does not exist`，不要反复执行所有 SQL。根据错误中的表名或字段名，在 [数据库脚本说明](../../database/README.md) 查找对应迁移。
+
+### RLS 或 Storage 拒绝访问
+
+确认目标表已启用正确的 RLS 策略，Storage bucket 也有与当前身份匹配的读、写或删除策略。当前浏览器本地身份不是 Supabase Auth，不能满足基于 `auth.uid()` 的生产策略。
+
+### 端口被占用
+
+```bash
+npm run dev -- -p 3001
 ```
 
-在同一 WiFi 下，手机和电脑可以互相访问！
+### TypeScript 或生产构建失败
 
-## 🎁 额外资源
+先分别运行：
 
-- [Next.js 文档](https://nextjs.org/docs)
-- [Tailwind CSS 文档](https://tailwindcss.com/docs)
-- [Supabase 文档](https://supabase.com/docs)
-- [Vercel 部署指南](https://vercel.com/docs)
+```bash
+npm run typecheck
+npm run build
+```
 
----
+修复输出中的第一条实际错误。`npm run build` 不是“重新生成类型”的替代命令。
 
-**祝你们幸福快乐！** ❤️
+## 部署
+
+Vercel 和 Cloudflare Workers 的准确配置见 [部署与持续集成](./DEPLOYMENT.md)。不要使用旧的一键部署链接或示例仓库地址。

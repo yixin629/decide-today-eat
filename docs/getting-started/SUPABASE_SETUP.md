@@ -1,179 +1,124 @@
 # Supabase 配置指南
 
-## 步骤 1: 创建 Supabase 项目
+本项目使用 Supabase PostgreSQL 保存业务数据，并使用 Storage 保存照片和自定义头像。
 
-1. 访问 https://supabase.com
-2. 注册/登录账号
-3. 点击 "New Project"
-4. 填写项目信息：
-   - 项目名称：couple-website（或任意名称）
-   - 数据库密码：设置一个强密码并保存好
-   - 区域：选择离你最近的区域
-5. 等待项目创建完成（约2分钟）
+## 1. 创建项目并获取客户端配置
 
-## 步骤 2: 获取 API 密钥
+在 [Supabase Dashboard](https://supabase.com/dashboard) 创建项目后，从项目设置中取得：
 
-1. 在项目 Dashboard，点击左侧菜单的 "Project Settings"（齿轮图标）
-2. 选择 "API" 选项卡
-3. 找到以下信息：
-   - **Project URL**: 类似 `https://xxxxxxxxxxxxx.supabase.co`
-   - **anon public**: 一串很长的密钥
+- Project URL
+- 匿名客户端密钥（anon key 或 publishable key，取决于控制台当前命名）
 
-4. 复制这两个值，粘贴到项目根目录的 `.env.local` 文件：
+写入本地 `.env.local`：
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon密钥
+NEXT_PUBLIC_SUPABASE_URL=https://你的项目.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名客户端密钥
 ```
 
-## 步骤 3: 创建数据库表
+这两个 `NEXT_PUBLIC_` 值会进入浏览器代码，不能用 `service_role` 密钥替代。`service_role` 具有高权限，只能保存在受控服务端环境，本项目当前也不需要它。
 
-1. 在 Supabase Dashboard，点击左侧菜单的 "SQL Editor"
-2. 点击 "New query"
-3. 复制 `database/setup/supabase-schema.sql` 文件内容
-4. 粘贴到 SQL 编辑器
-5. 点击 "Run" 执行 SQL
+## 2. 初始化数据库
 
-执行成功后，你将看到以下表被创建：
-- `photos` - 照片
-- `anniversaries` - 纪念日
-- `gomoku_games` - 五子棋游戏
-- `food_options` - 食物选项
-- `love_notes` - 留言
-- `wishlist` - 心愿清单
+全新项目在 SQL Editor 中依次执行：
 
-## 步骤 4: 配置 Storage（照片上传功能）
+1. `database/setup/supabase-schema.sql`
+2. `database/setup/complete-database-setup.sql`
 
-1. 点击左侧菜单的 "Storage"
-2. 点击 "Create a new bucket"
-3. 填写信息：
-   - Name: `photos`
-   - Public bucket: ✅ 勾选（让照片可以公开访问）
-4. 点击 "Create bucket"
+这会创建相册、纪念日、食物、留言、心愿清单、五子棋，以及倒计时、日程、时光胶囊和日记等基础表。
 
-### 设置 Storage 策略
+其他页面使用独立迁移，例如：
 
-需要创建 **3 个独立的策略**，分别控制上传、查看和删除权限。
+- 聊天：`database/migrations/chat-table-safe.sql`
+- 个人资料与提醒：`database/migrations/profile-tables.sql`
+- 签到：`database/migrations/check-in-table.sql`
+- 共同账本：`database/migrations/expenses-table.sql`
+- 音乐：`database/migrations/music-player-schema.sql`
+- 互动功能：`database/migrations/supabase-new-features.sql`
 
-#### 策略 1: 允许上传照片 (INSERT)
+完整映射、重复脚本和风险见 [database/README.md](../../database/README.md)。已有数据库应按缺少的表或字段选择迁移，不要重新执行全部初始化脚本。
 
-1. 点击刚创建的 `photos` bucket
-2. 点击 "Policies" 标签
-3. 点击 "New Policy" 按钮
-4. 选择 **"INSERT"** 操作类型（或选择 "For full customization"）
-5. 填写表单：
-   - **Policy name**: 保持自动生成的名字，或改成 `Allow public uploads`
-   - **Target roles**: 保持默认 "Defaults to all (public) roles if none selected"
-   - **WITH CHECK expression**: 填写：
-     ```
-     (bucket_id = 'photos'::text)
-     ```
-     或者简化版：
-     ```
-     (bucket_id = 'photos')
-     ```
-6. 点击右下角绿色的 **"Review"** 按钮
-7. 确认后点击 **"Save policy"** 保存
+## 3. 配置照片 Storage
 
-#### 策略 2: 允许查看照片 (SELECT)
+相册代码使用名为 `photos` 的 bucket：
 
-1. 再次点击 "New Policy" 按钮（创建第二个策略）
-2. 选择 **"SELECT"** 操作类型
-3. 填写表单：
-   - **Policy name**: 保持自动生成的名字，或改成 `Allow public reads`
-   - **Target roles**: 保持默认
-   - **USING expression**: 填写：
-     ```
-     (bucket_id = 'photos'::text)
-     ```
-     或者：
-     ```
-     (bucket_id = 'photos')
-     ```
-4. 点击 "Review" → "Save policy"
+1. 在 Storage 中创建 `photos` bucket。
+2. 当前页面通过 `getPublicUrl` 展示图片，因此要么将 bucket 设为 Public，要么调整代码改用签名 URL。
+3. 为当前客户端身份配置 `INSERT`、`SELECT` 和 `DELETE` 策略。
+4. 上传、查看和删除各测试一次。
 
-#### 策略 3: 允许删除照片 (DELETE)
+相册删除流程会先删除数据库记录，再尝试清理 Storage 文件。数据库权限和 Storage 权限必须分别配置。
 
-1. 第三次点击 "New Policy" 按钮（创建第三个策略）
-2. 选择 **"DELETE"** 操作类型
-3. 填写表单：
-   - **Policy name**: 保持自动生成的名字，或改成 `Allow public deletes`
-   - **Target roles**: 保持默认
-   - **USING expression**: 填写：
-     ```
-     (bucket_id = 'photos'::text)
-     ```
-     或者：
-     ```
-     (bucket_id = 'photos')
-     ```
-4. 点击 "Review" → "Save policy"
+## 4. 配置头像 Storage
 
-#### 验证策略
+自定义头像使用名为 `avatars` 的 bucket：
 
-完成后，在 Policies 页面应该看到 3 个策略：
-- ✅ Allow public uploads (INSERT) 或类似名称
-- ✅ Allow public reads (SELECT) 或类似名称  
-- ✅ Allow public deletes (DELETE) 或类似名称
+1. 创建 `avatars` bucket。
+2. 根据展示方式配置公开读取或签名 URL。
+3. 执行 `database/migrations/update-profile-avatar.sql`，为 `user_profiles` 增加 `avatar_url`。
+4. 配置与当前身份匹配的上传和读取策略。
 
-**重要提示**：
-- Supabase 新版界面会简化操作流程
-- 你只需要在对应的操作类型下填写 `(bucket_id = 'photos')` 或 `(bucket_id = 'photos'::text)`
-- 两种写法都可以，`::text` 是明确指定类型，但不加也能正常工作
-- INSERT 操作填在 "WITH CHECK expression"
-- SELECT 和 DELETE 操作填在 "USING expression"
+不使用自定义头像上传时，可以只保留 emoji 头像，不需要创建此 bucket。
 
-## 步骤 5: 验证配置
+## 5. Realtime
 
-1. 回到项目，确保 `.env.local` 文件配置正确
-2. 重启开发服务器：
+聊天页面依赖 `chat_messages` 的 Realtime 订阅。推荐执行
+`database/migrations/chat-table-safe.sql`，该脚本会在缺少时把表加入 `supabase_realtime` publication。
+
+五子棋和麻将的多人状态也依赖对应表结构与 Realtime 配置。遇到旧表字段不兼容时，先阅读：
+
+- `database/migrations/upgrade-gomoku-table.sql`
+- `database/migrations/add-mahjong-table.sql`
+- `database/fixes/fix-gomoku-mahjong.sql`
+
+修复脚本只用于对应历史问题，执行前必须备份。
+
+## 6. 验证
+
+启动项目：
+
 ```bash
 npm run dev
 ```
-3. 访问 http://localhost:3000
-4. 测试各个功能是否正常工作
 
-## 可选：添加身份验证
+至少验证：
 
-如果你想要添加登录功能保护网站：
+- 首页能读取统计和纪念日
+- 相册能上传、分页读取和删除
+- 日记、日程和时光胶囊能新增与读取
+- 已启用的可选功能没有缺表或缺字段错误
+- 聊天的新消息能在另一个浏览器窗口出现
 
-1. 在 Supabase Dashboard，点击 "Authentication"
-2. 在 "Users" 中手动添加用户，或
-3. 配置 "Providers" 启用邮箱/社交登录
-4. 在代码中添加 Supabase Auth 功能
-
-## 数据管理
-
-### 查看数据
-- 点击 "Table Editor" 查看和编辑表数据
-
-### 备份数据
-- 点击 "Database" → "Backups" 可以创建数据库备份
-
-### 查看日志
-- 点击 "Logs" 查看 API 请求和错误日志
+也可以在 SQL Editor 执行只读脚本 `database/diagnostics/check-tables.sql` 查看核心表字段。
 
 ## 常见问题
 
-### Q: RLS (Row Level Security) 错误？
-A: 确保在 SQL 中正确创建了访问策略，允许公开访问。
+### `relation ... does not exist`
 
-### Q: Storage 上传失败？
-A: 检查 Storage bucket 是否设为 public，且策略配置正确。
+对应功能表尚未创建。用错误中的表名在 `database/` 搜索，再按 [数据库脚本说明](../../database/README.md) 选择脚本。
 
-### Q: API 密钥泄露怎么办？
-A: 在 Project Settings → API 中可以重新生成密钥。
+### `column ... does not exist`
 
-## 费用说明
+数据库来自旧版本，缺少增量字段。例如旧 `photos` 表缺少 `tag` 时，执行
+`database/migrations/add-photo-tag.sql`。
 
-Supabase 免费计划包括：
-- 500MB 数据库空间
-- 1GB 文件存储
-- 50GB 带宽/月
-- 无限 API 请求
+### RLS 拒绝请求
 
-对于个人使用完全足够！
+RLS 已启用但没有允许当前角色执行该操作的策略。先确认请求使用的是匿名角色还是已认证用户，再设计策略。不要为了消除错误直接在公开生产环境使用 `USING (true)`。
 
----
+### Storage 上传或删除失败
 
-配置完成后，你的情侣网站就可以正常使用所有功能了！ 💕
+确认 bucket 名称完全是 `photos` 或 `avatars`，并分别检查 bucket 可见性、对象路径和 Storage policy。数据库表策略不会自动授权 Storage。
+
+### 密钥疑似泄露
+
+立即在 Supabase 控制台轮换相关密钥，更新本地和部署平台变量，并检查 Git 历史与部署日志。仅从当前文件删除密钥不能消除历史泄露。
+
+## 安全边界
+
+当前 `hooks/useAuth.ts` 主要把用户标识保存在 `localStorage`，不是 Supabase Auth，也不是可信的服务端身份。部分历史 SQL 为私人测试采用公开读写策略。因此：
+
+- 私人、受限环境可以按现有策略验证功能。
+- 公开部署前必须接入可靠认证，并按用户/资源重写 RLS 与 Storage policy。
+- 时光胶囊的收件人和开启时间限制目前主要由客户端执行，不能视为防越权措施。
+- 数据库和 Storage 应定期备份，真实密钥不得出现在仓库、截图或日志中。

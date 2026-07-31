@@ -1,179 +1,85 @@
-# 🎉 新功能部署指南
+# 互动功能与数据库依赖
 
-## 📋 已完成的功能
+本指南说明互动页面使用哪些数据表。所有可访问功能的名称、路径和导航分类以 `lib/features.ts` 为准。
 
-### 核心功能
+## 需要 `supabase-new-features.sql` 的功能
 
-### 1. 💡 功能申请箱 (`/feature-requests`)
-- ✅ 双方都可以提交功能申请
-- ✅ 可以标记完成状态（待处理/已完成/已拒绝）
-- ✅ 可以编辑和删除申请
-- ✅ 查看历史记录
-- ✅ 按状态筛选
+执行 `database/migrations/supabase-new-features.sql` 后可获得：
 
-### 2. 💖 真心话大冒险 (`/truth-or-dare`)
-- ✅ 随机抽取真心话或大冒险
-- ✅ 按类型和难度筛选
-- ✅ 可以添加自定义题目
-- ✅ 预设10条默认题目
+| 页面 | 路由 | 主要表 |
+| --- | --- | --- |
+| 功能申请箱 | `/feature-requests` | `feature_requests` |
+| 真心话大冒险 | `/truth-or-dare` | `truth_or_dare` |
+| 100 件想做的事 | `/bucket-list` | `love_bucket_list` |
+| 情话生成器 | `/love-quotes` | `love_quotes` |
+| 情侣问答 | `/couple-quiz` | `couple_quiz`、`quiz_results` |
+| 石头剪刀布 | `/rock-paper-scissors` | `rps_games` |
+| 猜猜我画的 | `/drawing` | `drawings` |
 
-### 3. 💑 100件想做的事 (`/bucket-list`)
-- ✅ 记录想一起完成的事情
-- ✅ 勾选完成状态
-- ✅ 显示进度条
-- ✅ 按分类筛选（旅行/美食/体验/学习/运动/其他）
-- ✅ 优先级设置
+该脚本还包含一部分早期倒计时、日历、时光胶囊和日记表定义；当前代码使用的是 `countdowns`、`schedules`、`time_capsules` 和 `diary_entries`，新项目应先按根 README 执行两份 setup 脚本。
 
-### 4. 💝 情话生成器 (`/love-quotes`)
-- ✅ 随机显示情话
-- ✅ 可以添加专属情话
-- ✅ 一键复制功能
-- ✅ 预设5条默认情话
+### 执行注意事项
 
-### 游戏功能
+- 脚本会插入默认真心话、情话和问答数据。
+- 虽然建表使用了 `IF NOT EXISTS`，默认数据和固定名称的策略不是完全幂等的。
+- 已有数据库执行前应备份，并检查是否已经存在同名策略或默认数据。
+- 表策略采用宽松公开访问，只适合当前私人使用模型；公开部署前需要重写 RLS。
 
-### 5. 🤔 情侣问答 (`/couple-quiz`)
-- ✅ 互相回答关于对方的问题
-- ✅ 显示默契度/匹配率
-- ✅ 可以自定义添加题目
-- ✅ 答题结果保存到数据库
-- ✅ 进度条显示
+## 其他有数据库依赖的互动功能
 
-### 6. ✊ 石头剪刀布 (`/rock-paper-scissors`)
-- ✅ 在线对战（电脑随机）
-- ✅ 记录胜负统计
-- ✅ 显示胜率
-- ✅ 游戏历史保存到数据库
+| 功能 | 路由 | 脚本 |
+| --- | --- | --- |
+| 情侣聊天室 | `/chat` | `database/migrations/chat-table-safe.sql` |
+| 五子棋 | `/gomoku` | 基础 setup 后执行 `database/fixes/fix-gomoku-mahjong.sql` |
+| 欢乐麻将 | `/mahjong` | `database/fixes/fix-gomoku-mahjong.sql` |
+| 每日签到 | `/check-in` | `database/migrations/check-in-table.sql` |
+| 塔罗牌 | `/tarot` | `database/migrations/tarot-table.sql` |
+| 星座运势 | `/horoscope` | `database/migrations/horoscope-table.sql` |
 
-### 7. 🃏 记忆翻牌游戏 (`/memory-game`)
-- ✅ 经典翻牌配对游戏
-- ✅ 显示步数统计
-- ✅ 使用爱心主题表情
+五子棋和麻将的历史表结构存在多个版本。当前基础 setup 的五子棋字段仍不完整，因此
+`fix-gomoku-mahjong.sql` 目前既是新库兼容步骤，也是旧库修复脚本。不要再同时执行不完整的
+`upgrade-gomoku-table.sql` 或旧 `add-mahjong-table.sql`。
 
-### 8. 🎨 猜猜我画的 (`/drawing`)
-- ✅ 简单画板工具
-- ✅ 计时功能
-- ✅ 可调颜色和粗细
-- ✅ 保存作品到数据库
-- ✅ 作品集展示
+## 不需要新增数据库表的小游戏
 
-## 🚀 部署步骤
+下列页面的主要状态保存在当前浏览器内存或本地存储中，不要求额外执行 SQL：
 
-### 步骤 1: 执行数据库脚本
+- `/memory-game`
+- `/matching-game`
+- `/dress-up`
+- `/color-test`
+- `/compatibility-test`
+- `/catch-heart`
+- `/love-survivor`
+- `/grass-cutter`
+- `/emoji-battle`
+- `/board-game`
+- `/love-dice`
 
-1. 打开 Supabase Dashboard
-2. 进入 **SQL Editor**
-3. 打开项目中的 `database/migrations/supabase-new-features.sql` 文件
-4. 复制全部内容到 SQL Editor
-5. 点击 **RUN** 执行
+浏览器本地数据不会自动在设备间同步，清理浏览器数据后也可能丢失。
 
-这将创建以下新表：
-- `truth_or_dare` - 真心话大冒险题目
-- `love_bucket_list` - 100件想做的事
-- `love_quotes` - 情话库
-- `feature_requests` - 功能申请
-- 其他预留表（用于未来扩展）
-
-### 步骤 2: 提交代码到 GitHub
-
-```bash
-git add .
-git commit -m "✨ 新增8个情侣互动功能：真心话大冒险、任务清单、情话生成器、功能申请箱、情侣问答、石头剪刀布、记忆翻牌、画板"
-git push origin main
-```
-
-### 步骤 3: Vercel 自动部署
-
-推送到 GitHub 后，Vercel 会自动触发部署。
-确保环境变量已经配置（之前已完成）：
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-### 步骤 4: 测试功能
-
-部署完成后，访问以下页面测试：
-- https://your-domain.vercel.app/feature-requests - 功能申请箱
-- https://your-domain.vercel.app/truth-or-dare - 真心话大冒险
-- https://your-domain.vercel.app/bucket-list - 100件想做的事
-- https://your-domain.vercel.app/love-quotes - 情话生成器
-- https://your-domain.vercel.app/couple-quiz - 情侣问答
-- https://your-domain.vercel.app/rock-paper-scissors - 石头剪刀布
-- https://your-domain.vercel.app/memory-game - 记忆翻牌
-- https://your-domain.vercel.app/drawing - 猜猜我画的
-
-## 📝 功能使用说明
-
-### 功能申请箱
-1. 点击"新建申请"按钮
-2. 填写功能标题和详细描述
-3. 选择申请人（zyx 或 zly）
-4. 设置优先级（低/中/高）
-5. 提交后可以在列表中查看
-6. 点击 ✓ 按钮可以切换状态：待处理 → 已完成 → 已拒绝 → 待处理
-7. 点击 ✏️ 可以编辑内容
-8. 点击 🗑️ 可以删除申请
-
-### 真心话大冒险
-1. 选择类型（真心话/大冒险/随机）
-2. 选择难度（简单/中等/困难/随机）
-3. 点击"随机抽取"按钮
-4. 可以点击"添加自定义题目"增加专属题目
-
-### 100件想做的事
-1. 点击"添加任务"
-2. 填写任务标题和描述
-3. 选择分类和优先级
-4. 完成后点击左侧的复选框
-5. 系统会提示输入完成者（zyx 或 zly）
-6. 顶部进度条显示完成百分比
-
-### 情话生成器
-1. 页面会自动显示一条随机情话
-2. 点击"换一句"查看其他情话
-3. 点击"复制"按钮可以复制到剪贴板
-4. 点击"添加情话"可以添加专属情话
+## 使用要点
 
 ### 情侣问答
-1. 选择你的名字（zyx 或 zly）
-2. 点击"开始答题"
-3. 回答关于对方的问题
-4. 答完所有题目后显示默契度
-5. 可以自己添加题目来测试对方
 
-### 石头剪刀布
-1. 选择玩家（zyx 或 zly）
-2. 选择石头、剪刀或布
-3. 系统随机生成对手选择
-4. 查看胜负结果和统计数据
-5. 所有游戏记录都会保存
+题目的 `options` 字段是 JSONB 数组，正确答案必须与其中一个规范化选项一致。答题记录保存在 `quiz_results`。
 
-### 记忆翻牌游戏
-1. 点击"开始游戏"
-2. 点击卡片翻开
-3. 找到相同的表情配对
-4. 完成所有配对即胜利
-5. 显示使用的步数
+### 聊天
 
-### 猜猜我画的
-1. 在画布上自由绘画
-2. 选择颜色和粗细
-3. 有计时功能记录绘画时间
-4. 输入画的内容
-5. 保存作品到作品集
+聊天表需要加入 Supabase Realtime publication。推荐使用 `chat-table-safe.sql`，不要同时再执行旧的 `chat-table.sql`。
 
-## 🎨 下一步可以添加的功能
+### 画板
 
-以下功能的数据库表已经创建，可以后续实现：
-- ⏰ 倒计时 (`countdowns`) - 重要日期倒计时
-- 📅 共享日程 (`shared_calendar`) - 记录约会计划
-- 🎁 时光胶囊 (`time_capsules`) - 写给未来的信
-- 📖 恋爱日记 (`love_diary`) - 共同编辑日记
+作品目前以 base64 文本写入 `drawings.image_data`。大量或高分辨率图片会迅速增大数据库体积；长期使用更适合迁移到 Storage。
 
-## 💡 提示
+### 多人游戏
 
-1. 所有功能都已连接到 Supabase 数据库
-2. 数据会永久保存，不用担心丢失
-3. 功能申请箱可以用来记录你们想要的新功能
-4. 记得定期备份 Supabase 数据库
+当前用户身份来自浏览器本地标识，不是服务端认证。房间归属、余额和玩家身份不能作为防作弊或访问控制依据。
 
-## ❤️ 享受你们的专属小世界吧！
+## 新增功能时
+
+1. 在 `app/<route>/page.tsx` 添加页面。
+2. 在 `lib/features.ts` 登记名称、分类和展示位置。
+3. 如需数据表，在 `database/migrations/` 添加独立、尽量幂等的脚本。
+4. 更新 `database/README.md` 和对应指南。
+5. 运行 `npm run lint`、`npm run typecheck` 和 `npm run build`。

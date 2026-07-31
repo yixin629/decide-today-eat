@@ -24,8 +24,10 @@
 ├── eslint.config.mjs          # ESLint 9 Flat Config
 ├── AGENTS.md                  # AI 开发协作规则
 ├── README.md                  # 项目入口
+├── .env.local.example         # 环境变量名称模板
 ├── package.json               # npm 依赖与命令
 ├── next.config.js             # Next.js 配置
+├── open-next.config.ts        # OpenNext Cloudflare 适配配置
 ├── tailwind.config.ts         # Tailwind CSS 配置
 ├── tsconfig.json              # TypeScript 配置
 └── wrangler.toml              # Cloudflare 配置
@@ -60,6 +62,8 @@ app/
 
 跨页面 UI 放在 `app/components/`；只服务某个复杂功能的组件和引擎代码应保留在该功能目录内。
 
+`lib/features.ts` 是首页和导航共用的功能注册表。登录页、动态房间详情和 API 路由不作为独立产品入口登记。
+
 ## 公共代码
 
 - `hooks/useAuth.ts`：读取并兼容历史本地登录标识。当前实现不是完整的服务端认证。
@@ -68,6 +72,14 @@ app/
 - `lib/imageUtils.ts`：图片处理工具。
 
 新增无 UI 的通用逻辑时优先放入 `hooks/` 或 `lib/`，避免页面文件继续膨胀。
+
+## 数据与身份边界
+
+- 浏览器页面通过 `lib/supabase.ts` 使用匿名客户端访问 Supabase。
+- `app/api/chat/route.ts` 在服务端读取 AI 服务密钥，不把密钥返回客户端。
+- `hooks/useAuth.ts` 的当前用户来自浏览器本地存储，只用于界面身份，不是服务端认证。
+- 相册使用 `photos` Storage bucket，自定义头像使用 `avatars` bucket。
+- 多个历史 SQL 使用公开 RLS；公开部署前需要接入认证并重写策略。
 
 ## 数据库脚本
 
@@ -89,6 +101,8 @@ app/
 - `architecture/` 放项目结构和技术设计。
 - `reports/` 放开发阶段的历史快照，不作为当前状态的唯一依据。
 
+部署说明统一维护在 [部署与持续集成](../getting-started/DEPLOYMENT.md)，不要把 Cloudflare Dashboard 命令分散复制到历史报告。
+
 ## 配置和环境
 
 本地配置从 `.env.local.example` 复制到 `.env.local`。基础变量：
@@ -108,8 +122,11 @@ npm run dev
 npm run lint
 npm run typecheck
 npm run build
+npm run cf:build
 npm start
 ```
+
+`npm run build` 验证标准 Next.js 生产构建；`npm run cf:build` 额外把产物转换为 Cloudflare Worker，二者用途不同。
 
 ## 添加新功能
 
@@ -118,4 +135,5 @@ npm start
 3. 如需数据表，在 `database/migrations/` 新建独立、尽量可重复执行的 SQL。
 4. 在 `lib/features.ts` 登记入口，由首页和导航共同读取。
 5. 更新根 `README.md` 或相应 `docs/guides/` 文档。
-6. 运行 lint 和类型检查；涉及路由、配置或生产行为时再运行生产构建。
+6. 运行 lint 和类型检查；涉及路由、配置或生产行为时运行生产构建。
+7. 目标包含 Cloudflare Workers 时，再运行 `npm run cf:build`。

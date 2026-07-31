@@ -1,5 +1,8 @@
 # 🎉 新功能上线说明
 
+> [!NOTE]
+> 历史快照：本文保留当时版本说明，其中 SQL 顺序、导航数量和已知问题可能已变化。当前操作请以根目录 `README.md`、`docs/README.md` 和 `database/README.md` 为准。
+
 **更新日期**: 2024-11-14  
 **版本**: v2.0  
 **开发者**: yixin629 & AI Assistant

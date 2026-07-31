@@ -49,6 +49,7 @@ npm run build
 - 小范围文档或纯路径调整：检查链接、引用和目录即可。
 - 页面或组件调整：至少运行 `npm run lint`。
 - 类型、路由、配置、依赖或生产行为调整：运行 `npm run lint`、`npm run typecheck` 和 `npm run build`。
+- 修改 Cloudflare/OpenNext 配置或部署命令：额外运行 `npm run cf:build`。
 - 依赖调整后额外运行 `npm audit`，并确认 `postinstall` 补丁成功应用。
 - 如果现有脚本本身失效，应说明是既有问题还是本次变更导致，不要隐瞒或绕过。
 
@@ -89,6 +90,7 @@ npm run build
 
 - 根目录只保留 `README.md` 与 `AGENTS.md` 两个 Markdown 入口。
 - 当前可用的启动和配置说明写入 `README.md`。
+- Vercel、Cloudflare 和 CI/CD 的详细配置统一维护在 `docs/getting-started/DEPLOYMENT.md`。
 - 专题指南按类型放入 `docs/`，并在 `docs/README.md` 添加入口。
 - 阶段性报告放入 `docs/reports/`，不要把旧报告当成当前事实。
 - 文档中的文件路径必须使用仓库相对路径，并在移动文件后同步修正。

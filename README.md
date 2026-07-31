@@ -36,7 +36,7 @@
 请先安装 Node.js 20.9 或更高版本。
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 2. 配置环境变量
@@ -56,11 +56,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 
 1. `database/setup/supabase-schema.sql`
 2. `database/setup/complete-database-setup.sql`
-3. 根据启用的功能，选择执行 `database/migrations/` 中的补充脚本
+3. 根据启用的功能，按 `database/README.md` 的功能映射选择补充迁移
 
 已有数据库不要直接重复执行所有脚本。请先阅读 [数据库脚本说明](./database/README.md)，确认迁移顺序和风险。
 如果现有 `photos` 表还没有 `tag` 字段，相册分类功能需要单独执行
 `database/migrations/add-photo-tag.sql`；全新数据库的基础脚本已经包含该字段。
+
+两份基础 setup 脚本不会创建全部可选功能表。聊天、个人资料、签到、账本、音乐、互动游戏等功能各有独立迁移，具体以数据库脚本说明为准。
 
 ### 4. 配置图片存储
 
@@ -81,6 +83,7 @@ npm run dev
 npm run lint
 npm run typecheck
 npm run build
+npm run cf:build
 npm start
 ```
 
@@ -121,30 +124,28 @@ npm start
 
 ## 部署
 
-推荐将仓库连接到 Vercel，并在部署平台配置与本地相同的环境变量。仓库也支持通过 OpenNext 部署到 Cloudflare Workers：
+推荐将仓库连接到 Vercel，并在部署平台配置与本地相同的环境变量。仓库也支持通过 OpenNext 部署到 Cloudflare Workers，完整操作和故障排查见 [部署与持续集成](./docs/getting-started/DEPLOYMENT.md)。
 
-- Windows：`scripts/deploy.bat`
-- Linux/macOS：`scripts/deploy.sh`
 - Cloudflare Worker 配置：`wrangler.toml`
 - OpenNext 配置：`open-next.config.ts`
+- Cloudflare 本地构建：`npm run cf:build`
+- Cloudflare 本地预览：`npm run preview`
 
-Cloudflare Workers Builds 的构建设置应为：
+Cloudflare Workers Builds 推荐使用 OpenNext 的分阶段命令：
 
 ```text
+Production branch: main
+Root directory: 留空（仓库根目录）
 Build command: npm run cf:build
-Deploy command: npx opennextjs-cloudflare deploy
+Deploy command: npx @opennextjs/cloudflare deploy
+Non-production branch deploy command: npx @opennextjs/cloudflare upload
 ```
 
-`wrangler.toml` 也配置了 OpenNext 自定义构建，因此 Cloudflare 保留默认的
-`npx wrangler deploy` 部署命令时仍能生成正确的 Worker；使用上面的专用命令可以减少重复构建。
+不要在同一流水线中再调用包含构建步骤的 `npm run deploy`，否则会重复构建。Workers Builds 不会自动采用 `wrangler.toml` 中的 Custom Build，Dashboard 的 Build command 需要明确填写。
 
-在 Cloudflare 项目的 Build Variables and secrets 中配置
-`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`，并按需配置聊天功能使用的
-`GROQ_API_KEY`、`CHATANYWHERE_API_KEY`。
-不要把这些值直接写入 `wrangler.toml`。Cloudflare Git 集成会在监听分支每次收到提交时自动构建；
-如不需要自动部署，应在 Cloudflare 的 Settings > Build 中断开 Git 仓库。
+在 Cloudflare 的 Build variables 中配置两个 `NEXT_PUBLIC_SUPABASE_*` 变量；AI Key 应配置为 Worker 运行时 Secret。不要把真实值写入 `wrangler.toml`。
 
-执行部署脚本前请先阅读脚本内容，确认其中的分支、构建和目标平台符合当前环境。
+`scripts/deploy.bat` 和 `scripts/deploy.sh` 目前只负责本地安装与 Next.js 构建检查，不会把项目发布到 Vercel 或 Cloudflare。
 
 ## 依赖安全
 
