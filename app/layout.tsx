@@ -10,6 +10,7 @@ import UnifiedThemePanel from './components/UnifiedThemePanel'
 import HeartParticles from './components/HeartParticles'
 import PageLoadingEffect from './components/PageLoadingEffect'
 import RandomSurprise from './components/RandomSurprise'
+import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <HeartParticles />
           </AuthProvider>
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   )
