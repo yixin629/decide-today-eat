@@ -1,21 +1,31 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from './ToastProvider'
 
 interface AnniversaryReminder {
   id: string
   title: string
-  date: string
+  occurrenceDate: string
   daysUntil: number
-  reminderDays: number
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+const parseLocalDate = (value: string) => {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return null
+
+  const date = new Date(year, month - 1, day)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 export default function AnniversaryReminders() {
   const [reminders, setReminders] = useState<AnniversaryReminder[]>([])
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>('default')
+  const notifiedOccurrencesRef = useRef(new Set<string>())
   const toast = useToast()
 
   // 请求通知权限
@@ -34,42 +44,47 @@ export default function AnniversaryReminders() {
   }
 
   // 加载纪念日数据并计算提醒
-  const loadAnniversaries = async () => {
+  const loadAnniversaries = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('anniversaries')
-        .select('*')
+        .select('id, title, date, recurring')
         .order('date', { ascending: true })
 
       if (error) throw error
 
       if (data) {
         const today = new Date()
+        today.setHours(0, 0, 0, 0)
         const upcomingReminders: AnniversaryReminder[] = []
 
         data.forEach((anniversary) => {
-          const anniversaryDate = new Date(anniversary.date)
-          const nextDate = new Date(anniversaryDate)
+          const anniversaryDate = parseLocalDate(anniversary.date)
+          if (!anniversaryDate) return
 
-          // 如果是年度纪念日，计算下一年的日期
+          let nextDate = new Date(anniversaryDate)
+
           if (anniversary.recurring) {
+            nextDate = new Date(
+              today.getFullYear(),
+              anniversaryDate.getMonth(),
+              anniversaryDate.getDate()
+            )
             if (nextDate < today) {
               nextDate.setFullYear(today.getFullYear() + 1)
             }
           }
 
-          const daysUntil = Math.ceil(
-            (nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-          )
+          nextDate.setHours(0, 0, 0, 0)
+          const daysUntil = Math.round((nextDate.getTime() - today.getTime()) / MS_PER_DAY)
 
-          // 检查是否在提醒范围内（1-7天）
-          if (daysUntil >= 1 && daysUntil <= 7) {
+          // 检查是否在提醒范围内（今天至未来 7 天）
+          if (daysUntil >= 0 && daysUntil <= 7) {
             upcomingReminders.push({
               id: anniversary.id,
               title: anniversary.title,
-              date: anniversary.date,
+              occurrenceDate: nextDate.toLocaleDateString('zh-CN'),
               daysUntil,
-              reminderDays: daysUntil, // 默认提醒天数等于剩余天数
             })
           }
         })
@@ -79,7 +94,7 @@ export default function AnniversaryReminders() {
     } catch (error) {
       console.error('加载纪念日失败:', error)
     }
-  }
+  }, [])
 
   // 发送通知
   const sendNotification = useCallback(
@@ -87,8 +102,7 @@ export default function AnniversaryReminders() {
       if (notificationPermission === 'granted') {
         const notification = new Notification(`纪念日提醒: ${reminder.title}`, {
           body: `${reminder.daysUntil} 天后是 ${reminder.title}`,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
+          icon: '/icon.svg',
         })
 
         // 点击通知跳转到纪念日页面
@@ -106,32 +120,34 @@ export default function AnniversaryReminders() {
     [notificationPermission]
   )
 
-  // 检查并发送提醒
-  const checkAndSendReminders = useCallback(() => {
+  useEffect(() => {
     reminders.forEach((reminder) => {
-      // 这里可以根据用户设置的提醒天数来决定是否发送
-      // 暂时设置为距离纪念日1天时发送提醒
       if (reminder.daysUntil === 1) {
+        const occurrenceKey = `${reminder.id}:${reminder.occurrenceDate}`
+        if (notifiedOccurrencesRef.current.has(occurrenceKey)) return
+
         sendNotification(reminder)
+        if (notificationPermission === 'granted') {
+          notifiedOccurrencesRef.current.add(occurrenceKey)
+        }
       }
     })
-  }, [reminders, sendNotification])
+  }, [notificationPermission, reminders, sendNotification])
 
   useEffect(() => {
-    // 检查通知权限
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission)
     }
 
     loadAnniversaries()
 
-    // 每小时检查一次提醒
+    // 定期刷新日期计算，跨过午夜后也能得到正确结果。
     const interval = setInterval(() => {
-      checkAndSendReminders()
-    }, 60 * 60 * 1000) // 1小时
+      loadAnniversaries()
+    }, 60 * 60 * 1000)
 
     return () => clearInterval(interval)
-  }, [checkAndSendReminders])
+  }, [loadAnniversaries])
 
   return (
     <div className="anniversary-reminders">
@@ -165,11 +181,11 @@ export default function AnniversaryReminders() {
               >
                 <div>
                   <span className="font-medium">{reminder.title}</span>
-                  <span className="text-sm text-gray-600 ml-2">{reminder.daysUntil} 天后</span>
+                  <span className="text-sm text-gray-600 ml-2">
+                    {reminder.daysUntil === 0 ? '今天' : `${reminder.daysUntil} 天后`}
+                  </span>
                 </div>
-                <div className="text-sm text-gray-500">
-                  {new Date(reminder.date).toLocaleDateString('zh-CN')}
-                </div>
+                <div className="text-sm text-gray-500">{reminder.occurrenceDate}</div>
               </div>
             ))}
           </div>

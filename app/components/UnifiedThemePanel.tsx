@@ -1,251 +1,525 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
-// ── Color themes (primary palette) ──
 export const colorThemes = {
-  default:  { name: '经典粉',    primary: '#ec4899', secondary: '#f472b6', accent: '#db2777', emoji: '💕', swatch: 'from-pink-400 to-rose-400' },
-  lavender: { name: '薰衣草紫',  primary: '#a78bfa', secondary: '#c4b5fd', accent: '#8b5cf6', emoji: '💜', swatch: 'from-violet-400 to-purple-400' },
-  sakura:   { name: '樱花粉',    primary: '#fb7185', secondary: '#fda4af', accent: '#f43f5e', emoji: '🌸', swatch: 'from-rose-400 to-pink-500' },
-  ocean:    { name: '海洋蓝',    primary: '#3b82f6', secondary: '#60a5fa', accent: '#2563eb', emoji: '🌊', swatch: 'from-sky-400 to-blue-500' },
-  sunset:   { name: '日落橙',    primary: '#f97316', secondary: '#fb923c', accent: '#ea580c', emoji: '🌅', swatch: 'from-orange-400 to-amber-500' },
-  forest:   { name: '森林绿',    primary: '#10b981', secondary: '#34d399', accent: '#059669', emoji: '🌲', swatch: 'from-emerald-400 to-green-600' },
-  midnight: { name: '午夜蓝',    primary: '#6366f1', secondary: '#818cf8', accent: '#4f46e5', emoji: '🌙', swatch: 'from-indigo-500 to-blue-700' },
-  cherry:   { name: '樱桃红',    primary: '#ef4444', secondary: '#f87171', accent: '#dc2626', emoji: '🍒', swatch: 'from-red-400 to-red-600' },
+  default: {
+    name: '经典粉',
+    primary: '#db2777',
+    secondary: '#be185d',
+    accent: '#9d174d',
+    emoji: '💕',
+    swatch: 'from-pink-600 to-rose-700',
+  },
+  lavender: {
+    name: '薰衣草紫',
+    primary: '#7c3aed',
+    secondary: '#6d28d9',
+    accent: '#5b21b6',
+    emoji: '💜',
+    swatch: 'from-violet-600 to-purple-700',
+  },
+  sakura: {
+    name: '樱花粉',
+    primary: '#e11d48',
+    secondary: '#be123c',
+    accent: '#9f1239',
+    emoji: '🌸',
+    swatch: 'from-rose-600 to-pink-700',
+  },
+  ocean: {
+    name: '海洋蓝',
+    primary: '#2563eb',
+    secondary: '#1d4ed8',
+    accent: '#1e40af',
+    emoji: '🌊',
+    swatch: 'from-blue-600 to-blue-800',
+  },
+  sunset: {
+    name: '日落橙',
+    primary: '#c2410c',
+    secondary: '#9a3412',
+    accent: '#7c2d12',
+    emoji: '🌅',
+    swatch: 'from-orange-700 to-amber-800',
+  },
+  forest: {
+    name: '森林绿',
+    primary: '#047857',
+    secondary: '#065f46',
+    accent: '#064e3b',
+    emoji: '🌲',
+    swatch: 'from-emerald-700 to-green-900',
+  },
+  midnight: {
+    name: '午夜蓝',
+    primary: '#4f46e5',
+    secondary: '#4338ca',
+    accent: '#3730a3',
+    emoji: '🌙',
+    swatch: 'from-indigo-600 to-indigo-800',
+  },
+  cherry: {
+    name: '樱桃红',
+    primary: '#dc2626',
+    secondary: '#b91c1c',
+    accent: '#991b1b',
+    emoji: '🍒',
+    swatch: 'from-red-600 to-red-800',
+  },
 }
 
-// ── Display mode (light/dark/eye-care) ──
 type DisplayMode = 'light' | 'dark' | 'eye-care'
 type FontSize = 'small' | 'medium' | 'large'
 export type ColorThemeName = keyof typeof colorThemes
 
 const BG_GRADIENTS: Record<ColorThemeName, string> = {
-  default:  'linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)',
-  lavender: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
-  sakura:   'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)',
-  ocean:    'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-  sunset:   'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)',
-  forest:   'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-  midnight: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
-  cherry:   'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+  default:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.09), transparent 34rem), linear-gradient(145deg, #fffafb 0%, #fff1f5 100%)',
+  lavender:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.1), transparent 34rem), linear-gradient(145deg, #fcfbff 0%, #f3f0ff 100%)',
+  sakura:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.09), transparent 34rem), linear-gradient(145deg, #fffafa 0%, #fff0f2 100%)',
+  ocean:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.09), transparent 34rem), linear-gradient(145deg, #f8fbff 0%, #eef6ff 100%)',
+  sunset:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.08), transparent 34rem), linear-gradient(145deg, #fffaf6 0%, #fff3e9 100%)',
+  forest:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.08), transparent 34rem), linear-gradient(145deg, #f8fcfa 0%, #edf8f3 100%)',
+  midnight:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.09), transparent 34rem), linear-gradient(145deg, #fafaff 0%, #f0f2ff 100%)',
+  cherry:
+    'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.08), transparent 34rem), linear-gradient(145deg, #fffafa 0%, #fff1f1 100%)',
+}
+
+const DARK_GRADIENT =
+  'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.16), transparent 34rem), linear-gradient(145deg, #0b1120 0%, #111c30 100%)'
+const EYE_CARE_GRADIENT =
+  'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.07), transparent 34rem), linear-gradient(145deg, #f4f2e7 0%, #e9e7d8 100%)'
+
+function isColorTheme(value: string | null): value is ColorThemeName {
+  return value !== null && Object.prototype.hasOwnProperty.call(colorThemes, value)
+}
+
+function isDisplayMode(value: string | null): value is DisplayMode {
+  return value === 'light' || value === 'dark' || value === 'eye-care'
+}
+
+function isFontSize(value: string | null): value is FontSize {
+  return value === 'small' || value === 'medium' || value === 'large'
+}
+
+function hexToRgbChannels(hex: string) {
+  const normalized = hex.replace('#', '')
+  const value = Number.parseInt(normalized, 16)
+  return `${(value >> 16) & 255} ${(value >> 8) & 255} ${value & 255}`
+}
+
+function applyColorTheme(name: ColorThemeName, currentMode: DisplayMode) {
+  const theme = colorThemes[name]
+  const root = document.documentElement
+
+  root.style.setProperty('--color-primary', theme.primary)
+  root.style.setProperty('--color-primary-rgb', hexToRgbChannels(theme.primary))
+  root.style.setProperty('--color-secondary', theme.secondary)
+  root.style.setProperty('--color-secondary-rgb', hexToRgbChannels(theme.secondary))
+  root.style.setProperty('--color-accent', theme.accent)
+  root.style.setProperty('--color-accent-rgb', hexToRgbChannels(theme.accent))
+  root.dataset.colorTheme = name
+
+  if (currentMode === 'light') {
+    root.style.setProperty('--bg-gradient', BG_GRADIENTS[name])
+  }
+}
+
+function applyMode(mode: DisplayMode, currentTheme: ColorThemeName) {
+  const root = document.documentElement
+  root.classList.remove('dark-mode', 'eye-care-mode')
+
+  if (mode === 'dark') {
+    root.classList.add('dark-mode')
+    root.style.setProperty('--bg-gradient', DARK_GRADIENT)
+  } else if (mode === 'eye-care') {
+    root.classList.add('eye-care-mode')
+    root.style.setProperty('--bg-gradient', EYE_CARE_GRADIENT)
+  } else {
+    root.style.setProperty('--bg-gradient', BG_GRADIENTS[currentTheme])
+  }
+
+  root.dataset.displayMode = mode
+}
+
+function applyFontSize(size: FontSize) {
+  document.documentElement.style.fontSize =
+    size === 'small' ? '14px' : size === 'large' ? '18px' : '16px'
+}
+
+function saveSetting(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Personalization remains usable for this session when storage is unavailable.
+  }
+}
+
+function provideTactileFeedback() {
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && navigator.vibrate) {
+    navigator.vibrate(20)
+  }
 }
 
 export default function UnifiedThemePanel() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [colorTheme, setColorTheme] = useState<ColorThemeName>('default')
   const [mode, setMode] = useState<DisplayMode>('light')
   const [fontSize, setFontSize] = useState<FontSize>('medium')
+  const dialogRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const hideThemeControl =
+    pathname === '/login' || pathname === '/chat' || pathname.startsWith('/chat/')
 
   useEffect(() => {
-    // Load saved settings
-    const savedTheme = localStorage.getItem('colorTheme') as ColorThemeName
-    const savedMode = localStorage.getItem('themeMode') as DisplayMode
-    const savedFontSize = localStorage.getItem('fontSize') as FontSize
+    let savedTheme: string | null = null
+    let savedMode: string | null = null
+    let savedFontSize: string | null = null
 
-    if (savedTheme && colorThemes[savedTheme]) {
-      setColorTheme(savedTheme)
-      applyColorTheme(savedTheme, savedMode || 'light')
+    try {
+      savedTheme = localStorage.getItem('colorTheme')
+      savedMode = localStorage.getItem('themeMode')
+      savedFontSize = localStorage.getItem('fontSize')
+    } catch {
+      // Keep the defaults when storage is unavailable.
     }
-    if (savedMode) {
-      setMode(savedMode)
-      applyMode(savedMode, savedTheme || 'default')
-    }
-    if (savedFontSize) {
-      setFontSize(savedFontSize)
-      applyFontSize(savedFontSize)
-    }
+
+    const nextTheme = isColorTheme(savedTheme) ? savedTheme : 'default'
+    const nextMode = isDisplayMode(savedMode) ? savedMode : 'light'
+    const nextFontSize = isFontSize(savedFontSize) ? savedFontSize : 'medium'
+
+    setColorTheme(nextTheme)
+    setMode(nextMode)
+    setFontSize(nextFontSize)
+    applyColorTheme(nextTheme, nextMode)
+    applyMode(nextMode, nextTheme)
+    applyFontSize(nextFontSize)
   }, [])
 
-  const applyColorTheme = (name: ColorThemeName, currentMode: DisplayMode) => {
-    const theme = colorThemes[name]
-    const root = document.documentElement
-    root.style.setProperty('--color-primary', theme.primary)
-    root.style.setProperty('--color-secondary', theme.secondary)
-    root.style.setProperty('--color-accent', theme.accent)
-    // Only update bg gradient if not in dark mode
-    if (currentMode !== 'dark') {
-      root.style.setProperty('--bg-gradient', BG_GRADIENTS[name])
+  useEffect(() => {
+    if (hideThemeControl) {
+      setIsOpen(false)
     }
-    // Also update --primary so bg-primary class picks it up
-    root.style.setProperty('--primary', theme.primary)
-    root.style.setProperty('--secondary', theme.secondary)
-  }
+  }, [hideThemeControl])
 
-  const applyMode = (m: DisplayMode, currentTheme: ColorThemeName) => {
-    const root = document.documentElement
-    root.classList.remove('dark-mode', 'eye-care-mode')
-    if (m === 'dark') root.classList.add('dark-mode')
-    else if (m === 'eye-care') root.classList.add('eye-care-mode')
-    else {
-      // Restore theme bg gradient when switching back to light
-      root.style.setProperty('--bg-gradient', BG_GRADIENTS[currentTheme])
+  useEffect(() => {
+    if (!isOpen || hideThemeControl) return
+
+    const previousOverflow = document.body.style.overflow
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    document.body.style.overflow = 'hidden'
+    const focusFrame = window.requestAnimationFrame(() => closeButtonRef.current?.focus())
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab' || !dialogRef.current) return
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      )
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      if (
+        event.shiftKey &&
+        (document.activeElement === firstElement ||
+          !dialogRef.current.contains(document.activeElement))
+      ) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
     }
-  }
 
-  const applyFontSize = (size: FontSize) => {
-    const root = document.documentElement
-    root.style.fontSize = size === 'small' ? '14px' : size === 'large' ? '18px' : '16px'
-  }
+    window.addEventListener('keydown', handleDialogKeyDown)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      window.removeEventListener('keydown', handleDialogKeyDown)
+      document.body.style.overflow = previousOverflow
+      if (previousFocus?.isConnected) previousFocus.focus()
+    }
+  }, [hideThemeControl, isOpen])
 
   const selectTheme = (name: ColorThemeName) => {
     setColorTheme(name)
     applyColorTheme(name, mode)
-    localStorage.setItem('colorTheme', name)
-    if (navigator.vibrate) navigator.vibrate(20)
+    saveSetting('colorTheme', name)
+    provideTactileFeedback()
   }
 
-  const selectMode = (m: DisplayMode) => {
-    setMode(m)
-    applyMode(m, colorTheme)
-    localStorage.setItem('themeMode', m)
-    if (navigator.vibrate) navigator.vibrate(20)
+  const selectMode = (nextMode: DisplayMode) => {
+    setMode(nextMode)
+    applyMode(nextMode, colorTheme)
+    saveSetting('themeMode', nextMode)
+    provideTactileFeedback()
   }
 
-  const selectFontSize = (s: FontSize) => {
-    setFontSize(s)
-    applyFontSize(s)
-    localStorage.setItem('fontSize', s)
-    if (navigator.vibrate) navigator.vibrate(20)
+  const selectFontSize = (size: FontSize) => {
+    setFontSize(size)
+    applyFontSize(size)
+    saveSetting('fontSize', size)
+    provideTactileFeedback()
   }
 
   const current = colorThemes[colorTheme]
+  const previewBackground =
+    mode === 'dark' ? '#1e293b' : mode === 'eye-care' ? '#f4f2e7' : BG_GRADIENTS[colorTheme]
+
+  if (hideThemeControl) return null
 
   return (
     <>
-      {/* Floating button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-24 w-14 h-14 rounded-full shadow-lg hover:shadow-2xl transition-all hover:scale-110 flex items-center justify-center text-2xl z-50"
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        className={`fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-[4.25rem] flex h-12 w-12 items-center justify-center rounded-full text-xl text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:bottom-6 sm:right-24 sm:h-14 sm:w-14 sm:text-2xl ${
+          isOpen ? 'z-[70]' : 'z-50'
+        }`}
         style={{
           background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})`,
-          color: 'white',
         }}
-        aria-label="主题设置"
-        title="主题设置"
+        aria-label={isOpen ? '关闭主题设置' : '打开主题设置'}
+        aria-expanded={isOpen}
+        aria-controls="theme-settings-panel"
+        title="主题与显示"
       >
-        🎨
+        <span aria-hidden="true">🎨</span>
       </button>
 
-      {/* Panel */}
       {isOpen && (
         <>
-          <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setIsOpen(false)} />
-          <div className="fixed bottom-24 right-6 bg-white rounded-2xl shadow-2xl z-50 w-[340px] max-w-[calc(100vw-3rem)] overflow-hidden animate-fade-in dark:bg-gray-800">
-            {/* Header */}
+          <div
+            className="fixed inset-0 z-[55] bg-slate-950/35 backdrop-blur-[1px]"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          <section
+            ref={dialogRef}
+            id="theme-settings-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="theme-settings-title"
+            className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8.5rem)] z-[60] flex max-h-[calc(100dvh-10rem)] flex-col overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl animate-fade-in dark:border-slate-700 dark:bg-slate-900 sm:inset-x-auto sm:bottom-24 sm:right-6 sm:max-h-[calc(100dvh-6rem)] sm:w-[340px]"
+          >
             <div
-              className="p-4 text-white"
-              style={{ background: `linear-gradient(135deg, ${current.primary}, ${current.accent})` }}
+              className="flex shrink-0 items-start justify-between gap-3 p-4 text-white"
+              style={{
+                background: `linear-gradient(135deg, ${current.primary}, ${current.accent})`,
+              }}
             >
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <span>🎨</span>
-                <span>主题与显示</span>
-              </h3>
-              <p className="text-xs text-white/80 mt-0.5">个性化你的专属空间</p>
+              <div>
+                <h2 id="theme-settings-title" className="flex items-center gap-2 text-lg font-bold">
+                  <span aria-hidden="true">🎨</span>
+                  <span>主题与显示</span>
+                </h2>
+                <p className="mt-0.5 text-xs text-white/85">调整配色、明暗和字号</p>
+              </div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl transition-colors hover:bg-white/20"
+                aria-label="关闭主题设置"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
             </div>
 
-            <div className="p-4 space-y-5 max-h-[70vh] overflow-y-auto">
-              {/* Color theme */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-700 dark-mode-text-gray-200">配色方案</label>
+            <div className="space-y-5 overflow-y-auto p-4">
+              <section aria-labelledby="color-theme-label">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 id="color-theme-label" className="text-sm font-semibold text-gray-700">
+                    配色方案
+                  </h3>
                   <span className="text-xs text-gray-500">{current.name}</span>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {(Object.entries(colorThemes) as [ColorThemeName, typeof current][]).map(([key, t]) => (
-                    <button
-                      key={key}
-                      onClick={() => selectTheme(key)}
-                      className={`relative aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
-                        colorTheme === key ? 'ring-2 ring-offset-2 scale-105' : 'hover:scale-105'
-                      }`}
-                      style={{
-                        background: `linear-gradient(135deg, ${t.primary}, ${t.secondary})`,
-                        ['--tw-ring-color' as string]: t.primary,
-                      }}
-                      title={t.name}
-                    >
-                      <span className="text-2xl drop-shadow">{t.emoji}</span>
-                      {colorTheme === key && (
-                        <span className="absolute top-1 right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center text-xs">✓</span>
-                      )}
-                    </button>
-                  ))}
+                <div
+                  className="grid grid-cols-4 gap-2"
+                  role="group"
+                  aria-labelledby="color-theme-label"
+                >
+                  {(Object.entries(colorThemes) as [ColorThemeName, typeof current][]).map(
+                    ([key, theme]) => {
+                      const isSelected = colorTheme === key
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => selectTheme(key)}
+                          className={`relative flex aspect-square min-h-11 flex-col items-center justify-center rounded-xl transition-transform duration-200 hover:scale-[1.03] ${
+                            isSelected ? 'scale-[1.03]' : ''
+                          }`}
+                          style={{
+                            background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                            boxShadow: isSelected
+                              ? `0 0 0 2px white, 0 0 0 4px ${theme.primary}`
+                              : undefined,
+                          }}
+                          title={theme.name}
+                          aria-label={theme.name}
+                          aria-pressed={isSelected}
+                        >
+                          <span className="text-2xl drop-shadow" aria-hidden="true">
+                            {theme.emoji}
+                          </span>
+                          {isSelected && (
+                            <span
+                              className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-xs text-gray-900"
+                              aria-hidden="true"
+                            >
+                              ✓
+                            </span>
+                          )}
+                        </button>
+                      )
+                    }
+                  )}
                 </div>
-              </div>
+              </section>
 
-              {/* Display mode */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">显示模式</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => selectMode('light')}
-                    className={`p-3 rounded-xl transition-all ${mode === 'light' ? 'bg-gradient-to-br from-yellow-300 to-orange-400 text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              <section aria-labelledby="display-mode-label">
+                <h3 id="display-mode-label" className="mb-2 text-sm font-semibold text-gray-700">
+                  显示模式
+                </h3>
+                <div
+                  className="grid grid-cols-3 gap-2"
+                  role="group"
+                  aria-labelledby="display-mode-label"
+                >
+                  <button
+                    type="button"
+                    onClick={() => selectMode('light')}
+                    aria-pressed={mode === 'light'}
+                    className={`min-h-16 rounded-xl p-3 transition-colors ${
+                      mode === 'light'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <div className="text-2xl mb-1">☀️</div>
-                    <div className="text-xs font-medium">日间</div>
+                    <span className="mb-1 block text-2xl" aria-hidden="true">
+                      ☀️
+                    </span>
+                    <span className="block text-xs font-medium">日间</span>
                   </button>
-                  <button onClick={() => selectMode('dark')}
-                    className={`p-3 rounded-xl transition-all ${mode === 'dark' ? 'bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  <button
+                    type="button"
+                    onClick={() => selectMode('dark')}
+                    aria-pressed={mode === 'dark'}
+                    className={`min-h-16 rounded-xl p-3 transition-colors ${
+                      mode === 'dark'
+                        ? 'bg-indigo-700 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <div className="text-2xl mb-1">🌙</div>
-                    <div className="text-xs font-medium">夜间</div>
+                    <span className="mb-1 block text-2xl" aria-hidden="true">
+                      🌙
+                    </span>
+                    <span className="block text-xs font-medium">夜间</span>
                   </button>
-                  <button onClick={() => selectMode('eye-care')}
-                    className={`p-3 rounded-xl transition-all ${mode === 'eye-care' ? 'bg-gradient-to-br from-amber-200 to-yellow-400 text-amber-900 shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  <button
+                    type="button"
+                    onClick={() => selectMode('eye-care')}
+                    aria-pressed={mode === 'eye-care'}
+                    className={`min-h-16 rounded-xl p-3 transition-colors ${
+                      mode === 'eye-care'
+                        ? 'bg-lime-700 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                   >
-                    <div className="text-2xl mb-1">👁️</div>
-                    <div className="text-xs font-medium">护眼</div>
+                    <span className="mb-1 block text-2xl" aria-hidden="true">
+                      👁️
+                    </span>
+                    <span className="block text-xs font-medium">护眼</span>
                   </button>
                 </div>
-              </div>
+              </section>
 
-              {/* Font size */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">字体大小</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button onClick={() => selectFontSize('small')}
-                    className={`p-3 rounded-xl transition-all ${fontSize === 'small' ? 'text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-                    style={fontSize === 'small' ? { background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})` } : {}}
-                  >
-                    <div className="text-sm font-bold mb-1">A</div>
-                    <div className="text-xs">小</div>
-                  </button>
-                  <button onClick={() => selectFontSize('medium')}
-                    className={`p-3 rounded-xl transition-all ${fontSize === 'medium' ? 'text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-                    style={fontSize === 'medium' ? { background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})` } : {}}
-                  >
-                    <div className="text-base font-bold mb-1">A</div>
-                    <div className="text-xs">中</div>
-                  </button>
-                  <button onClick={() => selectFontSize('large')}
-                    className={`p-3 rounded-xl transition-all ${fontSize === 'large' ? 'text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-                    style={fontSize === 'large' ? { background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})` } : {}}
-                  >
-                    <div className="text-lg font-bold mb-1">A</div>
-                    <div className="text-xs">大</div>
-                  </button>
+              <section aria-labelledby="font-size-label">
+                <h3 id="font-size-label" className="mb-2 text-sm font-semibold text-gray-700">
+                  字体大小
+                </h3>
+                <div
+                  className="grid grid-cols-3 gap-2"
+                  role="group"
+                  aria-labelledby="font-size-label"
+                >
+                  {(
+                    [
+                      ['small', 'text-sm', '小'],
+                      ['medium', 'text-base', '中'],
+                      ['large', 'text-lg', '大'],
+                    ] as const
+                  ).map(([size, textClass, label]) => {
+                    const isSelected = fontSize === size
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => selectFontSize(size)}
+                        aria-pressed={isSelected}
+                        className={`min-h-16 rounded-xl p-3 transition-colors ${
+                          isSelected
+                            ? 'text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={
+                          isSelected
+                            ? {
+                                background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})`,
+                              }
+                            : undefined
+                        }
+                      >
+                        <span className={`mb-1 block font-bold ${textClass}`} aria-hidden="true">
+                          A
+                        </span>
+                        <span className="block text-xs">{label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-              </div>
+              </section>
 
-              {/* Preview */}
-              <div className="rounded-xl p-3 border-2" style={{ borderColor: current.primary, background: BG_GRADIENTS[colorTheme] }}>
-                <div className="text-xs text-gray-500 mb-1">实时预览</div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-white text-xs px-2 py-1 rounded-full font-medium"
-                    style={{ background: current.primary }}
-                  >
+              <div
+                className="rounded-xl border p-3"
+                style={{
+                  borderColor: `rgb(var(--color-primary-rgb) / 0.35)`,
+                  background: previewBackground,
+                }}
+                aria-label="主题实时预览"
+              >
+                <p className="mb-2 text-xs text-gray-600">实时预览</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
                     主要按钮
                   </span>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full font-medium bg-white border"
-                    style={{ color: current.primary, borderColor: current.primary }}
-                  >
+                  <span className="rounded-full border border-primary bg-white px-3 py-1 text-xs font-semibold text-primary">
                     次要按钮
                   </span>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         </>
       )}
     </>

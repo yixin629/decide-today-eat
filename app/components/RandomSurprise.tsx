@@ -38,6 +38,13 @@ export default function RandomSurprise() {
   const pathname = usePathname()
 
   useEffect(() => {
+    let revealTimer: ReturnType<typeof setTimeout> | undefined
+    let hideTimer: ReturnType<typeof setTimeout> | undefined
+    let removeTimer: ReturnType<typeof setTimeout> | undefined
+
+    setShow(false)
+    setSurprise(null)
+
     // 10% 概率触发惊喜
     const shouldShowSurprise = Math.random() < 0.1
 
@@ -54,20 +61,27 @@ export default function RandomSurprise() {
       }
 
       // 延迟显示，制造惊喜感
-      setTimeout(() => {
+      revealTimer = setTimeout(() => {
         setShow(true)
 
         // 振动反馈
-        if ('vibrate' in navigator) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        if (!reduceMotion && 'vibrate' in navigator) {
           navigator.vibrate([100, 50, 100])
         }
 
         // 3秒后自动消失
-        setTimeout(() => {
+        hideTimer = setTimeout(() => {
           setShow(false)
-          setTimeout(() => setSurprise(null), 500)
+          removeTimer = setTimeout(() => setSurprise(null), reduceMotion ? 0 : 500)
         }, 3000)
       }, 500)
+    }
+
+    return () => {
+      if (revealTimer) clearTimeout(revealTimer)
+      if (hideTimer) clearTimeout(hideTimer)
+      if (removeTimer) clearTimeout(removeTimer)
     }
   }, [pathname]) // 每次页面切换时重新检查
 
@@ -75,21 +89,27 @@ export default function RandomSurprise() {
 
   return (
     <div
-      className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-500 ${
+      className={`fixed left-1/2 top-20 z-50 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 transform transition-all duration-500 ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10'
       }`}
+      role="status"
+      aria-live="polite"
     >
-      <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce-slow">
-        <span className="text-4xl animate-spin-slow">{surprise.emoji}</span>
-        <p className="text-lg font-medium">{surprise.message}</p>
+      <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-4 py-3 text-white shadow-2xl animate-bounce-slow sm:px-6 sm:py-4">
+        <span className="text-3xl animate-spin-slow sm:text-4xl" aria-hidden="true">
+          {surprise.emoji}
+        </span>
+        <p className="flex-1 text-sm font-medium sm:text-lg">{surprise.message}</p>
         <button
+          type="button"
           onClick={() => {
             setShow(false)
-            setTimeout(() => setSurprise(null), 500)
+            setSurprise(null)
           }}
-          className="ml-2 text-white/80 hover:text-white text-2xl"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-2xl text-white/90 hover:bg-white/15 hover:text-white"
+          aria-label="关闭惊喜消息"
         >
-          ×
+          <span aria-hidden="true">×</span>
         </button>
       </div>
     </div>

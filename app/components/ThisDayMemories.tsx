@@ -32,18 +32,19 @@ export default function ThisDayMemories() {
       try {
         const { data: photos } = await supabase
           .from('photos')
-          .select('id, caption, image_url, photo_date, created_at')
-          .order('photo_date', { ascending: false })
+          .select('id, title, description, image_url, created_at')
+          .order('created_at', { ascending: false })
           .limit(50)
         photos?.forEach((p: any) => {
-          const dateStr = p.photo_date || p.created_at
+          const dateStr = p.created_at
           if (!dateStr) return
           const d = new Date(dateStr)
           const pmd = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
           if (pmd === md && d.getFullYear() < today.getFullYear()) {
             collected.push({
               kind: 'photo', id: String(p.id),
-              title: p.caption || '那时的回忆',
+              title: p.title || '那时的回忆',
+              subtitle: (p.description || '').slice(0, 40),
               date: dateStr.slice(0, 10),
               yearsAgo: today.getFullYear() - d.getFullYear(),
               imageUrl: p.image_url,
@@ -83,7 +84,7 @@ export default function ThisDayMemories() {
       try {
         const { data: annivs } = await supabase
           .from('anniversaries')
-          .select('id, name, date')
+          .select('id, title, date')
           .limit(50)
         annivs?.forEach((a: any) => {
           if (!a.date) return
@@ -93,7 +94,7 @@ export default function ThisDayMemories() {
             const years = today.getFullYear() - ad.getFullYear()
             collected.push({
               kind: 'anniversary', id: String(a.id),
-              title: a.name,
+              title: a.title,
               subtitle: years > 0 ? `${years} 周年纪念日！` : '今天是这个纪念日',
               date: a.date,
               yearsAgo: years,

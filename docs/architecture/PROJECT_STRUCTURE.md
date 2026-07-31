@@ -8,7 +8,7 @@
 .
 ├── app/                       # Next.js App Router 应用
 ├── hooks/                     # 通用 React Hooks
-├── lib/                       # 服务客户端与工具函数
+├── lib/                       # 服务客户端、功能注册表与工具函数
 ├── database/                  # Supabase/PostgreSQL 脚本
 │   ├── setup/                 # 新环境初始化
 │   ├── migrations/            # 增量功能与数据迁移
@@ -39,6 +39,9 @@
 app/
 ├── page.tsx                   # 首页
 ├── layout.tsx                 # 根布局与全局 Provider
+├── loading.tsx                # 路由切换时的全局加载反馈
+├── error.tsx                  # 页面渲染异常兜底
+├── not-found.tsx              # 404 页面
 ├── globals.css                # 全局样式和主题
 ├── api/chat/route.ts          # AI 聊天服务端接口
 ├── components/                # 跨页面共享组件
@@ -61,6 +64,7 @@ app/
 
 - `hooks/useAuth.ts`：读取并兼容历史本地登录标识。当前实现不是完整的服务端认证。
 - `lib/supabase.ts`：创建前端 Supabase 客户端。
+- `lib/features.ts`：统一登记功能名称、路由、分类以及首页和导航的展示方式。
 - `lib/imageUtils.ts`：图片处理工具。
 
 新增无 UI 的通用逻辑时优先放入 `hooks/` 或 `lib/`，避免页面文件继续膨胀。
@@ -112,6 +116,6 @@ npm start
 1. 在 `app/<route>/page.tsx` 创建页面。
 2. 把可复用 UI 提取到 `app/components/`。
 3. 如需数据表，在 `database/migrations/` 新建独立、尽量可重复执行的 SQL。
-4. 将入口加入首页或导航组件。
+4. 在 `lib/features.ts` 登记入口，由首页和导航共同读取。
 5. 更新根 `README.md` 或相应 `docs/guides/` 文档。
 6. 运行 lint 和类型检查；涉及路由、配置或生产行为时再运行生产构建。

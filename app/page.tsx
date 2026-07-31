@@ -1,817 +1,445 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import {
+  FEATURE_CATEGORIES,
+  homeFeatures,
+  quickAccessFeatures,
+  type FeatureDefinition,
+} from '@/lib/features'
+import FeatureCard from './components/FeatureCard'
 import RandomMemory from './components/RandomMemory'
 import ThisDayMemories from './components/ThisDayMemories'
+import { useToast } from './components/ToastProvider'
 
 interface Stats {
   photos: number
   wishes: number
   checkIns: number
-  daysTogeth: number
+  daysTogether: number
 }
 
 interface NextAnniversary {
-  name: string
+  title: string
   date: string
   daysLeft: number
 }
 
+const groupedHomeFeatures = FEATURE_CATEGORIES.map((category) => ({
+  ...category,
+  features: homeFeatures.filter(
+    (feature) => feature.category === category.id && feature.quickAccessOrder === undefined
+  ),
+})).filter((category) => category.features.length > 0)
+
 export default function Home() {
+  const { success, error: showError } = useToast()
   const [stats, setStats] = useState<Stats>({
     photos: 0,
     wishes: 0,
     checkIns: 0,
-    daysTogeth: 0,
+    daysTogether: 0,
   })
-  const [dailyQuote, setDailyQuote] = useState('')
+  const [dailyQuote, setDailyQuote] = useState('爱你，是我做过最好的决定 💕')
   const [nextAnniversary, setNextAnniversary] = useState<NextAnniversary | null>(null)
   const [unreadChat, setUnreadChat] = useState(0)
   const [unreadNotes, setUnreadNotes] = useState(0)
 
-  useEffect(() => {
-    loadStats()
-    loadDailyQuote()
-    loadNextAnniversary()
-    loadUnreadCounts()
+  const loadStats = useCallback(async () => {
+    try {
+      const startDate = new Date('2025-09-12T00:00:00')
+      const today = new Date()
+      const daysTogether = Math.max(
+        0,
+        Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      )
 
-    // Refresh unread badges when user returns from another tab/page
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') loadUnreadCounts()
+      const [photosResult, wishesResult, checkInsResult] = await Promise.all([
+        supabase.from('photos').select('*', { count: 'exact', head: true }),
+        supabase.from('wishlist').select('*', { count: 'exact', head: true }),
+        supabase.from('check_ins').select('*', { count: 'exact', head: true }),
+      ])
+
+      setStats({
+        photos: photosResult.count ?? 0,
+        wishes: wishesResult.count ?? 0,
+        checkIns: checkInsResult.count ?? 0,
+        daysTogether,
+      })
+    } catch (error) {
+      console.error('加载统计数据失败:', error)
     }
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('focus', loadUnreadCounts)
+  }, [])
 
-    // Realtime subscription for chat and notes
+  const loadDailyQuote = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from('love_quotes').select('content').limit(50)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        const randomQuote = data[Math.floor(Math.random() * data.length)]
+        setDailyQuote(randomQuote.content)
+      }
+    } catch (error) {
+      console.error('加载每日情话失败:', error)
+    }
+  }, [])
+
+  const loadNextAnniversary = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('anniversaries')
+        .select('title, date, recurring')
+
+      if (error) throw error
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const candidates = (data ?? [])
+        .map((anniversary) => {
+          const [year, month, day] = anniversary.date.split('-').map(Number)
+          if (!anniversary.title || !year || !month || !day) return null
+
+          const occurrence = anniversary.recurring
+            ? new Date(today.getFullYear(), month - 1, day)
+            : new Date(year, month - 1, day)
+
+          if (anniversary.recurring && occurrence < today) {
+            occurrence.setFullYear(today.getFullYear() + 1)
+          } else if (!anniversary.recurring && occurrence < today) {
+            return null
+          }
+
+          return {
+            title: anniversary.title,
+            date: occurrence.toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            daysLeft: Math.ceil(
+              (occurrence.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+            ),
+          }
+        })
+        .filter((anniversary): anniversary is NextAnniversary => anniversary !== null)
+        .sort((a, b) => a.daysLeft - b.daysLeft)
+
+      setNextAnniversary(candidates[0] ?? null)
+    } catch (error) {
+      console.error('加载纪念日失败:', error)
+    }
+  }, [])
+
+  const loadUnreadCounts = useCallback(async () => {
+    try {
+      const currentUser =
+        localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
+      if (!currentUser) return
+
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const [chatResult, notesResult] = await Promise.all([
+        supabase
+          .from('chat_messages')
+          .select('*', { count: 'exact', head: true })
+          .neq('sender', currentUser)
+          .eq('is_read', false),
+        supabase
+          .from('love_notes')
+          .select('*', { count: 'exact', head: true })
+          .neq('author', currentUser)
+          .gte('created_at', yesterday.toISOString()),
+      ])
+
+      setUnreadChat(chatResult.count ?? 0)
+      setUnreadNotes(notesResult.count ?? 0)
+    } catch {
+      // 可选数据表未初始化时，首页仍然保持可用。
+    }
+  }, [])
+
+  useEffect(() => {
+    void Promise.allSettled([
+      loadStats(),
+      loadDailyQuote(),
+      loadNextAnniversary(),
+      loadUnreadCounts(),
+    ])
+
+    const refreshUnread = () => {
+      if (document.visibilityState === 'visible') void loadUnreadCounts()
+    }
+    const refreshUnreadOnFocus = () => void loadUnreadCounts()
+
+    document.addEventListener('visibilitychange', refreshUnread)
+    window.addEventListener('focus', refreshUnreadOnFocus)
+
     const chatChannel = supabase
       .channel('home_unread_chat')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, () => {
-        loadUnreadCounts()
+        void loadUnreadCounts()
       })
       .subscribe()
 
     const notesChannel = supabase
       .channel('home_unread_notes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'love_notes' }, () => {
-        loadUnreadCounts()
+        void loadUnreadCounts()
       })
       .subscribe()
 
     return () => {
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('focus', loadUnreadCounts)
-      supabase.removeChannel(chatChannel)
-      supabase.removeChannel(notesChannel)
+      document.removeEventListener('visibilitychange', refreshUnread)
+      window.removeEventListener('focus', refreshUnreadOnFocus)
+      void supabase.removeChannel(chatChannel)
+      void supabase.removeChannel(notesChannel)
     }
-  }, [])
+  }, [loadDailyQuote, loadNextAnniversary, loadStats, loadUnreadCounts])
 
-  const loadStats = async () => {
+  const badgeForFeature = (feature: FeatureDefinition) => {
+    if (feature.path === '/chat') return unreadChat
+    if (feature.path === '/notes') return unreadNotes
+    return 0
+  }
+
+  const copyAnniversary = async () => {
+    if (!nextAnniversary) return
+
+    const posterText = [
+      nextAnniversary.title,
+      `距离这个特殊的日子还有 ${nextAnniversary.daysLeft} 天`,
+      nextAnniversary.date,
+      '💕 zyx和zly的小世界 💕',
+    ].join('\n')
+
     try {
-      // 恋爱天数（从2025年9月12日开始）
-      const startDate = new Date('2025-09-12')
-      const today = new Date()
-      const days = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-
-      // 获取照片数量
-      const { count: photosCount } = await supabase
-        .from('photos')
-        .select('*', { count: 'exact', head: true })
-
-      // 获取心愿数量
-      const { count: wishesCount } = await supabase
-        .from('wishlist')
-        .select('*', { count: 'exact', head: true })
-
-      // 获取签到数量
-      const { count: checkInsCount } = await supabase
-        .from('check_ins')
-        .select('*', { count: 'exact', head: true })
-
-      setStats({
-        photos: photosCount || 0,
-        wishes: wishesCount || 0,
-        checkIns: checkInsCount || 0,
-        daysTogeth: days,
-      })
-    } catch (error) {
-      console.error('加载统计数据失败:', error)
+      await navigator.clipboard.writeText(posterText)
+      success('纪念日文案已复制到剪贴板')
+    } catch {
+      showError('复制失败，请稍后重试')
     }
   }
 
-  const loadDailyQuote = async () => {
-    try {
-      // 从 love_quotes 表随机获取一条情话
-      const { data, error } = await supabase.from('love_quotes').select('quote').limit(50)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        // 客户端随机选择一条
-        const randomQuote = data[Math.floor(Math.random() * data.length)]
-        setDailyQuote(randomQuote.quote)
-      }
-    } catch (error) {
-      console.error('加载每日情话失败:', error)
-      setDailyQuote('爱你，是我做过最好的决定 💕')
-    }
-  }
-
-  const loadUnreadCounts = async () => {
-    try {
-      const currentUser =
-        localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
-      if (!currentUser) return
-
-      // Unread chat messages (sent by the other person, not read yet)
-      const { count: chatCount } = await supabase
-        .from('chat_messages')
-        .select('*', { count: 'exact', head: true })
-        .neq('sender', currentUser)
-        .eq('is_read', false)
-
-      setUnreadChat(chatCount || 0)
-
-      // Unread notes (written by the other person, check notes created in last 24h)
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const { count: notesCount } = await supabase
-        .from('love_notes')
-        .select('*', { count: 'exact', head: true })
-        .neq('author', currentUser)
-        .gte('created_at', yesterday.toISOString())
-
-      setUnreadNotes(notesCount || 0)
-    } catch (err) {
-      // Silently ignore - tables might not exist yet
-    }
-  }
-
-  const loadNextAnniversary = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('anniversaries')
-        .select('*')
-        .order('date', { ascending: true })
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        // 找到下一个即将到来的纪念日
-        for (const anniversary of data) {
-          const anniversaryDate = new Date(anniversary.date)
-          const currentYearDate = new Date(
-            today.getFullYear(),
-            anniversaryDate.getMonth(),
-            anniversaryDate.getDate()
-          )
-
-          // 如果今年的日期已经过了，看明年的
-          if (currentYearDate < today) {
-            currentYearDate.setFullYear(today.getFullYear() + 1)
-          }
-
-          const daysLeft = Math.ceil(
-            (currentYearDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-          )
-
-          if (daysLeft >= 0) {
-            setNextAnniversary({
-              name: anniversary.name,
-              date: currentYearDate.toLocaleDateString('zh-CN'),
-              daysLeft: daysLeft,
-            })
-            break
-          }
-        }
-      }
-    } catch (error) {
-      console.error('加载纪念日失败:', error)
-    }
-  }
   return (
-    <main className="min-h-screen p-4 sm:p-6 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="text-center mb-6 md:mb-8 mt-4 md:mt-8">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 md:mb-4 drop-shadow-lg">
-            💕 zyx和zly的小世界 💕
+    <main className="min-h-screen px-4 pb-6 pt-6 sm:px-6 md:pb-12 md:pt-10">
+      <div className="mx-auto max-w-7xl">
+        <header className="relative mb-7 overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 px-5 py-8 text-center shadow-xl sm:px-8 sm:py-10 md:mb-9">
+          <span
+            className="pointer-events-none absolute -left-4 -top-8 text-8xl opacity-10"
+            aria-hidden="true"
+          >
+            💕
+          </span>
+          <span
+            className="pointer-events-none absolute -bottom-8 -right-4 text-8xl opacity-10"
+            aria-hidden="true"
+          >
+            ✨
+          </span>
+          <p className="mb-2 text-sm font-semibold tracking-[0.24em] text-white/90 drop-shadow">
+            OUR LITTLE WORLD
+          </p>
+          <h1 className="text-3xl font-black text-white drop-shadow-lg sm:text-4xl md:text-5xl">
+            zyx 和 zly 的小世界
           </h1>
-          <p className="text-lg sm:text-xl text-white drop-shadow">属于我们两个人的专属空间</p>
+          <p className="mt-3 text-base text-white/90 drop-shadow sm:text-lg">
+            今天也一起，把平凡生活过得闪闪发光
+          </p>
         </header>
 
-        {/* Love Stats Dashboard */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gradient-to-br from-pink-500 to-red-500 rounded-2xl p-4 text-white shadow-xl">
-            <div className="text-3xl font-bold">{stats.daysTogeth}</div>
-            <div className="text-sm opacity-90">在一起的天数</div>
-            <div className="text-2xl mt-1">❤️</div>
+        <section className="mb-8" aria-labelledby="quick-access-title">
+          <div className="mb-3 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">常用入口</p>
+              <h2 id="quick-access-title" className="mt-1 text-xl font-bold text-gray-900">
+                想做什么？
+              </h2>
+            </div>
+            <span className="hidden text-sm text-gray-600 sm:block">最常用的功能放在这里</span>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl p-4 text-white shadow-xl">
-            <div className="text-3xl font-bold">{stats.photos}</div>
-            <div className="text-sm opacity-90">共同回忆</div>
-            <div className="text-2xl mt-1">📸</div>
+          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 lg:grid-cols-6">
+            {quickAccessFeatures.map((feature) => (
+              <div key={feature.path} className="min-w-[15rem] snap-start md:min-w-0">
+                <FeatureCard
+                  feature={feature}
+                  variant="quick"
+                  badge={badgeForFeature(feature)}
+                />
+              </div>
+            ))}
           </div>
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-4 text-white shadow-xl">
-            <div className="text-3xl font-bold">{stats.checkIns}</div>
-            <div className="text-sm opacity-90">签到天数</div>
-            <div className="text-2xl mt-1">📅</div>
-          </div>
-          <div className="bg-gradient-to-br from-orange-500 to-yellow-500 rounded-2xl p-4 text-white shadow-xl">
-            <div className="text-3xl font-bold">{stats.wishes}</div>
-            <div className="text-sm opacity-90">心愿清单</div>
-            <div className="text-2xl mt-1">✨</div>
-          </div>
-        </div>
+        </section>
 
-        {/* Next Anniversary Countdown - Enhanced */}
-        {nextAnniversary && (
-          <div className="relative bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 rounded-2xl p-6 shadow-xl mb-6 text-white overflow-hidden">
-            {/* Floating hearts animation */}
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute text-4xl animate-float"
-                  style={{
-                    left: `${i * 20}%`,
-                    animationDelay: `${i * 0.5}s`,
-                    opacity: 0.2,
-                  }}
+        <section className="mb-8" aria-labelledby="today-overview-title">
+          <h2 id="today-overview-title" className="sr-only">
+            今天的共同生活概览
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-12">
+            <article className="card !rounded-3xl !p-5 sm:!p-6 lg:col-span-7">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-pink-500">我们已经相爱</p>
+                  <div className="mt-1 flex items-end gap-2">
+                    <strong className="text-5xl font-black tracking-tight text-gray-900 sm:text-6xl">
+                      {stats.daysTogether}
+                    </strong>
+                    <span className="pb-2 text-lg font-bold text-gray-500">天</span>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">从 2025 年 9 月 12 日开始计算</p>
+                </div>
+                <span
+                  className="flex h-20 w-20 items-center justify-center self-end rounded-full bg-gradient-to-br from-pink-100 via-rose-100 to-purple-100 text-4xl shadow-inner sm:self-auto"
+                  aria-hidden="true"
+                >
+                  ❤️
+                </span>
+              </div>
+              <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
+                {[
+                  { value: stats.photos, label: '共同回忆', icon: '📸' },
+                  { value: stats.checkIns, label: '签到次数', icon: '💖' },
+                  { value: stats.wishes, label: '心愿数量', icon: '✨' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl bg-pink-50/80 p-3 text-center sm:p-4">
+                    <span className="text-lg" aria-hidden="true">
+                      {item.icon}
+                    </span>
+                    <strong className="mt-1 block text-xl font-black text-gray-900 sm:text-2xl">
+                      {item.value}
+                    </strong>
+                    <span className="mt-0.5 block text-[11px] text-gray-500 sm:text-xs">
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1">
+              <article className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 p-5 text-white shadow-xl sm:p-6">
+                <span
+                  className="absolute -right-4 -top-6 text-8xl opacity-15"
+                  aria-hidden="true"
                 >
                   💝
-                </div>
-              ))}
-            </div>
-
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex-1 text-center md:text-left">
-                <div className="text-sm opacity-90 mb-1 flex items-center justify-center md:justify-start gap-2">
-                  <span className="animate-pulse">💝</span>
-                  <span>即将到来</span>
-                </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-1 animate-bounce">
-                  {nextAnniversary.name}
-                </h3>
-                <p className="text-sm opacity-90">{nextAnniversary.date}</p>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-center bg-white/20 rounded-xl p-4 backdrop-blur-sm">
-                  <div className="text-5xl md:text-6xl font-bold animate-pulse">
-                    {nextAnniversary.daysLeft}
+                </span>
+                <div className="relative">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-white/80">下一个特别日子</p>
+                    <Link
+                      href="/anniversaries"
+                      className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    >
+                      全部纪念日
+                    </Link>
                   </div>
-                  <div className="text-sm mt-1">天后</div>
+                  {nextAnniversary ? (
+                    <>
+                      <div className="mt-4 flex items-end justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-black sm:text-2xl">
+                            {nextAnniversary.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-white/80">{nextAnniversary.date}</p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <strong className="block text-4xl font-black">
+                            {nextAnniversary.daysLeft}
+                          </strong>
+                          <span className="text-xs text-white/80">
+                            {nextAnniversary.daysLeft === 0 ? '就是今天' : '天后'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void copyAnniversary()}
+                        className="mt-4 rounded-xl bg-white/15 px-3 py-2 text-sm font-semibold transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      >
+                        📋 复制纪念日文案
+                      </button>
+                    </>
+                  ) : (
+                    <p className="mt-4 text-sm leading-6 text-white/85">
+                      还没有即将到来的纪念日，去记录一个值得期待的日子吧。
+                    </p>
+                  )}
                 </div>
+              </article>
 
-                <button
-                  onClick={() => {
-                    // 生成海报逻辑（简化版，实际可以用canvas生成图片）
-                    const posterText = `
-${nextAnniversary.name}
-距离这个特殊的日子还有 ${nextAnniversary.daysLeft} 天
-${nextAnniversary.date}
-💕 zyx和zly的小世界 💕
-                    `.trim()
-
-                    navigator.clipboard.writeText(posterText)
-                    alert('纪念日海报文案已复制到剪贴板！')
-                  }}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg p-3 transition-all transform hover:scale-110"
-                  title="生成海报"
+              <article className="relative overflow-hidden rounded-3xl bg-white/90 p-5 shadow-lg backdrop-blur-sm sm:p-6">
+                <span
+                  className="absolute -bottom-3 -right-2 text-7xl opacity-10"
+                  aria-hidden="true"
                 >
-                  <span className="text-2xl">📋</span>
-                </button>
-              </div>
+                  “
+                </span>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-500">今日情话</p>
+                <blockquote className="relative mt-3 text-base font-semibold leading-7 text-gray-800">
+                  “{dailyQuote}”
+                </blockquote>
+                <Link
+                  href="/love-quotes"
+                  className="mt-3 inline-flex text-sm font-semibold text-pink-600 transition hover:text-pink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
+                >
+                  再抽一句 <span aria-hidden="true">→</span>
+                </Link>
+              </article>
             </div>
           </div>
-        )}
+        </section>
 
-        {/* Daily Love Quote */}
-        {dailyQuote && (
-          <div className="bg-gradient-to-r from-pink-400 via-rose-400 to-red-400 rounded-2xl p-6 shadow-xl mb-8 text-white text-center">
-            <div className="text-4xl mb-3">💝</div>
-            <p className="text-lg md:text-xl font-medium italic">&ldquo;{dailyQuote}&rdquo;</p>
-            <p className="text-sm mt-2 opacity-80">今日情话</p>
-          </div>
-        )}
-
-        {/* "This Day in History" memories (photos/diary/anniversaries from same date past years) */}
         <ThisDayMemories />
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Couple Chat - TOP PRIORITY */}
-          <Link href="/chat">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-pink-500/10 to-red-500/10 relative">
-              {unreadChat > 0 && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg animate-bounce z-10">
-                  {unreadChat > 99 ? '99+' : unreadChat}
+        <div className="space-y-6">
+          {groupedHomeFeatures.map((category) => (
+            <section
+              key={category.id}
+              className="rounded-3xl border border-white/50 bg-white/25 p-4 shadow-sm backdrop-blur-sm sm:p-5"
+              aria-labelledby={`category-${category.id}`}
+            >
+              <div className="mb-4 flex items-start gap-3">
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-2xl shadow-sm"
+                  aria-hidden="true"
+                >
+                  {category.icon}
+                </span>
+                <div>
+                  <h2
+                    id={`category-${category.id}`}
+                    className="text-xl font-black text-gray-900 sm:text-2xl"
+                  >
+                    {category.label}
+                  </h2>
+                  <p className="mt-0.5 text-sm text-gray-600">{category.description}</p>
                 </div>
-              )}
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💬</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣聊天室
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">实时聊天，随时传情</p>
-            </div>
-          </Link>
-
-          {/* Photo Album */}
-          <Link href="/photos">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📸</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                我们的相册
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">记录每一个美好瞬间</p>
-            </div>
-          </Link>
-
-          {/* Shared Expense Tracker - HIDDEN */}
-          {/* <Link href="/expenses">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💰</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                共同账本
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">平分不分手，记录每一笔花销</p>
-            </div>
-          </Link> */}
-
-          {/* Check In */}
-          <Link href="/check-in">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💖</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                每日签到
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">记录每一天的小确幸</p>
-            </div>
-          </Link>
-
-          {/* Gomoku */}
-          <Link href="/gomoku">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⚫⚪</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                五子棋对战
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">来一场甜蜜的对决吧</p>
-            </div>
-          </Link>
-
-          {/* Mahjong */}
-          <Link href="/mahjong">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🀄</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                欢乐麻将
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">国粹对局赚取欢乐豆</p>
-            </div>
-          </Link>
-
-          {/* Anniversaries */}
-          <Link href="/anniversaries">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💝</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                重要纪念日
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                永远铭记我们的每个特殊日子
-              </p>
-            </div>
-          </Link>
-
-          {/* Food Decider */}
-          <Link href="/food">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🍱</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                今晚吃什么
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">让我来帮你们做决定</p>
-            </div>
-          </Link>
-
-          {/* Love Notes */}
-          <Link href="/notes">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer relative">
-              {unreadNotes > 0 && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg z-10">
-                  {unreadNotes}
-                </div>
-              )}
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💌</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                甜蜜留言板
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">留下想对对方说的话</p>
-            </div>
-          </Link>
-
-          {/* Wishlist */}
-          <Link href="/wishlist">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">✨</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                心愿清单
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">一起完成的愿望</p>
-            </div>
-          </Link>
-
-          {/* Truth or Dare */}
-          <Link href="/truth-or-dare">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💖</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                真心话大冒险
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">增进了解的趣味游戏</p>
-            </div>
-          </Link>
-
-          {/* Bucket List */}
-          <Link href="/bucket-list">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💑</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                100件想做的事
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">我们的爱情任务清单</p>
-            </div>
-          </Link>
-
-          {/* Love Quotes */}
-          <Link href="/love-quotes">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💝</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情话生成器
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">每天一句甜蜜情话</p>
-            </div>
-          </Link>
-
-          {/* Couple Quiz */}
-          <Link href="/couple-quiz">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🤔</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣问答
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">测测你们的默契度</p>
-            </div>
-          </Link>
-
-          {/* Rock Paper Scissors */}
-          <Link href="/rock-paper-scissors">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">✊</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                石头剪刀布
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">看谁的运气更好</p>
-            </div>
-          </Link>
-
-          {/* Memory Game */}
-          <Link href="/memory-game">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🃏</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                记忆翻牌
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">考验记忆力的游戏</p>
-            </div>
-          </Link>
-
-          {/* Drawing */}
-          <Link href="/drawing">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎨</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                猜猜我画的
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">发挥你的艺术天赋</p>
-            </div>
-          </Link>
-
-          {/* Countdown */}
-          <Link href="/countdown">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⏰</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                时光计时器
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                记录我们的每一个重要时刻
-              </p>
-            </div>
-          </Link>
-
-          {/* Schedule */}
-          <Link href="/schedule">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📅</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                共享日程
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">规划两人的约会计划</p>
-            </div>
-          </Link>
-
-          {/* Time Capsule */}
-          <Link href="/time-capsule">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎁</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                时光胶囊
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">写给未来的信</p>
-            </div>
-          </Link>
-
-          {/* Diary */}
-          <Link href="/diary">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📖</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                恋爱日记
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">记录每天的甜蜜瞬间</p>
-            </div>
-          </Link>
-
-          {/* Matching Game */}
-          <Link href="/matching-game">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🧩</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣配对游戏
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                找到所有配对的情侣物品
-              </p>
-            </div>
-          </Link>
-
-          {/* Dress Up */}
-          <Link href="/dress-up">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎀</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                装扮小人游戏
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">打扮你的虚拟形象</p>
-            </div>
-          </Link>
-
-          {/* Love Letter */}
-          <Link href="/love-letter">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💌</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                制作情书游戏
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">创作专属浪漫情书</p>
-            </div>
-          </Link>
-
-          {/* Color Test */}
-          <Link href="/color-test">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🌈</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                颜色性格测试
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                测测你的性格和恋爱风格
-              </p>
-            </div>
-          </Link>
-
-          {/* Tarot */}
-          <Link href="/tarot">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🔮</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                塔罗牌占卜
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                每日一卦，探索恋爱运势
-              </p>
-            </div>
-          </Link>
-
-          {/* Horoscope */}
-          <Link href="/horoscope">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⭐</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                星座运势
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">查看双人每日运势</p>
-            </div>
-          </Link>
-
-          {/* Compatibility Test */}
-          <Link href="/compatibility-test">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💕</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                默契度测试
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">测测你们有多默契</p>
-            </div>
-          </Link>
-
-          {/* Sweet Words */}
-          <Link href="/sweet-words">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💝</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                土味情话
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">甜到齁的情话大全</p>
-            </div>
-          </Link>
-
-          {/* Catch Heart Game */}
-          <Link href="/catch-heart">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💗</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                接住爱心
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">接住从天而降的爱心</p>
-            </div>
-          </Link>
-
-          {/* Thunder Fighter (Raiden-style) */}
-          <Link href="/love-survivor">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-slate-800 to-indigo-900 text-white">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">✈️</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-yellow-300">
-                雷霆战机
-              </h2>
-              <p className="text-sm sm:text-base text-gray-300 text-center">
-                竖版飞行射击，经典雷神感
-              </p>
-            </div>
-          </Link>
-
-          {/* Grass Cutter (Survivor) */}
-          <Link href="/grass-cutter">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-green-700 to-emerald-900 text-white">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🧑‍🌾</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-green-300">
-                割草大作战
-              </h2>
-              <p className="text-sm sm:text-base text-gray-300 text-center">
-                自动攻击，存活 5 分钟获胜
-              </p>
-            </div>
-          </Link>
-
-          {/* Mood Tracker */}
-          <Link href="/mood-tracker">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">😊</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                心情追踪
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">记录每天的心情变化</p>
-            </div>
-          </Link>
-
-          {/* Emoji Battle */}
-          <Link href="/emoji-battle">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎴</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                表情包大乱斗
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                选卡对战，谁的表情更厉害
-              </p>
-            </div>
-          </Link>
-
-          {/* Board Game */}
-          <Link href="/board-game">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎲</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣飞行棋
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">一起掷骰子玩飞行棋</p>
-            </div>
-          </Link>
-
-          {/* Love Dice */}
-          <Link href="/love-dice">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎯</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                爱情骰子
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                选择困难？让骰子来决定
-              </p>
-            </div>
-          </Link>
-
-          {/* Daily Challenge */}
-          <Link href="/daily-challenge">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📋</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                每日挑战
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">每天一个爱的小任务</p>
-            </div>
-          </Link>
-
-          {/* Love Contract */}
-          <Link href="/love-contract">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📜</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣契约书
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                创建属于你们的爱情约定
-              </p>
-            </div>
-          </Link>
-
-          {/* Music Player */}
-          <Link href="/music-player">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">🎵</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                共享音乐播放器
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                一起听歌，分享浪漫时刻
-              </p>
-            </div>
-          </Link>
-
-          {/* Novels / Couple Bookshelf */}
-          <Link href="/novels">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-indigo-50 to-blue-50">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">📚</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                情侣书架
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                一起阅读，分享故事感动
-              </p>
-            </div>
-          </Link>
-
-          {/* Feature Requests */}
-          <Link href="/feature-requests">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">💡</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                功能申请箱
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">提出你的想法和建议</p>
-            </div>
-          </Link>
-
-          {/* Settings */}
-          <Link href="/settings">
-            <div className="card hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 cursor-pointer bg-gradient-to-br from-gray-100 to-gray-200">
-              <div className="text-5xl sm:text-6xl mb-3 sm:mb-4 text-center">⚙️</div>
-              <h2 className="text-xl sm:text-2xl font-bold text-center mb-2 text-primary">
-                个人设置
-              </h2>
-              <p className="text-sm sm:text-base text-gray-600 text-center">
-                自定义头像、昵称和签名
-              </p>
-            </div>
-          </Link>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {category.features.map((feature) => (
+                  <FeatureCard
+                    key={feature.path}
+                    feature={feature}
+                    badge={badgeForFeature(feature)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
 
-        {/* Random Memory Section */}
-        <div className="mt-12">
+        <section className="mt-8" aria-label="随机回忆">
           <RandomMemory />
-        </div>
+        </section>
 
-        {/* Footer */}
-        <footer className="text-center mt-16 text-white drop-shadow">
-          <p className="text-lg">❤️ 愿我们的爱情永远甜蜜 ❤️</p>
+        <footer className="mt-12 text-center font-medium text-gray-600">
+          <p className="text-base sm:text-lg">❤️ 愿我们的爱情永远甜蜜 ❤️</p>
         </footer>
       </div>
     </main>

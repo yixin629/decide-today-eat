@@ -21,6 +21,25 @@ interface QuizResult {
   is_correct: boolean
 }
 
+const normalizeQuizOptions = (value: unknown): string[] => {
+  let options = value
+
+  if (typeof options === 'string') {
+    try {
+      options = JSON.parse(options)
+    } catch {
+      return []
+    }
+  }
+
+  if (!Array.isArray(options)) return []
+
+  return options
+    .filter((option): option is string => typeof option === 'string')
+    .map((option) => option.trim())
+    .filter(Boolean)
+}
+
 export default function CoupleQuizPage() {
   const toast = useToast()
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
@@ -56,7 +75,13 @@ export default function CoupleQuizPage() {
         .order('created_at', { ascending: true })
 
       if (error) throw error
-      setQuizzes(data || [])
+      setQuizzes(
+        (data || []).map((quiz) => ({
+          ...quiz,
+          options: normalizeQuizOptions(quiz.options),
+          correct_answer: quiz.correct_answer.trim(),
+        }))
+      )
     } catch (error) {
       console.error('加载失败:', error)
     } finally {
@@ -140,16 +165,28 @@ export default function CoupleQuizPage() {
   const handleSubmitQuiz = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const options = [newQuiz.option1, newQuiz.option2, newQuiz.option3, newQuiz.option4].filter(
-      (opt) => opt.trim() !== ''
-    )
+    const question = newQuiz.question.trim()
+    const options = [newQuiz.option1, newQuiz.option2, newQuiz.option3, newQuiz.option4]
+      .map((option) => option.trim())
+      .filter(Boolean)
+    const correctAnswer = newQuiz.correct_answer.trim()
+
+    if (!question) {
+      toast.warning('请输入题目')
+      return
+    }
 
     if (options.length < 2) {
       toast.warning('至少需要2个选项')
       return
     }
 
-    if (!options.includes(newQuiz.correct_answer)) {
+    if (new Set(options).size !== options.length) {
+      toast.warning('选项不能重复')
+      return
+    }
+
+    if (!correctAnswer || !options.includes(correctAnswer)) {
       toast.warning('正确答案必须是选项之一')
       return
     }
@@ -157,9 +194,9 @@ export default function CoupleQuizPage() {
     try {
       const { error } = await supabase.from('couple_quiz').insert([
         {
-          question: newQuiz.question,
-          options: JSON.stringify(options),
-          correct_answer: newQuiz.correct_answer,
+          question,
+          options,
+          correct_answer: correctAnswer,
           category: newQuiz.category,
         },
       ])

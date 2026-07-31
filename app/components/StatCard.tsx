@@ -24,16 +24,8 @@ export default function StatCard({
   onClick,
   className = '',
 }: StatCardProps) {
-  const isClickable = !!onClick
-  return (
-    <div
-      onClick={onClick}
-      className={`
-        bg-gradient-to-br ${gradient} rounded-2xl p-4 text-white shadow-lg
-        ${isClickable ? 'cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all' : ''}
-        ${className}
-      `}
-    >
+  const content = (
+    <>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="text-3xl font-black leading-tight">{value}</div>
@@ -50,6 +42,26 @@ export default function StatCard({
           </span>
         </div>
       )}
+    </>
+  )
+
+  const cardClassName = `
+    bg-gradient-to-br ${gradient} rounded-2xl p-4 text-white shadow-lg
+    ${onClick ? 'cursor-pointer text-left hover:shadow-xl hover:-translate-y-0.5 transition-all' : ''}
+    ${className}
+  `
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={`w-full ${cardClassName}`}>
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <div className={cardClassName}>
+      {content}
     </div>
   )
 }

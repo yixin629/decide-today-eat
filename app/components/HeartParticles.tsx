@@ -2,47 +2,37 @@
 
 import { useEffect } from 'react'
 
-interface Heart {
-  id: number
-  x: number
-  y: number
-  size: number
-  opacity: number
-  duration: number
-}
-
 export default function HeartParticles() {
   useEffect(() => {
-    const hearts: Heart[] = []
-    let heartId = 0
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return
+    }
+
+    const activeHearts = new Set<HTMLDivElement>()
+    const removalTimers = new Set<ReturnType<typeof setTimeout>>()
 
     const createHeart = (x: number, y: number) => {
-      const heart: Heart = {
-        id: heartId++,
-        x,
-        y,
-        size: Math.random() * 20 + 10,
-        opacity: 1,
-        duration: Math.random() * 1000 + 1000,
-      }
-
-      hearts.push(heart)
+      const size = Math.random() * 20 + 10
+      const duration = Math.random() * 1000 + 1000
 
       const heartEl = document.createElement('div')
       heartEl.className = 'heart-particle'
       heartEl.textContent = ['❤️', '💕', '💖', '💗', '💝'][Math.floor(Math.random() * 5)]
       heartEl.style.left = `${x}px`
       heartEl.style.top = `${y}px`
-      heartEl.style.fontSize = `${heart.size}px`
-      heartEl.style.animation = `float-up ${heart.duration}ms ease-out`
+      heartEl.style.fontSize = `${size}px`
+      heartEl.style.animation = `float-up ${duration}ms ease-out`
+      heartEl.setAttribute('aria-hidden', 'true')
 
       document.body.appendChild(heartEl)
+      activeHearts.add(heartEl)
 
-      setTimeout(() => {
+      const removalTimer = setTimeout(() => {
         heartEl.remove()
-        const index = hearts.findIndex((h) => h.id === heart.id)
-        if (index > -1) hearts.splice(index, 1)
-      }, heart.duration)
+        activeHearts.delete(heartEl)
+        removalTimers.delete(removalTimer)
+      }, duration)
+      removalTimers.add(removalTimer)
     }
 
     const handleClick = (e: MouseEvent) => {
@@ -56,6 +46,8 @@ export default function HeartParticles() {
 
     return () => {
       document.removeEventListener('click', handleClick)
+      removalTimers.forEach((timer) => clearTimeout(timer))
+      activeHearts.forEach((heart) => heart.remove())
     }
   }, [])
 
@@ -76,6 +68,12 @@ export default function HeartParticles() {
         100% {
           transform: translateY(-100px) rotate(20deg);
           opacity: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .heart-particle {
+          display: none;
         }
       }
     `}</style>

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, ReactNode } from 'react'
 import Toast, { ToastType } from './Toast'
 
 interface ToastContextType {
@@ -27,14 +27,22 @@ interface ToastData {
   type: ToastType
 }
 
+const MAX_VISIBLE_TOASTS = 4
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastData[]>([])
   const nextIdRef = useRef(1)
 
   const showToast = useCallback((message: string, type: ToastType) => {
+    const normalizedMessage = message.trim()
+    if (!normalizedMessage) return
+
     const id = nextIdRef.current
     nextIdRef.current += 1
-    setToasts((prev) => [...prev, { id, message, type }])
+    setToasts((prev) => [
+      ...prev.slice(-(MAX_VISIBLE_TOASTS - 1)),
+      { id, message: normalizedMessage, type },
+    ])
   }, [])
 
   const removeToast = useCallback((id: number) => {
@@ -45,17 +53,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const error = useCallback((message: string) => showToast(message, 'error'), [showToast])
   const info = useCallback((message: string) => showToast(message, 'info'), [showToast])
   const warning = useCallback((message: string) => showToast(message, 'warning'), [showToast])
+  const contextValue = useMemo(
+    () => ({ showToast, success, error, info, warning }),
+    [showToast, success, error, info, warning]
+  )
 
   return (
-    <ToastContext.Provider value={{ showToast, success, error, info, warning }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
-      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
+      <div
+        className="pointer-events-none fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[9999] flex flex-col gap-2 sm:left-auto sm:right-4 sm:w-full sm:max-w-sm"
+        aria-label="通知"
+      >
         {toasts.map((toast) => (
           <Toast
             key={toast.id}
+            id={toast.id}
             message={toast.message}
             type={toast.type}
-            onClose={() => removeToast(toast.id)}
+            onClose={removeToast}
           />
         ))}
       </div>

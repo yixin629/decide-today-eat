@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
@@ -19,6 +19,7 @@ export default function UserAvatar() {
   const [unreadReminders, setUnreadReminders] = useState(0)
   const [showAvatarSelector, setShowAvatarSelector] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   const router = useRouter()
   const pathname = usePathname()
@@ -47,6 +48,20 @@ export default function UserAvatar() {
     return () => clearInterval(interval)
   }, [pathname])
 
+  useEffect(() => {
+    if (!showDropdown) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowDropdown(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showDropdown])
+
   const fetchAvatar = async (userName: string) => {
     try {
       const { data, error } = await supabase
@@ -54,6 +69,8 @@ export default function UserAvatar() {
         .select('avatar_url, avatar_emoji')
         .eq('name', userName)
         .maybeSingle()
+
+      if (error) throw error
 
       if (data) {
         setAvatarUrl(data.avatar_url || data.avatar_emoji || '')
@@ -93,13 +110,14 @@ export default function UserAvatar() {
   const handleAvatarUpdate = async (newAvatar: string) => {
     // Determine if it's emoji or url
     const isEmoji = !newAvatar.startsWith('http')
+    const previousAvatar = avatarUrl
 
     setAvatarUrl(newAvatar)
 
     try {
       const updateData = isEmoji
         ? { avatar_emoji: newAvatar, avatar_url: null }
-        : { avatar_url: newAvatar }
+        : { avatar_url: newAvatar, avatar_emoji: null }
 
       // We need to upsert. Assuming 'name' is unique enough or we have ID.
       // Since we don't have UUID easily, we rely on name matching existing profile or creating one.
@@ -114,6 +132,7 @@ export default function UserAvatar() {
       showToast('头像更新成功', 'success')
       setShowAvatarSelector(false)
     } catch (error) {
+      setAvatarUrl(previousAvatar)
       console.error('Update avatar failed:', error)
       showToast('更新失败', 'error')
     }
@@ -122,19 +141,27 @@ export default function UserAvatar() {
   if (!currentUser) return null
 
   // Chat page has its own header with avatar, so hide this global one to prevent overlap
-  if (pathname === '/chat') return null
+  if (pathname === '/chat' || pathname === '/login') return null
 
   const displayAvatar = avatarUrl || userInfo?.emoji || '👤'
   const isImg = displayAvatar.startsWith('http')
 
   return (
     <>
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed right-3 top-3 z-50 sm:right-4 sm:top-4">
         <div className="relative">
           {/* User Avatar Button */}
           <button
+            ref={menuButtonRef}
+            type="button"
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 border-2 border-primary/20 hover:border-primary"
+            className="flex min-h-11 items-center gap-2 rounded-full border-2 border-primary/20 bg-white px-2 py-1.5 shadow-lg transition-all duration-300 hover:border-primary hover:shadow-xl sm:px-4 sm:py-2"
+            aria-expanded={showDropdown}
+            aria-haspopup="menu"
+            aria-controls="user-menu"
+            aria-label={`${userInfo?.nickname || '用户'}的用户菜单${
+              unreadReminders > 0 ? `，有 ${unreadReminders} 条提醒` : ''
+            }`}
           >
             {isImg ? (
               <Image
@@ -145,11 +172,18 @@ export default function UserAvatar() {
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
-              <span className="text-2xl">{displayAvatar}</span>
+              <span className="text-2xl" aria-hidden="true">
+                {displayAvatar}
+              </span>
             )}
-            <span className="font-semibold text-gray-800">{userInfo?.nickname}</span>
+            <span className="hidden font-semibold text-gray-800 sm:inline">
+              {userInfo?.nickname}
+            </span>
             {unreadReminders > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+              <span
+                className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs text-white animate-pulse"
+                aria-hidden="true"
+              >
                 {unreadReminders}
               </span>
             )}
@@ -158,6 +192,7 @@ export default function UserAvatar() {
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -172,17 +207,32 @@ export default function UserAvatar() {
           {showDropdown && (
             <>
               {/* Backdrop */}
-              <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+              <button
+                type="button"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setShowDropdown(false)}
+                aria-label="关闭用户菜单"
+                tabIndex={-1}
+              />
 
               {/* Menu */}
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border-2 border-gray-100 overflow-hidden z-50 animate-fade-in">
+              <div
+                id="user-menu"
+                className="absolute right-0 z-50 mt-2 w-[min(16rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border-2 border-gray-100 bg-white shadow-2xl animate-fade-in"
+                role="menu"
+                aria-label="用户菜单"
+              >
                 {/* User Info with Clickable Avatar */}
                 <div className="px-4 py-3 bg-gradient-to-r from-pink-50 to-purple-50 border-b border-gray-100">
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => setShowAvatarSelector(true)}
-                      className="relative group w-12 h-12 rounded-full overflow-hidden hover:ring-2 hover:ring-primary transition-all flex items-center justify-center bg-white shadow-sm"
-                      title="更换头像"
+                      type="button"
+                      onClick={() => {
+                        setShowAvatarSelector(true)
+                        setShowDropdown(false)
+                      }}
+                      className="group relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm transition-all hover:ring-2 hover:ring-primary"
+                      aria-label="更换头像"
                     >
                       {isImg ? (
                         <Image
@@ -193,7 +243,9 @@ export default function UserAvatar() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-3xl">{displayAvatar}</span>
+                        <span className="text-3xl" aria-hidden="true">
+                          {displayAvatar}
+                        </span>
                       )}
                       <div className="absolute inset-0 bg-black/30 group-hover:flex hidden items-center justify-center text-white text-xs">
                         更换
@@ -211,9 +263,12 @@ export default function UserAvatar() {
                   href="/profile"
                   onClick={() => setShowDropdown(false)}
                   className="block px-4 py-3 hover:bg-pink-50 transition-colors border-b border-gray-100"
+                  role="menuitem"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">👤</span>
+                    <span className="text-xl" aria-hidden="true">
+                      👤
+                    </span>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">个人资料</p>
                       <p className="text-xs text-gray-500">管理信息和提醒</p>
@@ -232,12 +287,15 @@ export default function UserAvatar() {
                     href="/"
                     onClick={() => setShowDropdown(false)}
                     className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    role="menuitem"
                   >
                     🏠 返回首页
                   </Link>
                   <button
+                    type="button"
                     onClick={handleLogout}
                     className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    role="menuitem"
                   >
                     🚪 退出登录
                   </button>

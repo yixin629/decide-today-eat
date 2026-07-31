@@ -9,8 +9,11 @@ create table photos (
   description text,
   image_url text not null,
   uploaded_by text not null,
+  tag text default '日常',
   likes integer default 0
 );
+
+create index if not exists idx_photos_tag on photos(tag);
 
 -- 2. 纪念日表
 create table anniversaries (

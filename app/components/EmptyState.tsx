@@ -37,12 +37,12 @@ export default function EmptyState({
       {(actionLabel || secondaryLabel) && (
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
           {actionLabel && onAction && (
-            <button onClick={onAction} className="btn-primary">
+            <button type="button" onClick={onAction} className="btn-primary min-h-11">
               {actionLabel}
             </button>
           )}
           {secondaryLabel && onSecondary && (
-            <button onClick={onSecondary} className="btn-secondary">
+            <button type="button" onClick={onSecondary} className="btn-secondary min-h-11">
               {secondaryLabel}
             </button>
           )}

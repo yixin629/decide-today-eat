@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 
 interface PageHeaderProps {
@@ -34,16 +32,32 @@ export default function PageHeader({
 
   return (
     <header className={`mb-6 md:mb-8 ${alignClass} ${className}`}>
-      <div className={`flex items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
-        <h1 className={`text-3xl md:text-4xl font-black ${titleColor} inline-flex items-center gap-2`}>
-          {emoji && <span className="text-3xl md:text-4xl">{emoji}</span>}
+      <div
+        className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}
+      >
+        <h1
+          className={`inline-flex items-center gap-2 text-2xl font-black sm:text-3xl md:text-4xl ${titleColor}`}
+        >
+          {emoji && (
+            <span className="text-3xl md:text-4xl" aria-hidden="true">
+              {emoji}
+            </span>
+          )}
           <span>{title}</span>
-          {emojiDouble && emoji && <span className="text-3xl md:text-4xl">{emoji}</span>}
+          {emojiDouble && emoji && (
+            <span className="text-3xl md:text-4xl" aria-hidden="true">
+              {emoji}
+            </span>
+          )}
         </h1>
         {action && <div className="ml-auto">{action}</div>}
       </div>
       {subtitle && (
-        <p className="text-sm md:text-base text-gray-500 mt-2 max-w-2xl mx-auto">
+        <p
+          className={`mt-2 max-w-2xl text-sm text-gray-500 md:text-base ${
+            align === 'center' ? 'mx-auto' : ''
+          }`}
+        >
           {subtitle}
         </p>
       )}

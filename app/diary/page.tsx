@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import ReactMarkdown from 'react-markdown'
@@ -33,7 +33,7 @@ export default function DiaryPage() {
   const [previewMode, setPreviewMode] = useState(false) // 新增：预览模式
   const [editPreviewMode, setEditPreviewMode] = useState(false) // 新增：编辑预览模式
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [newEntry, setNewEntry] = useState({
     date: new Date().toISOString().split('T')[0],
     title: '',
@@ -70,6 +70,8 @@ export default function DiaryPage() {
       title: newEntry.title,
       content: newEntry.content,
       mood: newEntry.mood,
+      weather: newEntry.weather,
+      stickers: newEntry.stickers,
       author: newEntry.author,
       timestamp: Date.now(),
     }
@@ -113,35 +115,37 @@ export default function DiaryPage() {
 
   useEffect(() => {
     loadEntries()
+  }, [loadEntries])
+
+  useEffect(() => {
     loadDraft()
-  }, [loadEntries, loadDraft])
+  }, [loadDraft])
 
   // 自动保存逻辑
   useEffect(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+
     if (showAddForm && (newEntry.title || newEntry.content || newEntry.author)) {
       setSaveStatus('unsaved')
 
-      // 清除之前的定时器
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer)
-      }
-
       // 设置新的定时器，30秒后自动保存
-      const timer = setTimeout(() => {
+      autoSaveTimerRef.current = setTimeout(() => {
         setSaveStatus('saving')
         saveDraft()
       }, 30000)
-
-      setAutoSaveTimer(timer)
     }
 
     // 清理定时器
     return () => {
-      if (autoSaveTimer) {
-        clearTimeout(autoSaveTimer)
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
       }
     }
-  }, [newEntry, showAddForm, autoSaveTimer, saveDraft])
+  }, [newEntry, showAddForm, saveDraft])
 
   const handleAddEntry = async () => {
     if (!newEntry.title || !newEntry.content || !newEntry.author) {

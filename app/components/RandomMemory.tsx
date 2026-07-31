@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface Photo {
@@ -26,50 +26,47 @@ export default function RandomMemory() {
   const [memory, setMemory] = useState<Memory>(null)
   const [loading, setLoading] = useState(false)
   const [show, setShow] = useState(false)
+  const [statusMessage, setStatusMessage] = useState('')
 
   const loadRandomMemory = async () => {
     setLoading(true)
     setShow(false)
+    setStatusMessage('')
 
     try {
-      // 随机选择照片或留言
-      const memoryType = Math.random() > 0.5 ? 'photo' : 'note'
-
-      if (memoryType === 'photo') {
-        const { data, error } = await supabase
+      const [photosResult, notesResult] = await Promise.all([
+        supabase
           .from('photos')
-          .select('*')
+          .select('id, title, description, image_url, uploaded_by, created_at')
           .order('created_at', { ascending: false })
-
-        if (error) throw error
-
-        if (data && data.length > 0) {
-          const randomIndex = Math.floor(Math.random() * data.length)
-          setMemory({
-            type: 'photo',
-            data: data[randomIndex],
-          })
-        }
-      } else {
-        const { data, error } = await supabase
+          .limit(50),
+        supabase
           .from('love_notes')
-          .select('*')
+          .select('id, author, to_person, content, created_at')
           .order('created_at', { ascending: false })
+          .limit(50),
+      ])
 
-        if (error) throw error
+      if (photosResult.error) throw photosResult.error
+      if (notesResult.error) throw notesResult.error
 
-        if (data && data.length > 0) {
-          const randomIndex = Math.floor(Math.random() * data.length)
-          setMemory({
-            type: 'note',
-            data: data[randomIndex],
-          })
-        }
+      const memories: Exclude<Memory, null>[] = [
+        ...(photosResult.data || []).map((data) => ({ type: 'photo' as const, data })),
+        ...(notesResult.data || []).map((data) => ({ type: 'note' as const, data })),
+      ]
+
+      if (memories.length === 0) {
+        setMemory(null)
+        setStatusMessage('还没有可抽取的照片或留言，先记录一份回忆吧。')
+        return
       }
 
+      const randomIndex = Math.floor(Math.random() * memories.length)
+      setMemory(memories[randomIndex])
       setShow(true)
     } catch (error) {
       console.error('加载回忆失败:', error)
+      setStatusMessage('回忆暂时加载失败，请稍后再试。')
     } finally {
       setLoading(false)
     }
@@ -78,20 +75,36 @@ export default function RandomMemory() {
   return (
     <div className="card">
       <div className="text-center mb-6">
-        <h2 className="text-3xl font-bold text-primary mb-2">💫 随机回忆 💫</h2>
+        <h2 className="text-3xl font-bold text-primary mb-2">
+          <span aria-hidden="true">💫</span> 随机回忆 <span aria-hidden="true">💫</span>
+        </h2>
         <p className="text-gray-600">让我们看看有什么美好的回忆吧</p>
       </div>
 
-      <button onClick={loadRandomMemory} disabled={loading} className="btn-primary w-full mb-6">
+      <button
+        type="button"
+        onClick={loadRandomMemory}
+        disabled={loading}
+        className="btn-primary mb-6 min-h-11 w-full"
+        aria-busy={loading}
+      >
         {loading ? '加载中...' : '🎲 抽取一个回忆'}
       </button>
 
+      {statusMessage && (
+        <p className="rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-900" role="status">
+          {statusMessage}
+        </p>
+      )}
+
       {show && memory && (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in" aria-live="polite">
           {memory.type === 'photo' ? (
             <div className="bg-pink-50 rounded-xl p-6 border border-pink-200">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">📸</span>
+                <span className="text-2xl" aria-hidden="true">
+                  📸
+                </span>
                 <h3 className="text-xl font-bold text-gray-800">{memory.data.title}</h3>
               </div>
 
@@ -114,7 +127,9 @@ export default function RandomMemory() {
           ) : (
             <div className="bg-yellow-50 rounded-xl p-6 border border-yellow-200">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">💌</span>
+                <span className="text-2xl" aria-hidden="true">
+                  💌
+                </span>
                 <h3 className="text-xl font-bold text-gray-800">甜蜜留言</h3>
               </div>
 

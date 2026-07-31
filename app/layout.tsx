@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Navigation from './components/Navigation'
@@ -18,17 +18,27 @@ export const metadata: Metadata = {
   description: '属于我们两个人的专属空间',
 }
 
+export const viewport: Viewport = {
+  colorScheme: 'light dark',
+  themeColor: '#e85d88',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN">
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-dvh`}>
         <ToastProvider>
           <AuthProvider>
+            <a href="#main-content" className="skip-link">
+              跳到主要内容
+            </a>
             <PageLoadingEffect />
             <RandomSurprise />
             <Navigation />
             <UserAvatar />
-            {children}
+            <div id="main-content" tabIndex={-1}>
+              {children}
+            </div>
             <AIChatbot />
             <UnifiedThemePanel />
             <HeartParticles />

@@ -18,7 +18,7 @@
 | `app/` | 页面、API 路由、共享组件和功能内逻辑 |
 | `app/components/` | 跨页面复用的 UI 组件 |
 | `hooks/` | 通用 React Hooks |
-| `lib/` | Supabase 客户端和无 UI 工具 |
+| `lib/` | Supabase 客户端、功能注册表和无 UI 工具 |
 | `database/setup/` | 全新数据库初始化脚本 |
 | `database/migrations/` | 增量表结构、功能和数据迁移 |
 | `database/fixes/` | 历史兼容、安全和数据修复 |
@@ -59,6 +59,7 @@ npm run build
 - 仅在需要浏览器 API、状态或 Effect 时添加 `'use client'`。
 - 跨页面复用的 UI 放入 `app/components/`；功能专用组件留在对应功能目录。
 - 通用逻辑优先放入 `hooks/` 或 `lib/`，避免在多个页面复制实现。
+- 新增或调整可访问页面时同步更新 `lib/features.ts`，让首页和导航继续使用同一份功能注册表。
 - 保持现有无分号代码风格和项目 Prettier 配置。
 - 优先复用现有 `ToastProvider`、`BackButton`、`LoadingSkeleton` 等组件。
 - 不在客户端代码中放置服务端密钥。

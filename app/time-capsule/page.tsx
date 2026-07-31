@@ -1,42 +1,71 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '../components/ToastProvider'
 import BackButton from '../components/BackButton'
 
 interface TimeCapsule {
   id: string
   title: string
-  content: string
   sender: string
-  receiver?: string
+  receiver: string | null
   unlock_date: string
   is_opened: boolean
-  opened_at?: string
+  opened_at: string | null
   created_at: string
 }
 
+interface TimeCapsuleDetails {
+  content: string
+  sender: string
+  receiver: string | null
+  unlock_date: string
+  is_opened: boolean
+  opened_at: string | null
+}
+
+const isParticipant = (
+  capsule: Pick<TimeCapsule, 'sender' | 'receiver'>,
+  currentUser: string
+) => capsule.sender === currentUser || capsule.receiver === currentUser
+
 export default function TimeCapsulePage() {
-  const toast = useToast()
+  const {
+    success: showSuccess,
+    error: showError,
+    warning: showWarning,
+    info: showInfo,
+  } = useToast()
+  const { user: currentUser, loading: authLoading } = useAuth()
   const [capsules, setCapsules] = useState<TimeCapsule[]>([])
+  const [capsuleContents, setCapsuleContents] = useState<Record<string, string>>({})
+  const [contentLoadingId, setContentLoadingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [filter, setFilter] = useState<'all' | 'locked' | 'opened'>('all')
   const [newCapsule, setNewCapsule] = useState({
     title: '',
     content: '',
-    sender: '',
     receiver: '',
     unlock_date: '',
   })
 
   const loadCapsules = useCallback(async () => {
+    if (authLoading) return
+
+    if (!currentUser) {
+      setCapsules([])
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
     try {
       let query = supabase
         .from('time_capsules')
-        .select('*')
+        .select('id, title, sender, receiver, unlock_date, is_opened, opened_at, created_at')
         .order('unlock_date', { ascending: true })
 
       if (filter === 'locked') {
@@ -48,27 +77,33 @@ export default function TimeCapsulePage() {
       const { data, error } = await query
 
       if (error) throw error
-      setCapsules(data || [])
+      setCapsules((data || []).filter((capsule) => isParticipant(capsule, currentUser)))
     } catch (error) {
       console.error('Error loading time capsules:', error)
+      showError('加载时光胶囊失败，请重试')
     } finally {
       setLoading(false)
     }
-  }, [filter])
+  }, [authLoading, currentUser, filter, showError])
 
   useEffect(() => {
     loadCapsules()
   }, [loadCapsules])
 
   const handleAddCapsule = async () => {
-    if (!newCapsule.title || !newCapsule.content || !newCapsule.sender || !newCapsule.unlock_date) {
-      toast.warning('请填写所有必填字段')
+    if (!currentUser) {
+      showWarning('请先选择本地用户')
+      return
+    }
+
+    if (!newCapsule.title || !newCapsule.content || !newCapsule.unlock_date) {
+      showWarning('请填写所有必填字段')
       return
     }
 
     const openDate = new Date(newCapsule.unlock_date)
     if (openDate <= new Date()) {
-      toast.warning('开启日期必须是未来的时间')
+      showWarning('开启日期必须是未来的时间')
       return
     }
 
@@ -76,6 +111,7 @@ export default function TimeCapsulePage() {
       const { error } = await supabase.from('time_capsules').insert([
         {
           ...newCapsule,
+          sender: currentUser,
           is_opened: false,
         },
       ])
@@ -85,60 +121,166 @@ export default function TimeCapsulePage() {
       setNewCapsule({
         title: '',
         content: '',
-        sender: '',
         receiver: '',
         unlock_date: '',
       })
       setShowAddForm(false)
-      toast.success('时光胶囊创建成功！')
+      showSuccess('时光胶囊创建成功！')
       loadCapsules()
     } catch (error) {
       console.error('Error adding time capsule:', error)
-      toast.error('添加失败，请重试')
+      showError('添加失败，请重试')
     }
   }
 
   const handleOpenCapsule = async (capsule: TimeCapsule) => {
+    if (!currentUser || !isParticipant(capsule, currentUser)) {
+      showWarning('只有创建者或收件人可以开启这个胶囊')
+      return
+    }
+
     const openDate = new Date(capsule.unlock_date)
     const now = new Date()
 
     if (openDate > now) {
-      toast.info(`时光胶囊还未到开启时间！将在 ${openDate.toLocaleString('zh-CN')} 开启`)
+      showInfo(`时光胶囊还未到开启时间！将在 ${openDate.toLocaleString('zh-CN')} 开启`)
       return
     }
 
     if (!confirm('确定要开启这个时光胶囊吗？')) return
 
+    setContentLoadingId(capsule.id)
     try {
-      const { error } = await supabase
+      const { data: details, error: detailsError } = await supabase
         .from('time_capsules')
-        .update({
-          is_opened: true,
-          opened_at: new Date().toISOString(),
-        })
+        .select('content, sender, receiver, unlock_date, is_opened, opened_at')
         .eq('id', capsule.id)
+        .single()
 
-      if (error) throw error
-      toast.success('时光胶囊已开启！')
-      loadCapsules()
+      if (detailsError) throw detailsError
+
+      const capsuleDetails = details as TimeCapsuleDetails
+      if (!isParticipant(capsuleDetails, currentUser)) {
+        showWarning('当前本地用户无权开启这个胶囊')
+        return
+      }
+
+      const verifiedOpenDate = new Date(capsuleDetails.unlock_date)
+      if (verifiedOpenDate > new Date()) {
+        showInfo(
+          `时光胶囊还未到开启时间！将在 ${verifiedOpenDate.toLocaleString('zh-CN')} 开启`
+        )
+        return
+      }
+
+      if (!capsuleDetails.is_opened) {
+        const openedAt = new Date().toISOString()
+        const { data: updatedRows, error: updateError } = await supabase
+          .from('time_capsules')
+          .update({
+            is_opened: true,
+            opened_at: openedAt,
+          })
+          .eq('id', capsule.id)
+          .eq('is_opened', false)
+          .select('id')
+
+        if (updateError) throw updateError
+        if (!updatedRows || updatedRows.length === 0) {
+          showInfo('这个胶囊已经被开启，请刷新后查看')
+          loadCapsules()
+          return
+        }
+
+        setCapsules((previous) =>
+          previous.map((item) =>
+            item.id === capsule.id ? { ...item, is_opened: true, opened_at: openedAt } : item
+          )
+        )
+      } else {
+        setCapsules((previous) =>
+          previous.map((item) =>
+            item.id === capsule.id
+              ? { ...item, is_opened: true, opened_at: capsuleDetails.opened_at }
+              : item
+          )
+        )
+      }
+
+      setCapsuleContents((previous) => ({
+        ...previous,
+        [capsule.id]: capsuleDetails.content,
+      }))
+      if (filter === 'locked') {
+        setFilter('opened')
+      }
+      showSuccess(capsuleDetails.is_opened ? '胶囊内容已载入' : '时光胶囊已开启！')
     } catch (error) {
       console.error('Error opening time capsule:', error)
-      toast.error('开启失败，请重试')
+      showError('开启失败，请重试')
+    } finally {
+      setContentLoadingId(null)
     }
   }
 
-  const handleDeleteCapsule = async (id: string) => {
+  const handleViewCapsule = async (capsule: TimeCapsule) => {
+    if (!currentUser || !isParticipant(capsule, currentUser)) {
+      showWarning('只有创建者或收件人可以查看这个胶囊')
+      return
+    }
+
+    setContentLoadingId(capsule.id)
+    try {
+      const { data, error } = await supabase
+        .from('time_capsules')
+        .select('content, sender, receiver, unlock_date, is_opened, opened_at')
+        .eq('id', capsule.id)
+        .single()
+
+      if (error) throw error
+
+      const details = data as TimeCapsuleDetails
+      if (!isParticipant(details, currentUser) || !details.is_opened) {
+        showWarning('当前本地用户无法查看这个胶囊')
+        return
+      }
+
+      setCapsuleContents((previous) => ({ ...previous, [capsule.id]: details.content }))
+    } catch (error) {
+      console.error('Error loading time capsule content:', error)
+      showError('读取胶囊内容失败，请重试')
+    } finally {
+      setContentLoadingId(null)
+    }
+  }
+
+  const handleDeleteCapsule = async (capsule: TimeCapsule) => {
+    if (!currentUser || capsule.sender !== currentUser) {
+      showWarning('只有创建者可以删除这个胶囊')
+      return
+    }
+
     if (!confirm('确定要删除这个时光胶囊吗？')) return
 
     try {
-      const { error } = await supabase.from('time_capsules').delete().eq('id', id)
+      const { data, error } = await supabase
+        .from('time_capsules')
+        .delete()
+        .eq('id', capsule.id)
+        .eq('sender', currentUser)
+        .select('id')
 
       if (error) throw error
-      toast.success('删除成功')
+      if (!data || data.length === 0) {
+        showWarning('未删除任何胶囊，请刷新后重试')
+        return
+      }
+
+      showSuccess('删除成功')
       loadCapsules()
     } catch (error) {
       console.error('Error deleting time capsule:', error)
-      toast.error('删除失败，请重试')
+      showError('删除失败，请重试')
     }
   }
 
@@ -153,7 +295,7 @@ export default function TimeCapsulePage() {
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl">加载中...</div>
@@ -172,9 +314,18 @@ export default function TimeCapsulePage() {
               <h1 className="text-4xl font-bold text-gray-800 mb-2">🎁 时光胶囊</h1>
               <p className="text-gray-600">写给未来的信，封存此刻的心意</p>
             </div>
-            <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="btn-primary"
+              disabled={!currentUser}
+            >
               {showAddForm ? '取消' : '+ 创建胶囊'}
             </button>
+          </div>
+
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            当前本地身份：{currentUser || '未选择'}。页面会按创建者/收件人做基础防误操作检查，
+            但本地存储身份不是真实认证，也不能替代 Supabase Auth 与 RLS。
           </div>
 
           <div className="mb-6 flex gap-2">
@@ -229,10 +380,10 @@ export default function TimeCapsulePage() {
                     <label className="block text-gray-800 mb-2">创建者 *</label>
                     <input
                       type="text"
-                      value={newCapsule.sender}
-                      onChange={(e) => setNewCapsule({ ...newCapsule, sender: e.target.value })}
+                      value={currentUser || ''}
+                      readOnly
                       className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-gray-800 placeholder-gray-400"
-                      placeholder="你的名字"
+                      placeholder="请先选择本地用户"
                     />
                   </div>
 
@@ -279,6 +430,10 @@ export default function TimeCapsulePage() {
                 const isLocked = !capsule.is_opened
                 const canOpenNow = canOpen(capsule.unlock_date)
                 const daysUntil = getDaysUntilOpen(capsule.unlock_date)
+                const hasLoadedContent = Object.prototype.hasOwnProperty.call(
+                  capsuleContents,
+                  capsule.id
+                )
 
                 return (
                   <div
@@ -304,12 +459,15 @@ export default function TimeCapsulePage() {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteCapsule(capsule.id)}
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                      >
-                        🗑️
-                      </button>
+                      {capsule.sender === currentUser && (
+                        <button
+                          onClick={() => handleDeleteCapsule(capsule)}
+                          className="text-red-400 hover:text-red-600 transition-colors"
+                          aria-label={`删除${capsule.title}`}
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
 
                     {isLocked ? (
@@ -330,16 +488,29 @@ export default function TimeCapsulePage() {
                           <button
                             onClick={() => handleOpenCapsule(capsule)}
                             className="px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-gray-800 font-bold rounded-lg hover:from-yellow-500 hover:to-orange-500 transition-all transform hover:scale-105"
+                            disabled={contentLoadingId === capsule.id}
                           >
-                            开启胶囊
+                            {contentLoadingId === capsule.id ? '开启中...' : '开启胶囊'}
                           </button>
                         )}
                       </div>
                     ) : (
                       <div>
-                        <div className="bg-white/10 rounded-lg p-4 mb-4">
-                          <p className="text-gray-800 whitespace-pre-wrap">{capsule.content}</p>
-                        </div>
+                        {hasLoadedContent ? (
+                          <div className="bg-white/10 rounded-lg p-4 mb-4">
+                            <p className="text-gray-800 whitespace-pre-wrap">
+                              {capsuleContents[capsule.id]}
+                            </p>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleViewCapsule(capsule)}
+                            className="btn-secondary mb-4 w-full"
+                            disabled={contentLoadingId === capsule.id}
+                          >
+                            {contentLoadingId === capsule.id ? '读取中...' : '查看胶囊内容'}
+                          </button>
+                        )}
                         <div className="text-sm text-gray-500">
                           <p>创建于：{new Date(capsule.created_at).toLocaleString('zh-CN')}</p>
                           <p>

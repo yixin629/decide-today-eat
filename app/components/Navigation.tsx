@@ -1,215 +1,345 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import {
+  FEATURE_CATEGORIES,
+  featureRegistry,
+  isFeaturePathActive,
+  mobileNavigationFeatures,
+  navigationFeatures,
+} from '@/lib/features'
 
-interface NavItem {
-  name: string
-  path: string
-  icon: string
-  category: 'feature' | 'game'
-}
-
-const navItems: NavItem[] = [
-  // 功能页面
-  { name: '个人资料', path: '/profile', icon: '👤', category: 'feature' },
-  { name: '每日签到', path: '/check-in', icon: '💖', category: 'feature' },
-  { name: '倒计时/正计时', path: '/countdown', icon: '⏰', category: 'feature' },
-  { name: '共享日程', path: '/schedule', icon: '📅', category: 'feature' },
-  { name: '时光胶囊', path: '/time-capsule', icon: '🎁', category: 'feature' },
-  { name: '恋爱日记', path: '/diary', icon: '📖', category: 'feature' },
-  { name: '美食决策器', path: '/food', icon: '🍜', category: 'feature' },
-  { name: '纪念日', path: '/anniversaries', icon: '💝', category: 'feature' },
-  { name: '愿望清单', path: '/wishlist', icon: '⭐', category: 'feature' },
-  { name: '情侣问答', path: '/couple-quiz', icon: '❓', category: 'feature' },
-  { name: '照片墙', path: '/photos', icon: '📷', category: 'feature' },
-  { name: '留言板', path: '/notes', icon: '💌', category: 'feature' },
-  { name: '情话生成器', path: '/love-quotes', icon: '💕', category: 'feature' },
-  { name: '愿望桶', path: '/bucket-list', icon: '🪣', category: 'feature' },
-  { name: '塔罗牌占卜', path: '/tarot', icon: '🔮', category: 'feature' },
-  { name: '星座运势', path: '/horoscope', icon: '⭐', category: 'feature' },
-  { name: '穿搭记录', path: '/outfit-records', icon: '👔', category: 'feature' },
-  { name: '功能需求', path: '/feature-requests', icon: '💡', category: 'feature' },
-  { name: '情侣书架', path: '/novels', icon: '📚', category: 'feature' },
-
-  // 游戏页面
-  { name: '五子棋', path: '/gomoku', icon: '⚫', category: 'game' },
-  { name: '石头剪刀布', path: '/rock-paper-scissors', icon: '✊', category: 'game' },
-  { name: '真心话大冒险', path: '/truth-or-dare', icon: '🎲', category: 'game' },
-  { name: '涂鸦板', path: '/drawing', icon: '🎨', category: 'game' },
-  { name: '记忆翻牌', path: '/memory-game', icon: '🃏', category: 'game' },
-  { name: '配对游戏', path: '/matching-game', icon: '🧩', category: 'game' },
-  { name: '装扮小人', path: '/dress-up', icon: '🎀', category: 'game' },
-  { name: '制作情书', path: '/love-letter', icon: '💌', category: 'game' },
-  { name: '颜色测试', path: '/color-test', icon: '🌈', category: 'game' },
-]
+const homeFeature = featureRegistry.find((feature) => feature.path === '/')
+const drawerId = 'feature-navigation-drawer'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const pathname = usePathname()
+  const drawerRef = useRef<HTMLElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const lastOpenerRef = useRef<HTMLButtonElement | null>(null)
 
-  const filteredItems = navItems.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const closeDrawer = useCallback((restoreFocus = true) => {
+    setIsOpen(false)
 
-  const features = filteredItems.filter((item) => item.category === 'feature')
-  const games = filteredItems.filter((item) => item.category === 'game')
+    if (restoreFocus) {
+      window.setTimeout(() => lastOpenerRef.current?.focus(), 0)
+    }
+  }, [])
 
-  // Hide navigation button on chat page to prevent overlap
-  if (pathname === '/chat') return null
+  const openDrawer = (event: React.MouseEvent<HTMLButtonElement>) => {
+    lastOpenerRef.current = event.currentTarget
+    setIsOpen(true)
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusFrame = window.requestAnimationFrame(() => searchInputRef.current?.focus())
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeDrawer()
+        return
+      }
+
+      if (event.key !== 'Tab' || !drawerRef.current) return
+
+      const focusableElements = Array.from(
+        drawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      )
+
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [closeDrawer, isOpen])
+
+  const filteredFeatures = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase('zh-CN')
+    const features = navigationFeatures.filter((feature) => feature.path !== '/')
+
+    if (!query) return features
+
+    return features.filter((feature) =>
+      [feature.name, feature.description, ...(feature.keywords ?? [])]
+        .join(' ')
+        .toLocaleLowerCase('zh-CN')
+        .includes(query)
+    )
+  }, [searchQuery])
+
+  const groupedFeatures = FEATURE_CATEGORIES.map((category) => ({
+    ...category,
+    features: filteredFeatures.filter((feature) => feature.category === category.id),
+  })).filter((category) => category.features.length > 0)
+
+  const hideNavigation = pathname === '/login' || pathname === '/chat'
+  if (hideNavigation || !homeFeature) return null
 
   return (
     <>
-      {/* 汉堡菜单按钮 - 固定在左上角 */}
+      <style jsx global>{`
+        @media (max-width: 767px) {
+          #main-content {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
+          }
+        }
+      `}</style>
+
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed top-4 left-4 z-50 p-3 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all hover:scale-105 ${
-          isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        type="button"
+        onClick={openDrawer}
+        tabIndex={isOpen ? -1 : 0}
+        className={`fixed left-4 top-4 z-50 hidden h-12 items-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-gray-800 shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-300 md:flex ${
+          isOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
         }`}
-        aria-label="打开导航菜单"
+        aria-label="打开全部功能"
+        aria-controls={drawerId}
+        aria-expanded={isOpen}
       >
-        <div className="w-6 h-6 flex flex-col justify-center items-center">
-          <span className="bg-primary block h-0.5 w-6 rounded-sm mb-1"></span>
-          <span className="bg-primary block h-0.5 w-6 rounded-sm mb-1"></span>
-          <span className="bg-primary block h-0.5 w-6 rounded-sm"></span>
-        </div>
+        <span className="flex w-5 flex-col gap-1" aria-hidden="true">
+          <span className="h-0.5 w-5 rounded-full bg-pink-500" />
+          <span className="h-0.5 w-5 rounded-full bg-pink-500" />
+          <span className="h-0.5 w-5 rounded-full bg-pink-500" />
+        </span>
+        全部功能
       </button>
 
-      {/* 遮罩层 */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
-          onClick={() => setIsOpen(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-slate-950/50 backdrop-blur-[2px]"
+            onClick={() => closeDrawer()}
+            aria-hidden="true"
+          />
+          <aside
+            ref={drawerRef}
+            id={drawerId}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feature-navigation-title"
+            className="fixed inset-y-0 left-0 z-[70] flex w-[90vw] max-w-sm flex-col overflow-hidden bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-pink-500">
+                  OUR LITTLE WORLD
+                </p>
+                <h2
+                  id="feature-navigation-title"
+                  className="mt-1 text-2xl font-black text-gray-900"
+                >
+                  全部功能
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">按生活场景整理，更快找到想做的事</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => closeDrawer()}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xl text-gray-500 transition hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-200"
+                aria-label="关闭全部功能"
+              >
+                <span aria-hidden="true">✕</span>
+              </button>
+            </div>
+
+            <div className="border-b border-gray-100 p-4">
+              <label htmlFor="feature-navigation-search" className="sr-only">
+                搜索功能
+              </label>
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  aria-hidden="true"
+                >
+                  🔍
+                </span>
+                <input
+                  ref={searchInputRef}
+                  id="feature-navigation-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="搜索功能、场景或关键词"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-pink-300 focus:bg-white focus:ring-4 focus:ring-pink-100"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('')
+                      searchInputRef.current?.focus()
+                    }}
+                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
+                    aria-label="清空搜索"
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="全部功能导航">
+              <Link
+                href={homeFeature.path}
+                onClick={() => closeDrawer(false)}
+                aria-current={pathname === '/' ? 'page' : undefined}
+                className={`mb-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-200 ${
+                  pathname === '/'
+                    ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-xl" aria-hidden="true">
+                  {homeFeature.icon}
+                </span>
+                <span>{homeFeature.name}</span>
+              </Link>
+
+              {groupedFeatures.map((category) => (
+                <section key={category.id} aria-labelledby={`drawer-category-${category.id}`}>
+                  <h3
+                    id={`drawer-category-${category.id}`}
+                    className="mb-1 mt-5 flex items-center gap-2 px-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-400 first:mt-1"
+                  >
+                    <span aria-hidden="true">{category.icon}</span>
+                    {category.label}
+                    <span className="ml-auto font-medium tracking-normal">
+                      {category.features.length}
+                    </span>
+                  </h3>
+                  <div className="space-y-0.5">
+                    {category.features.map((feature) => {
+                      const isActive = isFeaturePathActive(feature, pathname)
+
+                      return (
+                        <Link
+                          key={feature.path}
+                          href={feature.path}
+                          onClick={() => closeDrawer(false)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-200 ${
+                            isActive
+                              ? 'bg-gradient-to-r from-pink-100 to-purple-100 font-bold text-pink-700'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <span
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-lg"
+                            aria-hidden="true"
+                          >
+                            {feature.icon}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-semibold">{feature.name}</span>
+                            <span className="block truncate text-xs font-normal text-gray-400">
+                              {feature.description}
+                            </span>
+                          </span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
+
+              {searchQuery && filteredFeatures.length === 0 && (
+                <div className="px-4 py-12 text-center text-gray-500" role="status">
+                  <div className="text-4xl" aria-hidden="true">
+                    🔍
+                  </div>
+                  <p className="mt-3 text-sm font-semibold">没有找到匹配的功能</p>
+                  <p className="mt-1 text-xs text-gray-400">换个关键词试试看</p>
+                </div>
+              )}
+            </nav>
+
+            <div className="border-t border-gray-100 bg-gray-50 px-5 py-3 text-center text-xs text-gray-500">
+              共 {navigationFeatures.length - 1} 个功能
+            </div>
+          </aside>
+        </>
       )}
 
-      {/* 侧边导航栏 */}
-      <div
-        className={`fixed top-0 left-0 h-full w-[85vw] max-w-[280px] sm:max-w-[320px] md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-hidden ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+      <nav
+        className="fixed bottom-3 left-3 right-3 z-50 grid grid-cols-5 rounded-2xl border border-white/70 bg-white/95 px-1 py-1.5 shadow-[0_10px_35px_rgba(31,41,55,0.2)] backdrop-blur-xl md:hidden"
+        aria-label="移动端主导航"
       >
-        <div className="flex flex-col h-full">
-          {/* 头部 */}
-          <div className="p-4 sm:p-6 border-b border-gray-200 relative flex justify-between items-start">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-primary mb-1">功能导航</h2>
-              <p className="text-xs sm:text-sm text-gray-600">快速找到你需要的功能</p>
-            </div>
-            {/* 关闭按钮 */}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-            >
-              <span className="text-2xl">✕</span>
-            </button>
-          </div>
+        <Link
+          href={homeFeature.path}
+          aria-current={pathname === '/' ? 'page' : undefined}
+          className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300 ${
+            pathname === '/' ? 'bg-pink-50 text-pink-600' : 'text-gray-500'
+          }`}
+        >
+          <span className="text-xl leading-none" aria-hidden="true">
+            {homeFeature.icon}
+          </span>
+          <span className="max-w-full truncate">{homeFeature.name}</span>
+        </Link>
 
-          {/* 搜索框 */}
-          <div className="p-3 sm:p-4 border-b border-gray-200">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索功能..."
-                className="w-full px-3 sm:px-4 py-2 pl-9 sm:pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <span className="absolute left-2 sm:left-3 top-2.5 text-gray-400 text-sm sm:text-base">
-                🔍
-              </span>
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 sm:right-3 top-2.5 text-gray-400 hover:text-gray-600 text-sm"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </div>
+        {mobileNavigationFeatures.map((feature) => {
+          const isActive = isFeaturePathActive(feature, pathname)
 
-          {/* 导航列表 */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-            {/* 首页链接 */}
+          return (
             <Link
-              href="/"
-              onClick={() => setIsOpen(false)}
-              className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-2 transition-all ${
-                pathname === '/'
-                  ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-primary font-semibold shadow-sm'
-                  : 'hover:bg-gray-50 text-gray-700'
+              key={feature.path}
+              href={feature.path}
+              aria-current={isActive ? 'page' : undefined}
+              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300 ${
+                isActive ? 'bg-pink-50 text-pink-600' : 'text-gray-500'
               }`}
             >
-              <span className="text-xl sm:text-2xl">🏠</span>
-              <span className="text-sm sm:text-base">首页</span>
+              <span className="text-xl leading-none" aria-hidden="true">
+                {feature.icon}
+              </span>
+              <span className="max-w-full truncate">{feature.name}</span>
             </Link>
+          )
+        })}
 
-            {/* 功能页面 */}
-            {features.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 sm:px-4 py-2 mt-4">
-                  功能 ({features.length})
-                </h3>
-                {features.map((item) => (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-1 transition-all ${
-                      pathname === item.path
-                        ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-primary font-semibold shadow-sm'
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <span className="text-lg sm:text-xl">{item.icon}</span>
-                    <span className="text-xs sm:text-sm">{item.name}</span>
-                  </Link>
-                ))}
-              </>
-            )}
-
-            {/* 游戏页面 */}
-            {games.length > 0 && (
-              <>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 sm:px-4 py-2 mt-4">
-                  游戏 ({games.length})
-                </h3>
-                {games.map((item) => (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-1 transition-all ${
-                      pathname === item.path
-                        ? 'bg-gradient-to-r from-pink-100 to-purple-100 text-primary font-semibold shadow-sm'
-                        : 'hover:bg-gray-50 text-gray-700'
-                    }`}
-                  >
-                    <span className="text-lg sm:text-xl">{item.icon}</span>
-                    <span className="text-xs sm:text-sm">{item.name}</span>
-                  </Link>
-                ))}
-              </>
-            )}
-
-            {/* 无搜索结果 */}
-            {searchQuery && filteredItems.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <div className="text-3xl sm:text-4xl mb-2">🔍</div>
-                <p className="text-sm">没有找到匹配的功能</p>
-              </div>
-            )}
-          </div>
-
-          {/* 底部信息 */}
-          <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
-            <p className="text-xs text-gray-500 text-center">共 {navItems.length} 个功能 💕</p>
-          </div>
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={openDrawer}
+          aria-controls={drawerId}
+          aria-expanded={isOpen}
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold text-gray-500 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-300"
+        >
+          <span className="text-xl leading-none" aria-hidden="true">
+            ◉
+          </span>
+          <span>全部</span>
+        </button>
+      </nav>
     </>
   )
 }

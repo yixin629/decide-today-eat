@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/app/components/ToastProvider'
 import BackButton from '@/app/components/BackButton'
 import { PhotoGridSkeleton } from '@/app/components/LoadingSkeleton'
@@ -20,6 +20,17 @@ interface Photo {
   tag?: string
 }
 
+interface PhotoRecord {
+  id: string
+  title: string | null
+  description: string | null
+  image_url: string
+  uploaded_by: string
+  created_at: string
+  likes: number | null
+  tag: string | null
+}
+
 const photoFilters = {
   normal: { name: '原图', css: '' },
   vintage: { name: '复古', css: 'sepia(50%) contrast(110%)' },
@@ -32,12 +43,42 @@ const photoFilters = {
 }
 
 const photoTags = ['全部', '约会', '美食', '旅行', '自拍', '风景', '日常', '节日']
+const PHOTOS_PER_PAGE = 24
+
+const getPhotoStoragePath = (url: string) => {
+  try {
+    const pathname = new URL(url).pathname
+    const marker = '/object/public/photos/'
+    const markerIndex = pathname.indexOf(marker)
+    if (markerIndex === -1) return null
+
+    const path = decodeURIComponent(pathname.slice(markerIndex + marker.length))
+    if (!path || path.split('/').some((part) => part === '..')) return null
+    return path
+  } catch {
+    return null
+  }
+}
+
+const toPhoto = (item: PhotoRecord): Photo => ({
+  id: item.id,
+  title: item.title || '未命名照片',
+  description: item.description || '',
+  url: item.image_url,
+  uploadedBy: item.uploaded_by,
+  createdAt: item.created_at,
+  likes: item.likes || 0,
+  tag: item.tag || '日常',
+})
 
 export default function PhotosPage() {
+  const { user: currentUser, loading: authLoading } = useAuth()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [filteredPhotos, setFilteredPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
@@ -50,7 +91,7 @@ export default function PhotosPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid')
   const [slideshowActive, setSlideshowActive] = useState(false)
   const [slideshowIndex, setSlideshowIndex] = useState(0)
-  const { success, error: showError } = useToast()
+  const { success, error: showError, warning: showWarning } = useToast()
 
   // 加载保存的滤镜偏好
   useEffect(() => {
@@ -147,136 +188,194 @@ export default function PhotosPage() {
     setSelectedPhoto(photo)
   }
 
-  // 加载数据并设置实时订阅
-  useEffect(() => {
-    loadPhotos()
+  const loadPhotos = useCallback(
+    async (pageToLoad: number, replace: boolean) => {
+      if (pageToLoad === 0) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
 
-    // 订阅photos表的实时更新
+      try {
+        let query = supabase
+          .from('photos')
+          .select('id, title, description, image_url, uploaded_by, created_at, likes, tag')
+          .order('created_at', { ascending: false })
+
+        if (currentTag !== '全部') {
+          query = query.eq('tag', currentTag)
+        }
+
+        const from = pageToLoad * PHOTOS_PER_PAGE
+        const { data, error } = await query.range(from, from + PHOTOS_PER_PAGE - 1)
+
+        if (error) throw error
+
+        const nextPhotos = (data || []).map((item) => toPhoto(item as PhotoRecord))
+        setPhotos((previous) => {
+          if (replace) return nextPhotos
+
+          const existingIds = new Set(previous.map((photo) => photo.id))
+          return [...previous, ...nextPhotos.filter((photo) => !existingIds.has(photo.id))]
+        })
+        setPage(pageToLoad)
+        setHasMore(nextPhotos.length === PHOTOS_PER_PAGE)
+      } catch (error) {
+        console.error('加载照片失败:', error)
+        showError('加载照片失败，请重试')
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
+      }
+    },
+    [currentTag, showError]
+  )
+
+  useEffect(() => {
+    setSelectedPhoto(null)
+    setSelectedIndex(-1)
+    loadPhotos(0, true)
+  }, [loadPhotos])
+
+  // 订阅 photos 表的实时更新；列表查询和实时载荷都显式包含 tag。
+  useEffect(() => {
     const channel = supabase
       .channel('photos_changes')
       .on(
         'postgres_changes',
         {
-          event: '*', // 监听所有事件: INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'photos',
         },
         (payload) => {
-          console.log('照片更新:', payload)
-
           if (payload.eventType === 'INSERT') {
-            // 新照片插入
-            const newPhoto = {
-              id: payload.new.id,
-              title: payload.new.title || '未命名照片',
-              description: payload.new.description || '',
-              url: payload.new.image_url,
-              uploadedBy: payload.new.uploaded_by,
-              createdAt: payload.new.created_at,
-              likes: payload.new.likes || 0,
-            }
-            setPhotos((prev) => [newPhoto, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            // 照片更新（如点赞）
-            setPhotos((prev) =>
-              prev.map((photo) =>
-                photo.id === payload.new.id
-                  ? {
-                      ...photo,
-                      title: payload.new.title || '未命名照片',
-                      description: payload.new.description || '',
-                      likes: payload.new.likes || 0,
-                    }
-                  : photo
+            const newPhoto = toPhoto(payload.new as PhotoRecord)
+            if (currentTag === '全部' || newPhoto.tag === currentTag) {
+              setPhotos((previous) =>
+                previous.some((photo) => photo.id === newPhoto.id)
+                  ? previous
+                  : [newPhoto, ...previous]
               )
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPhoto = toPhoto(payload.new as PhotoRecord)
+            const matchesFilter = currentTag === '全部' || updatedPhoto.tag === currentTag
+
+            setPhotos((previous) => {
+              if (!matchesFilter) {
+                return previous.filter((photo) => photo.id !== updatedPhoto.id)
+              }
+
+              return previous.some((photo) => photo.id === updatedPhoto.id)
+                ? previous.map((photo) => (photo.id === updatedPhoto.id ? updatedPhoto : photo))
+                : [updatedPhoto, ...previous]
+            })
+            setSelectedPhoto((current) =>
+              current?.id === updatedPhoto.id ? updatedPhoto : current
             )
           } else if (payload.eventType === 'DELETE') {
-            // 照片删除
-            setPhotos((prev) => prev.filter((photo) => photo.id !== payload.old.id))
-            if (selectedPhoto?.id === payload.old.id) {
-              setSelectedPhoto(null)
-            }
+            setPhotos((previous) => previous.filter((photo) => photo.id !== payload.old.id))
+            setSelectedPhoto((current) => (current?.id === payload.old.id ? null : current))
           }
         }
       )
       .subscribe()
 
-    // 清理订阅
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [selectedPhoto?.id])
-
-  const loadPhotos = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('photos')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      if (data) {
-        setPhotos(
-          data.map((item) => ({
-            id: item.id,
-            title: item.title || '未命名照片',
-            description: item.description || '',
-            url: item.image_url,
-            uploadedBy: item.uploaded_by,
-            createdAt: item.created_at,
-            likes: item.likes || 0,
-          }))
-        )
-      }
-    } catch (error) {
-      console.error('加载照片失败:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [currentTag])
 
   // 上传照片到 Supabase Storage
-  const handleBatchFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+  const openUploadDialog = () => {
+    if (!currentUser) {
+      showWarning('请先选择本地用户再上传照片')
+      return
+    }
+
     setShowUploadDialog(true)
-    // BatchUploadDialog 会处理文件
-    e.target.value = ''
   }
 
   const handleBatchUpload = async (
     files: { file: File; title: string; description: string; tag?: string }[]
   ) => {
+    if (!currentUser) {
+      showWarning('请先选择本地用户再上传照片')
+      return
+    }
+
+    if (files.length === 0) {
+      showWarning('请至少选择一张照片')
+      return
+    }
+
     setBatchUploading(true)
+    let uploadedCount = 0
+    let failedFileName = ''
+
     try {
       for (const f of files) {
-        // 上传到 Supabase Storage
-        const fileExt = f.file.name.split('.').pop()
+        const fileExt = f.file.name.split('.').pop()?.toLowerCase() || 'jpg'
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `${fileName}`
-        const { error: uploadError } = await supabase.storage
-          .from('photos')
-          .upload(filePath, f.file)
-        if (uploadError) throw uploadError
-        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filePath)
-        // 保存到数据库
-        await supabase.from('photos').insert([
-          {
-            title: f.title || f.file.name,
-            description: f.description,
-            tag: f.tag || '日常',
-            image_url: urlData.publicUrl,
-            uploaded_by: 'zyx',
-            likes: 0,
-          },
-        ])
+        const filePath = fileName
+        let storageUploaded = false
+        let recordInserted = false
+
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from('photos')
+            .upload(filePath, f.file)
+          if (uploadError) throw uploadError
+          storageUploaded = true
+
+          const { data: urlData } = supabase.storage.from('photos').getPublicUrl(filePath)
+          if (!urlData.publicUrl) {
+            throw new Error('Storage did not return a public URL')
+          }
+
+          const { error: insertError } = await supabase.from('photos').insert([
+            {
+              title: f.title || f.file.name,
+              description: f.description,
+              tag: f.tag || '日常',
+              image_url: urlData.publicUrl,
+              uploaded_by: currentUser,
+              likes: 0,
+            },
+          ])
+
+          if (insertError) throw insertError
+
+          recordInserted = true
+          uploadedCount += 1
+        } catch (error) {
+          if (storageUploaded && !recordInserted) {
+            const { error: cleanupError } = await supabase.storage
+              .from('photos')
+              .remove([filePath])
+            if (cleanupError) {
+              console.error('清理未入库的 Storage 文件失败:', cleanupError)
+            }
+          }
+
+          failedFileName = f.title || f.file.name
+          console.error(`上传照片失败 (${failedFileName}):`, error)
+          break
+        }
       }
-      success('批量照片上传成功！')
-      setShowUploadDialog(false)
-    } catch (error) {
-      console.error('批量上传失败:', error)
-      showError('批量上传失败，请检查网络连接和 Storage 配置')
+
+      if (uploadedCount > 0) {
+        await loadPhotos(0, true)
+      }
+
+      if (uploadedCount === files.length) {
+        success(`成功上传 ${uploadedCount} 张照片！`)
+      } else {
+        showError(
+          `${failedFileName || '照片'}上传失败；已成功上传 ${uploadedCount} 张，未继续上传剩余文件`
+        )
+      }
     } finally {
       setBatchUploading(false)
     }
@@ -303,28 +402,50 @@ export default function PhotosPage() {
   }
 
   const deletePhoto = async (id: string) => {
+    const photo = photos.find((item) => item.id === id)
+    if (!photo) {
+      showWarning('未找到这张照片，请刷新后重试')
+      return
+    }
+
+    if (!currentUser || photo.uploadedBy !== currentUser) {
+      showWarning('只有上传者可以删除这张照片')
+      return
+    }
+
     if (!confirm('确定要删除这张照片吗？')) return
 
     try {
-      // 先从数据库获取照片信息，以便删除 Storage 中的文件
-      const photo = photos.find((p) => p.id === id)
-      if (photo) {
-        // 从 URL 中提取文件路径
-        const urlParts = photo.url.split('/photos/')
-        if (urlParts.length > 1) {
-          const filePath = urlParts[1]
-          // 删除 Storage 中的文件
-          await supabase.storage.from('photos').remove([filePath])
-        }
-      }
-
-      // 删除数据库记录
-      const { error } = await supabase.from('photos').delete().eq('id', id)
+      // 先删除数据库记录，避免 Storage 删除成功但数据库删除失败后留下损坏的照片记录。
+      const { data: deletedRows, error } = await supabase
+        .from('photos')
+        .delete()
+        .eq('id', id)
+        .eq('uploaded_by', currentUser)
+        .select('id')
 
       if (error) throw error
+      if (!deletedRows || deletedRows.length === 0) {
+        showWarning('未删除任何照片，请刷新后重试')
+        return
+      }
 
-      setPhotos(photos.filter((photo) => photo.id !== id))
+      setPhotos((previous) => previous.filter((item) => item.id !== id))
       setSelectedPhoto(null)
+
+      const filePath = getPhotoStoragePath(photo.url)
+      if (!filePath) {
+        showWarning('照片记录已删除，但无法识别 Storage 文件路径，请手动检查存储桶')
+        return
+      }
+
+      const { error: storageError } = await supabase.storage.from('photos').remove([filePath])
+      if (storageError) {
+        console.error('清理照片 Storage 文件失败:', storageError)
+        showWarning('照片记录已删除，但 Storage 文件清理失败，请稍后手动清理')
+        return
+      }
+
       success('照片已删除')
     } catch (error) {
       console.error('删除失败:', error)
@@ -472,19 +593,18 @@ export default function PhotosPage() {
 
               {/* Upload Section */}
               <div className="mb-8 text-center">
-                <label className="btn-primary cursor-pointer inline-block">
+                <button
+                  type="button"
+                  onClick={openUploadDialog}
+                  className="btn-primary"
+                  disabled={batchUploading || authLoading || !currentUser}
+                >
                   {batchUploading ? '上传中...' : '+ 批量上传照片'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleBatchFileSelect}
-                    className="hidden"
-                    disabled={batchUploading}
-                  />
-                </label>
+                </button>
                 <p className="text-gray-500 text-sm mt-2">
-                  支持 JPG, PNG, GIF 格式，最多 10 张，自动压缩
+                  {currentUser
+                    ? `当前上传者：${currentUser}；支持 JPG、PNG、GIF，最多 10 张，自动压缩`
+                    : '请先选择本地用户后再上传照片'}
                 </p>
               </div>
 
@@ -506,7 +626,6 @@ export default function PhotosPage() {
                             className="object-cover rounded-xl"
                             style={{ filter: photoFilters[currentFilter].css }}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            priority={true}
                           />
                           {photo.tag && (
                             <span className="absolute top-2 right-2 bg-white/90 px-3 py-1 rounded-full text-sm font-semibold text-pink-600">
@@ -598,6 +717,18 @@ export default function PhotosPage() {
                   </p>
                 </div>
               )}
+              {hasMore && filteredPhotos.length > 0 && (
+                <div className="mt-8 text-center">
+                  <button
+                    type="button"
+                    onClick={() => loadPhotos(page + 1, false)}
+                    className="btn-secondary"
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? '加载中...' : `再加载 ${PHOTOS_PER_PAGE} 张`}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -626,7 +757,6 @@ export default function PhotosPage() {
                   height={700}
                   className="w-full max-h-[70vh] object-contain bg-gray-100 rounded-xl"
                   style={{ objectFit: 'contain', filter: photoFilters[currentFilter].css }}
-                  priority={true}
                 />
 
                 {/* 关闭按钮 */}
@@ -733,7 +863,6 @@ export default function PhotosPage() {
                   height={192}
                   className="w-full h-48 object-cover rounded-lg"
                   style={{ objectFit: 'cover' }}
-                  priority={true}
                 />
               </div>
 
@@ -858,7 +987,6 @@ function SlideshowModal({
           height={800}
           className="max-w-full max-h-full object-contain transition-all duration-500"
           style={{ filter }}
-          priority
         />
       </div>
 

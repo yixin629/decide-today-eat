@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 
+const MAX_MESSAGES = 20
+const MAX_MESSAGE_LENGTH = 2000
+const MAX_TOTAL_MESSAGE_LENGTH = 8000
+
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 const SYSTEM_PROMPT = `你是"小爱"，一个温暖贴心的情侣AI助手。
 
 特点：
@@ -17,10 +26,76 @@ const SYSTEM_PROMPT = `你是"小爱"，一个温暖贴心的情侣AI助手。
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const userMessages = Array.isArray(body?.messages) ? body.messages : []
-    if (userMessages.length === 0) {
-      return NextResponse.json({ error: 'No messages' }, { status: 400 })
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 })
+    }
+
+    if (!body || typeof body !== 'object' || !('messages' in body)) {
+      return NextResponse.json({ error: 'messages must be a non-empty array' }, { status: 400 })
+    }
+
+    const rawMessages = (body as { messages?: unknown }).messages
+    if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+      return NextResponse.json({ error: 'messages must be a non-empty array' }, { status: 400 })
+    }
+
+    if (rawMessages.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { error: `Too many messages; maximum is ${MAX_MESSAGES}` },
+        { status: 400 }
+      )
+    }
+
+    const userMessages: ChatMessage[] = []
+    let totalLength = 0
+
+    for (let index = 0; index < rawMessages.length; index += 1) {
+      const message = rawMessages[index]
+      if (!message || typeof message !== 'object') {
+        return NextResponse.json(
+          { error: `Message ${index + 1} must be an object` },
+          { status: 400 }
+        )
+      }
+
+      const { role, content } = message as { role?: unknown; content?: unknown }
+      if (role !== 'user' && role !== 'assistant') {
+        return NextResponse.json(
+          { error: `Message ${index + 1} has an invalid role` },
+          { status: 400 }
+        )
+      }
+
+      if (typeof content !== 'string' || content.trim().length === 0) {
+        return NextResponse.json(
+          { error: `Message ${index + 1} content must be a non-empty string` },
+          { status: 400 }
+        )
+      }
+
+      if (content.length > MAX_MESSAGE_LENGTH) {
+        return NextResponse.json(
+          {
+            error: `Message ${index + 1} is too long; maximum is ${MAX_MESSAGE_LENGTH} characters`,
+          },
+          { status: 400 }
+        )
+      }
+
+      totalLength += content.length
+      if (totalLength > MAX_TOTAL_MESSAGE_LENGTH) {
+        return NextResponse.json(
+          {
+            error: `Messages are too long in total; maximum is ${MAX_TOTAL_MESSAGE_LENGTH} characters`,
+          },
+          { status: 400 }
+        )
+      }
+
+      userMessages.push({ role, content })
     }
 
     const GROQ_KEY = process.env.GROQ_API_KEY
@@ -55,16 +130,16 @@ export async function POST(req: NextRequest) {
     }
 
     for (const api of apis) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 15000)
+
       try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 15000)
         const res = await fetch(api.url, {
           method: 'POST',
           headers: api.headers,
           body: JSON.stringify(api.body),
           signal: controller.signal,
         })
-        clearTimeout(timer)
         if (res.ok) {
           const data = await res.json()
           const content = data?.choices?.[0]?.message?.content
@@ -75,11 +150,13 @@ export async function POST(req: NextRequest) {
         }
       } catch {
         continue
+      } finally {
+        clearTimeout(timer)
       }
     }
 
     return NextResponse.json({ error: 'All providers failed' }, { status: 503 })
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

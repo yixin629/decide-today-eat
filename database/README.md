@@ -36,6 +36,7 @@
 | `setup/supabase-schema.sql` | 照片、纪念日、食物、留言、五子棋等基础表 |
 | `setup/complete-database-setup.sql` | 倒计时、日程、时光胶囊、日记等后续功能的综合初始化 |
 | `setup/NEW_FEATURES_DATABASE_SETUP.sql` | 塔罗、星座、穿搭等一组历史新增功能 |
+| `migrations/add-photo-tag.sql` | 为已有照片表补充分类字段和查询索引 |
 | `migrations/supabase-new-tables-safe.sql` | 以较安全、可重复执行的方式补充一组新表和字段 |
 | `migrations/chat-table-safe.sql` | 推荐用于初始化聊天表的可重复执行版本 |
 | `diagnostics/check-tables.sql` | 查看部分关键表的字段结构 |
@@ -43,7 +44,7 @@
 ## 风险提示
 
 - `migrations/update-food-options.sql` 会清空并重建食物选项数据。
+- 已有数据库使用相册分类前，需要执行 `migrations/add-photo-tag.sql`；全新数据库的基础脚本已包含该字段。
 - `fixes/` 目录中的脚本可能修改 RLS、策略、约束和现有字段。
 - `*-safe.sql` 只表示脚本尽量支持重复执行，不代表无需备份。
 - 本项目的部分策略允许公开访问，部署到公开环境前应重新审查认证和 RLS。
-
