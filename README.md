@@ -114,11 +114,28 @@ npm start
 
 ## 部署
 
-推荐将仓库连接到 Vercel，并在部署平台配置与本地相同的环境变量。仓库也保留了：
+推荐将仓库连接到 Vercel，并在部署平台配置与本地相同的环境变量。仓库也支持通过 OpenNext 部署到 Cloudflare Workers：
 
 - Windows：`scripts/deploy.bat`
 - Linux/macOS：`scripts/deploy.sh`
-- Cloudflare 配置：`wrangler.toml`
+- Cloudflare Worker 配置：`wrangler.toml`
+- OpenNext 配置：`open-next.config.ts`
+
+Cloudflare Workers Builds 的构建设置应为：
+
+```text
+Build command: npm run cf:build
+Deploy command: npx opennextjs-cloudflare deploy
+```
+
+`wrangler.toml` 也配置了 OpenNext 自定义构建，因此 Cloudflare 保留默认的
+`npx wrangler deploy` 部署命令时仍能生成正确的 Worker；使用上面的专用命令可以减少重复构建。
+
+在 Cloudflare 项目的 Build Variables and secrets 中配置
+`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`，并按需配置聊天功能使用的
+`GROQ_API_KEY`、`CHATANYWHERE_API_KEY`。
+不要把这些值直接写入 `wrangler.toml`。Cloudflare Git 集成会在监听分支每次收到提交时自动构建；
+如不需要自动部署，应在 Cloudflare 的 Settings > Build 中断开 Git 仓库。
 
 执行部署脚本前请先阅读脚本内容，确认其中的分支、构建和目标平台符合当前环境。
 
