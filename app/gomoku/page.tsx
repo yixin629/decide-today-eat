@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { GomokuGameState, GomokuPlayerInfo, createEmptyBoard, Player } from './engine/GomokuLogic'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 export default function GomokuLobbyPage() {
   const router = useRouter()

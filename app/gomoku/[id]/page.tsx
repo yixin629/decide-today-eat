@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import BackButton from '../../components/BackButton'
-import { useToast } from '../../components/ToastProvider'
-import LoadingSkeleton from '../../components/LoadingSkeleton'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { GomokuGameState, BOARD_SIZE, checkWinner, getBotMove, createEmptyBoard } from '../engine/GomokuLogic'

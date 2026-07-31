@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import BackButton from '../components/BackButton'
-import PageHeader from '../components/PageHeader'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import PageHeader from '@/app/components/ui/PageHeader'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface LoveQuote {
   id: number

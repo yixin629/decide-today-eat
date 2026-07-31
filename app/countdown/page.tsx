@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
 
 interface Countdown {
   id: string

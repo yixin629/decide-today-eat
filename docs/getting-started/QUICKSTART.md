@@ -44,9 +44,11 @@ AI 助手需要时，再填写 `GROQ_API_KEY` 或 `CHATANYWHERE_API_KEY`。不�
 全新数据库先在 Supabase SQL Editor 依次执行：
 
 1. `database/setup/supabase-schema.sql`
-2. `database/setup/complete-database-setup.sql`
+2. `database/setup/planning-records-setup.sql`
+3. `database/migrations/enhance-diary-table.sql`
+4. `database/migrations/enhance-notes-table.sql`
 
-然后根据启用的功能执行独立迁移。两份 setup 脚本不包含聊天、个人资料、签到、共同账本、音乐和全部互动游戏表，映射关系见 [数据库脚本说明](../../database/README.md)。
+然后根据启用的功能执行独立迁移。两份 setup 脚本只覆盖基础、计划和记录类表；聊天、个人资料、签到、共同账本、音乐和全部互动游戏仍需按 [数据库脚本说明](../../database/README.md) 选择当前迁移。
 
 不要对已有数据库无差别执行全部 SQL。先备份，再核对表和字段。
 
@@ -75,10 +77,10 @@ npm run dev -- --hostname 0.0.0.0
 ## 6. 提交前检查
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build
+npm run check
 ```
+
+该命令会依次运行 lint、类型检查和标准生产构建。
 
 如果目标是 Cloudflare Workers，再运行：
 

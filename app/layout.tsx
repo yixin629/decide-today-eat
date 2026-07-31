@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Navigation from './components/Navigation'
-import UserAvatar from './components/UserAvatar'
-import AuthProvider from './components/AuthProvider'
-import { ToastProvider } from './components/ToastProvider'
-import AIChatbot from './components/AIChatbot'
-import UnifiedThemePanel from './components/UnifiedThemePanel'
-import HeartParticles from './components/HeartParticles'
-import PageLoadingEffect from './components/PageLoadingEffect'
-import RandomSurprise from './components/RandomSurprise'
+import Navigation from '@/app/components/layout/Navigation'
+import UserAvatar from '@/app/components/layout/UserAvatar'
+import AuthGuard from '@/app/components/providers/AuthGuard'
+import { ToastProvider } from '@/app/components/feedback/ToastProvider'
+import AIChatbot from '@/app/components/ai-chat/AIChatbot'
+import UnifiedThemePanel from '@/app/components/layout/UnifiedThemePanel'
+import HeartParticles from '@/app/components/layout/HeartParticles'
+import RandomSurprise from '@/app/components/layout/RandomSurprise'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,11 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="zh-CN">
       <body className={`${inter.className} min-h-dvh`}>
         <ToastProvider>
-          <AuthProvider>
+          <AuthGuard>
             <a href="#main-content" className="skip-link">
               跳到主要内容
             </a>
-            <PageLoadingEffect />
             <RandomSurprise />
             <Navigation />
             <UserAvatar />
@@ -42,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AIChatbot />
             <UnifiedThemePanel />
             <HeartParticles />
-          </AuthProvider>
+          </AuthGuard>
         </ToastProvider>
       </body>
     </html>

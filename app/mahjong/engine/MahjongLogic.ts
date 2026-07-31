@@ -60,7 +60,7 @@ export type ValidAction = { type: ActionType, tile: Tile };
 // Deck & Initialization
 // ---------------------------------------------------------
 
-export function createDeck(mode: GameMode): Tile[] {
+export function createDeck(_mode: GameMode): Tile[] {
   const deck: Tile[] = [];
   const suits: Suit[] = ['characters', 'bamboo', 'dots'];
 
@@ -445,7 +445,6 @@ export function canHu(
 
   // Seven pairs special check (14 tiles only)
   if (allTiles.length === 14) {
-    const pairs = 0;
     const countMap = new Map<string, number>();
     allTiles.forEach(t => {
       const key = `${t.suit}-${t.value}`;

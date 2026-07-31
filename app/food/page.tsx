@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
-import PageHeader from '../components/PageHeader'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import PageHeader from '@/app/components/ui/PageHeader'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 const DEFAULT_FOODS = [
   // 基础美食

@@ -12,7 +12,7 @@
 
 #### Toast 通知系统 ✅
 
-- **文件**: `app/components/Toast.tsx`, `app/components/ToastProvider.tsx`
+- **当前文件**: `app/components/feedback/Toast.tsx`, `app/components/feedback/ToastProvider.tsx`
 - **功能**:
   - 4 种通知类型：success, error, info, warning
   - 自动消失 + 手动关闭
@@ -22,7 +22,7 @@
 
 #### 返回按钮组件 ✅
 
-- **文件**: `app/components/BackButton.tsx`
+- **当前文件**: `app/components/ui/BackButton.tsx`
 - **功能**:
   - SVG 箭头图标
   - 悬停效果
@@ -31,7 +31,7 @@
 
 #### 加载骨架屏 ✅
 
-- **文件**: `app/components/LoadingSkeleton.tsx`
+- **当前文件**: `app/components/ui/LoadingSkeleton.tsx`
 - **功能**:
   - CardSkeleton - 卡片加载
   - PhotoGridSkeleton - 照片网格加载
@@ -42,7 +42,7 @@
 
 #### 批量上传组件 ✅
 
-- **文件**: `app/components/BatchUploadDialog.tsx`
+- **当前文件**: `app/photos/components/BatchUploadDialog.tsx`
 - **功能**:
   - 拖拽上传
   - 多文件选择
@@ -52,7 +52,7 @@
 
 #### AI Chatbot ✅
 
-- **文件**: `app/components/AIChatbot.tsx`
+- **当前文件**: `app/components/ai-chat/AIChatbot.tsx`
 - **功能**:
   - 位于右下角
   - 展开/收起动画
@@ -66,7 +66,7 @@
 
 #### 图片压缩 ✅
 
-- **文件**: `lib/imageUtils.ts`
+- **当前文件**: `app/photos/lib/image-utils.ts`
 - **功能**:
   - 自动调整至 1920x1080
   - 80% 质量压缩
@@ -272,7 +272,7 @@ toast.success('操作成功！')
 
 ### 已创建的工具
 
-- ✅ imageUtils 图片压缩工具
+- ✅ 相册图片压缩工具
 
 ### 已优化的功能
 

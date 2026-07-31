@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Question {
   id: number

@@ -55,8 +55,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 在 Supabase Dashboard 的 SQL Editor 中执行：
 
 1. `database/setup/supabase-schema.sql`
-2. `database/setup/complete-database-setup.sql`
-3. 根据启用的功能，按 `database/README.md` 的功能映射选择补充迁移
+2. `database/setup/planning-records-setup.sql`
+3. `database/migrations/enhance-diary-table.sql`
+4. `database/migrations/enhance-notes-table.sql`
+5. 根据启用的功能，按 `database/README.md` 的功能映射选择补充迁移
 
 已有数据库不要直接重复执行所有脚本。请先阅读 [数据库脚本说明](./database/README.md)，确认迁移顺序和风险。
 如果现有 `photos` 表还没有 `tag` 字段，相册分类功能需要单独执行
@@ -83,7 +85,9 @@ npm run dev
 npm run lint
 npm run typecheck
 npm run build
+npm run check
 npm run cf:build
+npm run cf-typegen
 npm start
 ```
 
@@ -91,22 +95,27 @@ npm start
 
 ```text
 .
-├── app/                    # 页面、组件、API 路由与游戏逻辑
+├── app/                    # Next.js 路由与功能代码
+│   ├── components/         # 按 ui、feedback、layout、providers、领域分类的共享组件
+│   └── <route>/            # 页面及其专用 components、lib、engine、types
 ├── hooks/                  # React Hooks
 ├── lib/                    # Supabase 客户端、功能注册表与通用工具
 ├── database/
 │   ├── setup/              # 新环境初始化脚本
-│   ├── migrations/         # 增量功能和数据变更
-│   ├── fixes/              # 兼容性、安全与历史修复
+│   ├── migrations/         # 当前增量功能和数据变更
+│   │   └── legacy/         # 已被替代的历史迁移
+│   ├── fixes/              # 定向兼容性与安全修复
+│   │   └── legacy/         # 已被替代的历史综合修复
 │   └── diagnostics/        # 数据库检查脚本
 ├── docs/
 │   ├── getting-started/    # 安装与配置
 │   ├── guides/             # 功能使用指南
 │   ├── architecture/       # 项目结构说明
 │   └── reports/            # 历史实现与优化报告
-├── scripts/                # 部署辅助脚本
+├── scripts/                # 本地项目验证辅助脚本
 ├── patches/                # 第三方依赖兼容补丁
 ├── eslint.config.mjs       # ESLint Flat Config
+├── cloudflare-env.d.ts     # Wrangler 生成的 Worker 类型
 ├── AGENTS.md               # AI/自动化开发协作规范
 └── README.md               # 项目入口文档
 ```
@@ -119,7 +128,7 @@ npm start
 - 全新环境的一次性初始化脚本放入 `database/setup/`。
 - 修复历史数据、权限或兼容性问题放入 `database/fixes/`。
 - 只读排查脚本放入 `database/diagnostics/`。
-- SQL 文件名使用小写 kebab-case；已有历史文件暂时保留原名。
+- SQL 文件名使用小写 kebab-case；被替代的脚本归入对应 `legacy/`，不用于默认初始化。
 - 任何会清空数据、删除对象或放宽安全策略的脚本，都必须在文件顶部明确标注。
 
 ## 部署
@@ -141,11 +150,12 @@ Deploy command: npx @opennextjs/cloudflare deploy
 Non-production branch deploy command: npx @opennextjs/cloudflare upload
 ```
 
-不要在同一流水线中再调用包含构建步骤的 `npm run deploy`，否则会重复构建。Workers Builds 不会自动采用 `wrangler.toml` 中的 Custom Build，Dashboard 的 Build command 需要明确填写。
+不要在同一流水线中再调用包含构建步骤的 `npm run deploy`，否则会重复构建。仓库不在 `wrangler.toml` 中配置 Custom Build，Dashboard 的 Build command 需要明确填写。
 
 在 Cloudflare 的 Build variables 中配置两个 `NEXT_PUBLIC_SUPABASE_*` 变量；AI Key 应配置为 Worker 运行时 Secret。不要把真实值写入 `wrangler.toml`。
 
-`scripts/deploy.bat` 和 `scripts/deploy.sh` 目前只负责本地安装与 Next.js 构建检查，不会把项目发布到 Vercel 或 Cloudflare。
+`scripts/verify-project.bat` 和 `scripts/verify-project.sh` 会安装锁定依赖并执行
+`npm run check`（lint、类型检查和生产构建），不会把项目发布到 Vercel 或 Cloudflare。
 
 ## 依赖安全
 

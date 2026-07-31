@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import { useAuth } from '@/hooks/useAuth'
 
 interface ChatMessage {
@@ -72,13 +72,11 @@ export default function ChatPage() {
   const [showEmojis, setShowEmojis] = useState(false)
   const [showQuickMessages, setShowQuickMessages] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [connectionError, setConnectionError] = useState<string | null>(null)
-  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const { showToast } = useToast()
 
-  const { user: currentUser, loading: authLoading } = useAuth()
+  const { user: currentUser } = useAuth()
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
@@ -191,7 +189,7 @@ export default function ChatPage() {
       return
     }
 
-    if (!messageContent && !selectedImage) return
+    if (!messageContent) return
 
     setIsSending(true)
     setNewMessage('') // Optimistic clear

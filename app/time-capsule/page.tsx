@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
 
 interface TimeCapsule {
   id: string

@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 interface BucketItem {
   id: number
@@ -282,7 +281,7 @@ export default function BucketListPage() {
                     <p>还没有任务，开始添加你们想做的事情吧！</p>
                   </div>
                 ) : (
-                  filteredItems.map((item, index) => (
+                  filteredItems.map((item) => (
                     <div
                       key={item.id}
                       className={`p-4 rounded-lg border transition-all ${

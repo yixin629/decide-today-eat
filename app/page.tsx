@@ -3,16 +3,18 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { readSessionUser } from '@/lib/auth-session'
+import { getUpcomingAnniversaryOccurrence } from '@/lib/anniversaries'
 import {
   FEATURE_CATEGORIES,
   homeFeatures,
   quickAccessFeatures,
   type FeatureDefinition,
 } from '@/lib/features'
-import FeatureCard from './components/FeatureCard'
-import RandomMemory from './components/RandomMemory'
-import ThisDayMemories from './components/ThisDayMemories'
-import { useToast } from './components/ToastProvider'
+import FeatureCard from '@/app/components/home/FeatureCard'
+import RandomMemory from '@/app/components/home/RandomMemory'
+import ThisDayMemories from '@/app/components/home/ThisDayMemories'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Stats {
   photos: number
@@ -96,34 +98,21 @@ export default function Home() {
 
       if (error) throw error
 
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
       const candidates = (data ?? [])
         .map((anniversary) => {
-          const [year, month, day] = anniversary.date.split('-').map(Number)
-          if (!anniversary.title || !year || !month || !day) return null
+          if (!anniversary.title) return null
 
-          const occurrence = anniversary.recurring
-            ? new Date(today.getFullYear(), month - 1, day)
-            : new Date(year, month - 1, day)
-
-          if (anniversary.recurring && occurrence < today) {
-            occurrence.setFullYear(today.getFullYear() + 1)
-          } else if (!anniversary.recurring && occurrence < today) {
-            return null
-          }
+          const occurrence = getUpcomingAnniversaryOccurrence(anniversary)
+          if (!occurrence) return null
 
           return {
             title: anniversary.title,
-            date: occurrence.toLocaleDateString('zh-CN', {
+            date: occurrence.date.toLocaleDateString('zh-CN', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
             }),
-            daysLeft: Math.ceil(
-              (occurrence.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-            ),
+            daysLeft: occurrence.daysUntil,
           }
         })
         .filter((anniversary): anniversary is NextAnniversary => anniversary !== null)
@@ -137,8 +126,7 @@ export default function Home() {
 
   const loadUnreadCounts = useCallback(async () => {
     try {
-      const currentUser =
-        localStorage.getItem('loggedInUser') || localStorage.getItem('currentUser')
+      const currentUser = readSessionUser()
       if (!currentUser) return
 
       const yesterday = new Date()

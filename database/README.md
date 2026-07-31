@@ -1,66 +1,68 @@
 # 数据库脚本说明
 
-本目录集中管理 Supabase/PostgreSQL 脚本。项目不会自动执行这些 SQL；在 Supabase SQL Editor 运行前必须备份，并阅读脚本内容。
+本目录集中管理 Supabase/PostgreSQL 脚本。项目不会自动执行这些 SQL；任何脚本都应先在测试项目验证，并在修改正式数据库前完成备份。
 
-当前历史脚本存在重叠，尚没有一份可以安全初始化全部功能的单一脚本。不要按文件名排序批量执行，也不要因为文件名包含 `safe` 就默认它与当前字段完全一致。
+不要按文件名排序批量执行脚本，也不要把 `legacy/` 中的文件用于默认初始化。文件名包含 `safe`、`compatibility` 或 `fix` 不代表它适合当前数据库结构。
 
-## 目录分类
+## 目录职责
 
 | 目录 | 用途 |
 | --- | --- |
-| `setup/` | 新环境的基础初始化或历史功能包 |
-| `migrations/` | 按功能添加表、字段或种子数据 |
-| `fixes/` | 修复特定旧结构、策略或约束 |
-| `diagnostics/` | 只读检查，不修改数据库 |
+| `setup/` | 全新数据库的基础初始化 |
+| `migrations/` | 当前功能的独立建表、字段或数据迁移 |
+| `migrations/legacy/` | 已被替代或字段过时的历史迁移，只用于追溯 |
+| `fixes/` | 针对明确历史缺口的定向修复 |
+| `fixes/legacy/` | 已被替代的历史综合修复，只用于追溯 |
+| `diagnostics/` | 只读检查，不修改结构或数据 |
 
 ## 全新数据库
 
 先执行当前基础结构：
 
 1. `setup/supabase-schema.sql`
-2. `setup/complete-database-setup.sql`
+2. `setup/planning-records-setup.sql`
+3. `migrations/enhance-diary-table.sql`
+4. `migrations/enhance-notes-table.sql`
 
-这两份脚本只覆盖基础表，不会启用全部页面。随后按下方“功能到脚本映射”选择迁移。
+随后只为需要启用的功能执行“功能到脚本映射”中的独立迁移。
 
-当前基础结构还有三个需要明确补齐的地方：
+注意：
 
-- 日记页面写入 `weather`、`stickers`，需执行 `migrations/enhance-diary-table.sql`。
-- 留言页面写入 `letter_style`、`is_sealed`、`emojis`，需执行 `migrations/enhance-notes-table.sql`。
-- 基础五子棋表仍是旧结构；启用当前五子棋或麻将前，需执行
-  `fixes/fix-gomoku-mahjong.sql`。虽然它位于 `fixes/`，目前也承担新库兼容步骤。
-
-这是现有脚本的限制，不代表理想的长期初始化流程。后续应把这些当前必需字段合并到唯一、可重复执行的 setup。
+- 两份 setup 只覆盖基础、计划与记录类表，不会创建全部功能表。
+- `migrations/gomoku-mahjong-schema.sql` 依赖第一步创建的 `gomoku_games`。
+- 当前仍没有一份适合所有功能的一键初始化脚本。
+- `migrations/supabase-new-features.sql` 是尚未拆分完的互动功能包，执行前必须阅读下方限制。
 
 ## 功能到脚本映射
 
-| 功能或页面 | 表 | 推荐脚本 | 备注 |
+| 功能或页面 | 表 | 当前脚本 | 备注 |
 | --- | --- | --- | --- |
-| 相册 | `photos` | `setup/supabase-schema.sql` | 新库已含 `tag`；旧库缺少时用 `add-photo-tag.sql` |
+| 相册 | `photos` | `setup/supabase-schema.sql` | 新库已含 `tag`；旧库缺少时执行 `migrations/add-photo-tag.sql` |
 | 纪念日 | `anniversaries` | `setup/supabase-schema.sql` | 基础功能 |
-| 食物选择 | `food_options` | `setup/supabase-schema.sql` | `update-food-options.sql` 会清空现有数据 |
-| 甜蜜留言 | `love_notes` | 基础 setup + `enhance-notes-table.sql` | 当前页面会写增强字段 |
+| 食物选择 | `food_options` | `setup/supabase-schema.sql` | 可选替换数据见 `migrations/replace-food-options-seed.sql` |
+| 甜蜜留言 | `love_notes` | 基础 setup + `migrations/enhance-notes-table.sql` | 当前页面会写增强字段 |
 | 心愿清单 | `wishlist` | `setup/supabase-schema.sql` | 基础功能 |
-| 倒计时 | `countdowns` | `setup/complete-database-setup.sql` | 当前字段为 `type`、`emoji`、`target_date` |
-| 共享日程 | `schedules` | `setup/complete-database-setup.sql` | 不使用旧 `shared_calendar` |
-| 时光胶囊 | `time_capsules` | `setup/complete-database-setup.sql` | 当前字段为 `sender`、`receiver`、`unlock_date` |
-| 恋爱日记 | `diary_entries` | complete setup + `enhance-diary-table.sql` | 不使用旧 `love_diary` |
-| 聊天 | `chat_messages` | `migrations/chat-table-safe.sql` | 包含 Realtime publication 检查；不要再执行旧版 |
-| 每日签到 | `check_ins` | `migrations/check-in-table.sql` | `security-fixes.sql` 只修历史 RLS |
+| 倒计时 | `countdowns` | `setup/planning-records-setup.sql` | 当前字段为 `type`、`emoji`、`target_date` |
+| 共享日程 | `schedules` | `setup/planning-records-setup.sql` | 当前表不是旧 `shared_calendar` |
+| 时光胶囊 | `time_capsules` | `setup/planning-records-setup.sql` | 当前字段为 `sender`、`receiver`、`unlock_date` |
+| 恋爱日记 | `diary_entries` | planning setup + `migrations/enhance-diary-table.sql` | 当前表不是旧 `love_diary` |
+| 聊天 | `chat_messages` | `migrations/chat-table-safe.sql` | 包含 Realtime publication 配置 |
+| 每日签到 | `check_ins` | `migrations/check-in-table.sql` + `fixes/fix-check-ins-rls.sql` | 后者启用当前宽松 RLS，并固定共享函数的 `search_path` |
 | 共同账本 | `shared_expenses` | `migrations/expenses-table.sql` | 独立迁移 |
 | 音乐播放器 | `songs` | `migrations/music-player-schema.sql` | 独立迁移 |
-| 个人资料与提醒 | `user_profiles`、`reminders` | `migrations/profile-tables.sql` | 自定义头像还需 `update-profile-avatar.sql` |
-| 五子棋 | `gomoku_games` | 基础 setup + `fixes/fix-gomoku-mahjong.sql` | 当前代码依赖 `game_state`、`players` 等字段 |
-| 麻将 | `mahjong_games`、`user_balances` | `fixes/fix-gomoku-mahjong.sql` | 不要再同时执行 `add-mahjong-table.sql` |
-| 互动功能包 | 见下表 | `migrations/supabase-new-features.sql` | 会插入默认数据，且不是完全幂等 |
-| 塔罗 | `tarot_readings` | `migrations/tarot-table.sql` | 与历史 setup 功能包二选一 |
-| 星座 | `horoscope_readings` | `migrations/horoscope-table.sql` | 与历史 setup 功能包二选一 |
-| 穿搭记录 | `outfit_records` | `migrations/outfit-records-table.sql` | 与历史 setup 功能包二选一 |
-| 心情追踪 | `mood_records` | 暂无干净的独立迁移 | 现有 safe bundle 的 `id` 无默认值，数据库写入会回退本地 |
-| 情侣书架 | `novels` | `migrations/supabase-new-tables-safe.sql` | 该 bundle 同时添加遗留字段，执行前必须审查 |
+| 个人资料与提醒 | `user_profiles`、`reminders` | `migrations/profile-tables.sql` | 自定义头像再执行 `migrations/update-profile-avatar.sql` |
+| 五子棋 | `gomoku_games` | 基础 setup + `migrations/gomoku-mahjong-schema.sql` | 添加当前 JSONB 状态字段、Realtime 和兼容约束 |
+| 麻将 | `mahjong_games`、`user_balances` | `migrations/gomoku-mahjong-schema.sql` | 同时插入两个默认用户余额，使用前应审查 |
+| 心情追踪 | `mood_records` | `migrations/mood-records-table.sql` | 兼容旧 `TEXT id`，新插入默认生成 UUID 字符串 |
+| 情侣书架 | `novels` | `migrations/novels-table.sql` | 独立、可重复执行的当前表迁移 |
+| 塔罗 | `tarot_readings` | `migrations/tarot-table.sql` | 独立迁移 |
+| 星座 | `horoscope_readings` | `migrations/horoscope-table.sql` | 独立迁移 |
+| 穿搭记录 | `outfit_records` | `migrations/outfit-records-table.sql` | 独立迁移 |
+| 互动功能包 | 见下表 | `migrations/supabase-new-features.sql` | 包含默认数据和遗留表，不能默认重复执行 |
 
-`supabase-new-features.sql` 提供的当前互动表：
+`migrations/supabase-new-features.sql` 当前提供这些页面需要的表：
 
-| 页面 | 表 |
+| 页面 | 当前表 |
 | --- | --- |
 | 真心话大冒险 | `truth_or_dare` |
 | 情侣问答 | `couple_quiz`、`quiz_results` |
@@ -70,92 +72,120 @@
 | 情话生成器 | `love_quotes` |
 | 功能申请箱 | `feature_requests` |
 
-该脚本还创建旧 `shared_calendar`、`love_diary`，并重复声明部分当前表。默认情侣问答的
-`correct_answer` 是占位文字，不属于选项；使用前需要在数据库或页面中改成真实答案。
+该 bundle 还会声明当前流程不使用的 `shared_calendar`、`love_diary`，并重复声明 `countdowns`、`time_capsules`。它的默认情侣问答 `correct_answer` 是占位文字，不属于选项；默认数据和固定策略名也使脚本不完全幂等。
 
-## 已有数据库
-
-1. 先备份。
-2. 用错误日志中的表名/字段名在 `database/` 搜索。
-3. 执行 `diagnostics/check-tables.sql` 查看当前核心字段。
-4. 只选择与当前缺口对应的迁移或修复。
-5. 在一个测试项目验证后再应用到正式数据。
-
-不要重新运行 `setup/supabase-schema.sql`；它的基础建表不是幂等的。
-
-## 脚本目录
+## 当前脚本索引
 
 ### `setup/`
 
 | 脚本 | 内容 |
 | --- | --- |
-| `supabase-schema.sql` | 相册、纪念日、五子棋旧基础、食物、留言、心愿清单 |
-| `complete-database-setup.sql` | 当前倒计时、日程、时光胶囊、日记结构与策略 |
-| `NEW_FEATURES_DATABASE_SETUP.sql` | 历史功能包：塔罗、星座、穿搭，并增强日记/留言 |
+| `supabase-schema.sql` | 相册、纪念日、五子棋旧基础、食物、留言和心愿清单 |
+| `planning-records-setup.sql` | 当前倒计时、日程、时光胶囊和日记结构 |
 
-`NEW_FEATURES_DATABASE_SETUP.sql` 依赖基础表存在。选择该 bundle 后，不要再执行同内容的独立塔罗、星座、穿搭迁移。
+`supabase-schema.sql` 的基础建表不是完全幂等的，不要在已有数据库上整体重跑。
 
 ### `migrations/`
 
-| 脚本 | 用途或注意事项 |
+| 脚本 | 内容或注意事项 |
 | --- | --- |
-| `add-mahjong-table.sql` | 旧麻将初始化；普通 `CREATE TABLE`，不适合重复执行 |
-| `add-more-love-quotes.sql` | 追加情话种子数据；重复执行会重复插入 |
-| `add-photo-tag.sql` | 为旧相册补 `tag` 和索引 |
-| `chat-table-safe.sql` | 推荐聊天表与 Realtime 配置 |
-| `chat-table.sql` | 旧聊天脚本；已有 safe 版本时不要执行 |
-| `check-in-table.sql` | 签到表 |
-| `enhance-diary-table.sql` | 当前日记所需天气和贴纸字段 |
-| `enhance-notes-table.sql` | 当前留言所需样式、封口和 emoji 字段 |
+| `add-more-love-quotes.sql` | 追加情话种子；重复执行会重复插入 |
+| `add-photo-tag.sql` | 为旧 `photos` 补 `tag` 和索引 |
+| `chat-table-safe.sql` | 当前聊天表、索引、宽松 RLS 和 Realtime |
+| `check-in-table.sql` | 签到表和索引 |
+| `enhance-diary-table.sql` | 日记天气与贴纸字段 |
+| `enhance-notes-table.sql` | 留言样式、封口与 emoji 字段 |
 | `expenses-table.sql` | 共同账本 |
+| `gomoku-mahjong-schema.sql` | 五子棋兼容字段、麻将、余额、宽松 RLS 和 Realtime |
 | `horoscope-table.sql` | 星座记录 |
+| `mood-records-table.sql` | 心情记录；兼容 `TEXT` 或 `UUID` 类型的已有 `id` |
 | `music-player-schema.sql` | 共享歌曲 |
+| `novels-table.sql` | 情侣书架 |
 | `outfit-records-table.sql` | 穿搭记录 |
 | `profile-tables.sql` | 个人资料和提醒 |
-| `supabase-new-features.sql` | 互动功能包、默认数据和部分遗留表 |
-| `supabase-new-tables-safe.sql` | 历史兼容 bundle；包含旧时光胶囊字段 |
-| `supabase-new-tables.sql` | 旧版非幂等 bundle，不推荐新项目使用 |
+| `replace-food-options-seed.sql` | 破坏性清空并重建食物种子 |
+| `supabase-new-features.sql` | 尚未拆分完的互动功能、默认数据和遗留表 |
 | `tarot-table.sql` | 塔罗记录 |
-| `update-food-options.sql` | 清空并重建食物数据，具有破坏性 |
 | `update-profile-avatar.sql` | 个人资料增加 `avatar_url` |
-| `upgrade-gomoku-table.sql` | 部分五子棋升级；未覆盖当前全部兼容需求 |
 
 ### `fixes/`
 
 | 脚本 | 仅在何时使用 |
 | --- | --- |
-| `fix-gomoku-mahjong.sql` | 当前五子棋字段不兼容，或初始化麻将兼容结构 |
-| `security-fixes.sql` | 已有 `check_ins` 缺少 RLS 时 |
-| `fix-database.sql` | 旧倒计时/日程/胶囊/日记字段修复；偏向遗留命名 |
-| `final-fix-database.sql` | 历史综合修复，不能视为当前完整 schema |
+| `fix-check-ins-rls.sql` | `check_ins` 已存在但缺少 RLS，或需修复 `update_updated_at_column` 的 `search_path` |
 
 ### `diagnostics/`
 
-`check-tables.sql` 当前只检查倒计时、日程、时光胶囊和日记的部分字段。它不会验证全部 31 张业务表、Storage bucket 或所有 Realtime publication。
+`check-planning-tables.sql` 只读列出 `countdowns`、`schedules`、`time_capsules` 和 `diary_entries` 的字段。它不会检查所有业务表、Storage bucket、RLS 策略或 Realtime publication。
+
+## Legacy 脚本
+
+`migrations/legacy/` 与 `fixes/legacy/` 只为解释历史数据库来源和处理极少数定向恢复场景保留：
+
+- 不用于全新数据库。
+- 不按目录顺序执行。
+- 不与对应的当前脚本同时执行。
+- 不因历史文件名中出现 `safe` 或 `fix` 就默认执行。
+- 若必须使用，应先备份，并逐段核对当前列名、约束、策略和种子数据。
+
+| Legacy 脚本 | 状态与当前替代 |
+| --- | --- |
+| `migrations/legacy/chat-table.sql` | 旧聊天脚本；使用 `migrations/chat-table-safe.sql` |
+| `migrations/legacy/gomoku-table-upgrade.sql` | 仅做部分五子棋升级；使用 `migrations/gomoku-mahjong-schema.sql` |
+| `migrations/legacy/mahjong-table.sql` | 旧麻将初始化；使用 `migrations/gomoku-mahjong-schema.sql` |
+| `migrations/legacy/new-features-database-setup.sql` | 旧功能 bundle；分别使用塔罗、星座、穿搭、日记和留言迁移 |
+| `migrations/legacy/planning-tables-bundle.sql` | 非幂等旧计划表 bundle；使用 `setup/planning-records-setup.sql` |
+| `migrations/legacy/planning-tables-compatibility-bundle.sql` | 混合旧字段的兼容 bundle；小说和心情改用独立迁移 |
+| `fixes/legacy/planning-tables-compatibility-fix.sql` | 旧计划表综合修复，偏向遗留字段 |
+| `fixes/legacy/planning-tables-combined-fix.sql` | 旧计划表综合策略与字段修复，不代表当前 schema |
+
+## 已有数据库
+
+1. 先备份目标数据库。
+2. 根据错误中的表名或字段名搜索 `database/`。
+3. 计划与记录类表可先执行 `diagnostics/check-planning-tables.sql`。
+4. 只执行与实际缺口对应的当前迁移或定向修复。
+5. 在测试项目验证数据、RLS、Realtime 和页面行为后再应用到正式项目。
+
+不要为了补一个字段而重新执行全部 setup，也不要用 legacy bundle 猜测当前缺口。
 
 ## 字段版本冲突
 
-时光胶囊历史上有多套命名：
+时光胶囊历史上有两套主要命名：
 
 | 版本 | 字段 |
 | --- | --- |
-| 当前代码与 canonical setup | `sender`、`receiver`、`unlock_date` |
-| 旧 safe/new tables | `created_by`、`recipient`、`open_date` |
+| 当前代码与 setup | `sender`、`receiver`、`unlock_date` |
+| Legacy planning bundle | `created_by`、`recipient`、`open_date` |
 
-当前页面只应以第一行为准。不要为了“更安全”在新库上追加旧 safe bundle；它会留下两套并存字段，使后续维护更困难。
+当前页面只应以第一行为准。Legacy bundle 还可能留下旧 `shared_calendar`、`love_diary` 或与当前类型不同的 `countdowns`。
 
-其他已知限制：
+`mood_records` 的历史 `id` 是无默认值的 `TEXT`。当前 `migrations/mood-records-table.sql` 保留已有列类型，并为 `TEXT` 设置 `gen_random_uuid()::TEXT`、为已有 `UUID` 设置 `gen_random_uuid()`，因此页面可以继续省略 `id` 插入。
 
-- 基础五子棋表与当前房间写入字段不一致。
-- `mood_records.id` 在现有脚本中没有默认值，而页面插入不提供该值。
-- `supabase-new-features.sql` 的部分表和默认数据属于旧实现。
-- `photos`、`songs`、`love_notes` 的部分页面使用 Realtime 订阅，但相应初始化脚本没有统一配置 publication。
+## 路径变更
+
+| 旧路径 | 当前路径 |
+| --- | --- |
+| `setup/complete-database-setup.sql` | `setup/planning-records-setup.sql` |
+| `diagnostics/check-tables.sql` | `diagnostics/check-planning-tables.sql` |
+| `fixes/security-fixes.sql` | `fixes/fix-check-ins-rls.sql` |
+| `migrations/update-food-options.sql` | `migrations/replace-food-options-seed.sql` |
+| `fixes/fix-gomoku-mahjong.sql` | `migrations/gomoku-mahjong-schema.sql` |
+| `setup/NEW_FEATURES_DATABASE_SETUP.sql` | `migrations/legacy/new-features-database-setup.sql` |
+| `migrations/add-mahjong-table.sql` | `migrations/legacy/mahjong-table.sql` |
+| `migrations/chat-table.sql` | `migrations/legacy/chat-table.sql` |
+| `migrations/supabase-new-tables.sql` | `migrations/legacy/planning-tables-bundle.sql` |
+| `migrations/supabase-new-tables-safe.sql` | `migrations/legacy/planning-tables-compatibility-bundle.sql` |
+| `migrations/upgrade-gomoku-table.sql` | `migrations/legacy/gomoku-table-upgrade.sql` |
+| `fixes/fix-database.sql` | `fixes/legacy/planning-tables-compatibility-fix.sql` |
+| `fixes/final-fix-database.sql` | `fixes/legacy/planning-tables-combined-fix.sql` |
 
 ## 风险与安全
 
-- `update-food-options.sql` 使用 `TRUNCATE ... CASCADE`，执行前必须备份并确认要替换全部食物数据。
-- `fixes/` 可能修改约束、字段、RLS、策略和 Realtime 设置。
-- `*-safe.sql` 只表示作者尝试兼容重复执行，不代表字段仍符合当前代码。
-- 多个历史策略允许匿名公开读写。项目公开部署前必须接入可靠认证并重写 RLS。
-- Storage 的 `photos`、`avatars` bucket 及策略需要在 Supabase 控制台单独配置。
-- 任何 SQL 都先在测试项目验证；本仓库维护过程不会自动连接或修改线上数据库。
+- `migrations/replace-food-options-seed.sql` 使用 `TRUNCATE ... CASCADE`，会替换全部食物数据。
+- `migrations/gomoku-mahjong-schema.sql` 会放宽旧五子棋列约束、配置 Realtime，并为两个固定用户插入默认余额。
+- `migrations/supabase-new-features.sql` 和 `add-more-love-quotes.sql` 的种子不是完全幂等的。
+- 多个当前和历史脚本创建允许匿名公开读写的宽松 RLS；这不等同于适合公开生产环境。
+- `photos`、`songs`、`love_notes` 的页面会使用 Realtime，但对应脚本尚未统一加入 publication。
+- `photos`、`avatars` Storage bucket 及其策略需要在 Supabase 控制台单独配置。
+- 任何 SQL 都先在测试项目验证；仓库维护过程不会自动连接或修改线上数据库。

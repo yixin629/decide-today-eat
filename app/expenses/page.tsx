@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import BackButton from '../components/BackButton'
-import PageHeader from '../components/PageHeader'
-import EmptyState from '../components/EmptyState'
-import StatCard from '../components/StatCard'
-import LoadingSkeleton from '../components/LoadingSkeleton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import PageHeader from '@/app/components/ui/PageHeader'
+import EmptyState from './components/EmptyState'
+import StatCard from './components/StatCard'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 

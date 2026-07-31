@@ -12,14 +12,16 @@
 ├── database/                  # Supabase/PostgreSQL 脚本
 │   ├── setup/                 # 新环境初始化
 │   ├── migrations/            # 增量功能与数据迁移
-│   ├── fixes/                 # 历史问题与安全修复
+│   │   └── legacy/            # 仅供旧库追溯的历史迁移
+│   ├── fixes/                 # 线上兼容、安全和数据修复
+│   │   └── legacy/            # 已归档的旧修复方案
 │   └── diagnostics/           # 只读检查
 ├── docs/                      # 分类文档
 │   ├── getting-started/       # 安装和服务配置
 │   ├── guides/                # 功能指南
 │   ├── architecture/          # 架构与目录说明
 │   └── reports/               # 历史开发报告
-├── scripts/                   # 部署辅助脚本
+├── scripts/                   # 本地验证与维护脚本
 ├── patches/                   # 安全依赖兼容补丁
 ├── eslint.config.mjs          # ESLint 9 Flat Config
 ├── AGENTS.md                  # AI 开发协作规则
@@ -28,6 +30,7 @@
 ├── package.json               # npm 依赖与命令
 ├── next.config.js             # Next.js 配置
 ├── open-next.config.ts        # OpenNext Cloudflare 适配配置
+├── cloudflare-env.d.ts        # Wrangler 生成的 Worker binding 与运行时类型
 ├── tailwind.config.ts         # Tailwind CSS 配置
 ├── tsconfig.json              # TypeScript 配置
 └── wrangler.toml              # Cloudflare 配置
@@ -46,8 +49,26 @@ app/
 ├── not-found.tsx              # 404 页面
 ├── globals.css                # 全局样式和主题
 ├── api/chat/route.ts          # AI 聊天服务端接口
-├── components/                # 跨页面共享组件
-├── photos/page.tsx            # /photos
+├── components/
+│   ├── ai-chat/               # AI 聊天浮层、客户端与本地回复
+│   ├── avatar/                # 头像选择
+│   ├── feedback/              # Toast 等反馈组件
+│   ├── home/                  # 首页专用展示组件
+│   ├── layout/                # 导航和全局布局组件
+│   ├── providers/             # 根级 Provider 与访问守卫
+│   └── ui/                    # 跨功能基础 UI
+├── photos/
+│   ├── page.tsx               # /photos
+│   ├── components/            # 相册专用组件
+│   ├── lib/                   # 图片压缩等相册专用工具
+│   └── types.ts               # 相册数据类型
+├── expenses/
+│   ├── page.tsx               # /expenses
+│   └── components/            # 账本专用统计与空状态
+├── dress-up/
+│   ├── page.tsx               # /dress-up
+│   ├── constants.ts           # 穿搭选项与场景数据
+│   └── lib/                   # 穿搭专用工具
 ├── diary/page.tsx             # /diary
 ├── gomoku/
 │   ├── page.tsx               # /gomoku
@@ -60,18 +81,19 @@ app/
     └── engine/                # 麻将规则逻辑
 ```
 
-跨页面 UI 放在 `app/components/`；只服务某个复杂功能的组件和引擎代码应保留在该功能目录内。
+跨页面 UI 按职责放入 `app/components/` 的子目录；只服务某个功能的组件、类型、常量和引擎代码应保留在该功能目录内。
 
 `lib/features.ts` 是首页和导航共用的功能注册表。登录页、动态房间详情和 API 路由不作为独立产品入口登记。
 
 ## 公共代码
 
 - `hooks/useAuth.ts`：读取并兼容历史本地登录标识。当前实现不是完整的服务端认证。
+- `lib/anniversaries.ts`：解析本地纪念日日期并计算下一次发生时间。
+- `lib/auth-session.ts`：统一读写和清理两个历史本地登录键。
 - `lib/supabase.ts`：创建前端 Supabase 客户端。
 - `lib/features.ts`：统一登记功能名称、路由、分类以及首页和导航的展示方式。
-- `lib/imageUtils.ts`：图片处理工具。
 
-新增无 UI 的通用逻辑时优先放入 `hooks/` 或 `lib/`，避免页面文件继续膨胀。
+新增无 UI 的逻辑时，单功能代码先放该路由的 `lib/`；确认跨功能复用后再提升到根 `hooks/` 或 `lib/`，避免页面文件继续膨胀。
 
 ## 数据与身份边界
 
@@ -89,8 +111,10 @@ app/
 - 已有环境增加功能：`database/migrations/`
 - 修复历史问题：`database/fixes/`
 - 查看当前结构：`database/diagnostics/`
+- 只用于旧环境追溯：`database/migrations/legacy/`、`database/fixes/legacy/`
 
-数据库中存在基础功能表、生活记录表、互动功能表和游戏状态表。由于脚本来自多个开发阶段，部分建表内容存在重叠；维护时应按目标数据库现状选择脚本，不能把整个目录当作顺序迁移自动执行。
+全新数据库从 `database/setup/supabase-schema.sql` 和
+`database/setup/planning-records-setup.sql` 开始，再按功能选择独立迁移。历史目录不能用于新环境初始化，也不能把整个 `database/` 当作顺序迁移自动执行。
 
 ## 文档结构
 
@@ -117,21 +141,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ## 开发命令
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run lint
 npm run typecheck
 npm run build
+npm run check
 npm run cf:build
+npm run cf-typegen
 npm start
 ```
 
-`npm run build` 验证标准 Next.js 生产构建；`npm run cf:build` 额外把产物转换为 Cloudflare Worker，二者用途不同。
+`npm run check` 依次运行 lint、类型检查和标准 Next.js 生产构建；
+`npm run cf:build` 额外把产物转换为 Cloudflare Worker，二者用途不同。
+`npm run cf-typegen` 从 `wrangler.toml` 和无敏感值的 `.env.local.example`
+重新生成 `cloudflare-env.d.ts`。
 
 ## 添加新功能
 
 1. 在 `app/<route>/page.tsx` 创建页面。
-2. 把可复用 UI 提取到 `app/components/`。
+2. 功能专用代码放入 `app/<route>/components`、`lib`、`engine` 或 `types`；确认跨页面复用后再放入 `app/components/`。
 3. 如需数据表，在 `database/migrations/` 新建独立、尽量可重复执行的 SQL。
 4. 在 `lib/features.ts` 登记入口，由首页和导航共同读取。
 5. 更新根 `README.md` 或相应 `docs/guides/` 文档。

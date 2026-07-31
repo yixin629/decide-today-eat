@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 // ─── Types ───────────────────────────────────────────────
 interface Vec { x: number; y: number }
@@ -75,8 +75,8 @@ const WEAPON_INFO: Record<WeaponKind, { name: string; emoji: string; desc: strin
 // Cooldown in ms (scales with level & CDR)
 const WEAPON_CD: Record<WeaponKind, (lv: number) => number> = {
   knife: lv => 800 - lv * 80,
-  aura:  lv => 500,
-  orbit: lv => 3000,
+  aura:  _lv => 500,
+  orbit: _lv => 3000,
   bolt:  lv => 1800 - lv * 150,
   whip:  lv => 1100 - lv * 80,
   fire:  lv => 1600 - lv * 120,

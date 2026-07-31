@@ -23,17 +23,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名客户端密钥
 全新项目在 SQL Editor 中依次执行：
 
 1. `database/setup/supabase-schema.sql`
-2. `database/setup/complete-database-setup.sql`
+2. `database/setup/planning-records-setup.sql`
+3. `database/migrations/enhance-diary-table.sql`
+4. `database/migrations/enhance-notes-table.sql`
 
-这会创建相册、纪念日、食物、留言、心愿清单、五子棋，以及倒计时、日程、时光胶囊和日记等基础表。
+这会创建相册、纪念日、食物、留言、心愿清单、五子棋，以及倒计时、日程、时光胶囊和日记等基础表，并补齐当前日记和留言页面使用的增强字段。
 
 其他页面使用独立迁移，例如：
 
 - 聊天：`database/migrations/chat-table-safe.sql`
 - 个人资料与提醒：`database/migrations/profile-tables.sql`
-- 签到：`database/migrations/check-in-table.sql`
+- 签到：`database/migrations/check-in-table.sql`，随后执行 `database/fixes/fix-check-ins-rls.sql`
 - 共同账本：`database/migrations/expenses-table.sql`
 - 音乐：`database/migrations/music-player-schema.sql`
+- 情侣书架：`database/migrations/novels-table.sql`
+- 心情追踪：`database/migrations/mood-records-table.sql`
 - 互动功能：`database/migrations/supabase-new-features.sql`
 
 完整映射、重复脚本和风险见 [database/README.md](../../database/README.md)。已有数据库应按缺少的表或字段选择迁移，不要重新执行全部初始化脚本。
@@ -65,13 +69,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名客户端密钥
 聊天页面依赖 `chat_messages` 的 Realtime 订阅。推荐执行
 `database/migrations/chat-table-safe.sql`，该脚本会在缺少时把表加入 `supabase_realtime` publication。
 
-五子棋和麻将的多人状态也依赖对应表结构与 Realtime 配置。遇到旧表字段不兼容时，先阅读：
+五子棋和麻将的多人状态使用 `database/migrations/gomoku-mahjong-schema.sql`。新库应先执行
+`database/setup/supabase-schema.sql` 创建五子棋基础表，再执行该迁移；它会补齐当前五子棋字段、创建麻将和余额表，并配置 Realtime。已有数据库执行前必须备份。
 
-- `database/migrations/upgrade-gomoku-table.sql`
-- `database/migrations/add-mahjong-table.sql`
-- `database/fixes/fix-gomoku-mahjong.sql`
-
-修复脚本只用于对应历史问题，执行前必须备份。
+旧五子棋升级和麻将初始化脚本已归入 `database/migrations/legacy/`，不要与当前迁移同时执行。
 
 ## 6. 验证
 
@@ -89,7 +90,8 @@ npm run dev
 - 已启用的可选功能没有缺表或缺字段错误
 - 聊天的新消息能在另一个浏览器窗口出现
 
-也可以在 SQL Editor 执行只读脚本 `database/diagnostics/check-tables.sql` 查看核心表字段。
+也可以在 SQL Editor 执行只读脚本
+`database/diagnostics/check-planning-tables.sql` 查看计划与记录类核心表字段。
 
 ## 常见问题
 

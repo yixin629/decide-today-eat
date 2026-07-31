@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
-import { formatDistanceToNow, differenceInDays, format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { differenceInDays, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
-import LoadingSkeleton from '../components/LoadingSkeleton'
-import AnniversaryReminders from '../components/AnniversaryReminders'
-import PageHeader from '../components/PageHeader'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
+import AnniversaryReminders from './components/AnniversaryReminders'
+import PageHeader from '@/app/components/ui/PageHeader'
 
 interface Anniversary {
   id: string

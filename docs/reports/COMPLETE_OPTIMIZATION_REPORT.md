@@ -123,7 +123,7 @@
 
 **已实现**:
 
-- ✅ 创建 `lib/imageUtils.ts` 工具库
+- ✅ 创建图片压缩工具（当前位于 `app/photos/lib/image-utils.ts`）
 - ✅ 自动压缩到 1920x1080
 - ✅ 质量设置 80%
 - ✅ 显示压缩前后对比
@@ -157,15 +157,15 @@
 
 ### 组件
 
-1. ✅ `app/components/Toast.tsx` - Toast 通知组件
-2. ✅ `app/components/ToastProvider.tsx` - Toast 上下文
-3. ✅ `app/components/BackButton.tsx` - 统一返回按钮
-4. ✅ `app/components/LoadingSkeleton.tsx` - 加载骨架屏
-5. ✅ `app/components/BatchUploadDialog.tsx` - 批量上传对话框
+1. ✅ `app/components/feedback/Toast.tsx` - Toast 通知组件
+2. ✅ `app/components/feedback/ToastProvider.tsx` - Toast 上下文
+3. ✅ `app/components/ui/BackButton.tsx` - 统一返回按钮
+4. ✅ `app/components/ui/LoadingSkeleton.tsx` - 加载骨架屏
+5. ✅ `app/photos/components/BatchUploadDialog.tsx` - 批量上传对话框
 
 ### 工具库
 
-6. ✅ `lib/imageUtils.ts` - 图片压缩工具
+6. ✅ `app/photos/lib/image-utils.ts` - 图片压缩工具
 
 ### 文档
 
@@ -264,7 +264,7 @@ useEffect(() => {
 ### Toast 使用方法
 
 ```tsx
-import { useToast } from '@/app/components/ToastProvider'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 const { success, error, info, warning } = useToast()
 
@@ -277,7 +277,7 @@ warning('请注意')
 ### BackButton 使用方法
 
 ```tsx
-import BackButton from '@/app/components/BackButton'
+import BackButton from '@/app/components/ui/BackButton'
 
 <BackButton />  // 默认返回首页
 <BackButton href="/photos" text="返回相册" />
@@ -286,7 +286,7 @@ import BackButton from '@/app/components/BackButton'
 ### LoadingSkeleton 使用方法
 
 ```tsx
-import LoadingSkeleton, { PhotoGridSkeleton } from '@/app/components/LoadingSkeleton'
+import LoadingSkeleton, { PhotoGridSkeleton } from '@/app/components/ui/LoadingSkeleton'
 
 {
   loading ? <PhotoGridSkeleton /> : <PhotoGrid />
@@ -299,7 +299,7 @@ import LoadingSkeleton, { PhotoGridSkeleton } from '@/app/components/LoadingSkel
 ### 批量上传使用方法
 
 ```tsx
-import BatchUploadDialog from '@/app/components/BatchUploadDialog'
+import BatchUploadDialog from '@/app/photos/components/BatchUploadDialog'
 
 {
   showBatchUpload && (

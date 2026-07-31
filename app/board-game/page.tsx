@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import type { JSX } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Player {
   position: number
@@ -153,7 +153,6 @@ export default function BoardGamePage() {
   // 渲染游戏格子
   const renderBoard = () => {
     const rows = []
-    let cellIndex = 0
 
     for (let row = 0; row < 6; row++) {
       const cells = []
@@ -192,7 +191,6 @@ export default function BoardGamePage() {
             </div>
           )
         }
-        cellIndex++
       }
 
       rows.push(

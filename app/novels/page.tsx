@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import { readSessionUser } from '@/lib/auth-session'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 interface Novel {
   id: string
@@ -77,7 +78,7 @@ export default function NovelsPage() {
 
   useEffect(() => {
     // Check login
-    const user = localStorage.getItem('currentUser') || localStorage.getItem('loggedInUser')
+    const user = readSessionUser()
     setCurrentUser(user)
     if (user) {
       loadNovels()

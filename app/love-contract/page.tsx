@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Contract {
   id: string
@@ -93,7 +93,6 @@ export default function LoveContractPage() {
   const toast = useToast()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [isCreating, setIsCreating] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [partyA, setPartyA] = useState('')
@@ -116,7 +115,6 @@ export default function LoveContractPage() {
 
   // 选择模板
   const selectTemplate = (template: ContractTemplate) => {
-    setSelectedTemplate(template)
     setTitle(template.name)
     setContent(template.content)
     setIsCreating(true)
@@ -149,7 +147,6 @@ export default function LoveContractPage() {
 
     // 重置表单
     setIsCreating(false)
-    setSelectedTemplate(null)
     setTitle('')
     setContent('')
     setPartyA('')
@@ -279,7 +276,6 @@ export default function LoveContractPage() {
               <button
                 onClick={() => {
                   setIsCreating(false)
-                  setSelectedTemplate(null)
                 }}
                 className="text-sm text-gray-500 hover:text-primary mb-3"
               >

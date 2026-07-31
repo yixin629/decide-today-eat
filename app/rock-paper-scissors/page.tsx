@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 type Choice = 'rock' | 'paper' | 'scissors'
 
@@ -34,7 +33,6 @@ export default function RPSPage() {
   const [playerName, setPlayerName] = useState('')
   const [showNameInput, setShowNameInput] = useState(true)
   const [currentGame, setCurrentGame] = useState<Game | null>(null)
-  const [playerChoice, setPlayerChoice] = useState<Choice | null>(null)
   const [result, setResult] = useState<string | null>(null)
   const [stats, setStats] = useState<{ zyx: Stats; zly: Stats }>({
     zyx: { total: 0, wins: 0, losses: 0, draws: 0 },
@@ -99,8 +97,6 @@ export default function RPSPage() {
   }
 
   const makeChoice = (choice: Choice) => {
-    setPlayerChoice(choice)
-
     // 对手随机选择
     const opponentChoice = choices[Math.floor(Math.random() * 3)].value
 
@@ -154,7 +150,6 @@ export default function RPSPage() {
   }
 
   const playAgain = () => {
-    setPlayerChoice(null)
     setResult(null)
     const opponent = playerName === 'zyx' ? 'zly' : 'zyx'
     setCurrentGame({
@@ -170,7 +165,6 @@ export default function RPSPage() {
     setShowNameInput(true)
     setPlayerName('')
     setCurrentGame(null)
-    setPlayerChoice(null)
     setResult(null)
   }
 

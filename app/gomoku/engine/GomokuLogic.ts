@@ -139,8 +139,6 @@ function evaluateCell(board: Cell[][], row: number, col: number, player: Player)
 
   for (const [dx, dy] of directions) {
       let count = 1;
-      let blockedEmptyP = 0;
-      let blockedEmptyN = 0;
       let blockP = false;
       let blockN = false;
 
@@ -150,7 +148,7 @@ function evaluateCell(board: Cell[][], row: number, col: number, player: Player)
          const nc = col + dy * i;
          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { blockP = true; break; }
          if (board[nr][nc] === player) count++;
-         else if (board[nr][nc] === null) { blockedEmptyP++; break; }
+         else if (board[nr][nc] === null) break;
          else { blockP = true; break; }
       }
 
@@ -160,11 +158,10 @@ function evaluateCell(board: Cell[][], row: number, col: number, player: Player)
          const nc = col - dy * i;
          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) { blockN = true; break; }
          if (board[nr][nc] === player) count++;
-         else if (board[nr][nc] === null) { blockedEmptyN++; break; }
+         else if (board[nr][nc] === null) break;
          else { blockN = true; break; }
       }
 
-      const emptySpace = blockedEmptyP + blockedEmptyN;
       const blocks = (blockP ? 1 : 0) + (blockN ? 1 : 0);
 
       // Scoring heuristic

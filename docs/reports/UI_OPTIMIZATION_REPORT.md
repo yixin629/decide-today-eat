@@ -7,7 +7,7 @@
 
 ### 1. Toast 通知系统 🎉
 
-**文件**: `app/components/Toast.tsx`, `app/components/ToastProvider.tsx`
+**当前文件**: `app/components/feedback/Toast.tsx`, `app/components/feedback/ToastProvider.tsx`
 
 **功能**:
 
@@ -21,7 +21,7 @@
 **使用方法**:
 
 ```tsx
-import { useToast } from '@/app/components/ToastProvider'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 const { success, error, info, warning } = useToast()
 
@@ -36,7 +36,7 @@ warning('请注意！')
 
 ### 2. 移动端导航栏优化 📱
 
-**文件**: `app/components/Navigation.tsx`
+**当前文件**: `app/components/layout/Navigation.tsx`
 
 **改进**:
 
@@ -50,7 +50,7 @@ warning('请注意！')
 
 ### 3. 统一返回按钮组件 ↩️
 
-**文件**: `app/components/BackButton.tsx`
+**当前文件**: `app/components/ui/BackButton.tsx`
 
 **特点**:
 
@@ -62,7 +62,7 @@ warning('请注意！')
 **使用方法**:
 
 ```tsx
-import BackButton from '@/app/components/BackButton'
+import BackButton from '@/app/components/ui/BackButton'
 
 <BackButton />  // 默认返回首页
 <BackButton href="/photos" text="返回相册" />  // 自定义
@@ -112,7 +112,7 @@ import BackButton from '@/app/components/BackButton'
 
 ### 6. 加载骨架屏组件 ⏳
 
-**文件**: `app/components/LoadingSkeleton.tsx`
+**当前文件**: `app/components/ui/LoadingSkeleton.tsx`
 
 **提供的组件**:
 
@@ -126,7 +126,7 @@ import BackButton from '@/app/components/BackButton'
 **使用方法**:
 
 ```tsx
-import LoadingSkeleton, { PhotoGridSkeleton } from '@/app/components/LoadingSkeleton'
+import LoadingSkeleton, { PhotoGridSkeleton } from '@/app/components/ui/LoadingSkeleton'
 
 {
   loading ? <PhotoGridSkeleton /> : <PhotoGrid />
@@ -273,9 +273,9 @@ import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
 // 3. 本地组件
-import { useToast } from '@/app/components/ToastProvider'
-import BackButton from '@/app/components/BackButton'
-import LoadingSkeleton from '@/app/components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 // 4. 工具函数
 import { supabase } from '@/lib/supabase'

@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 interface FeatureRequest {
   id: number

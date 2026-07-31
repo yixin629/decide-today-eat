@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
 
 interface Song {
@@ -26,15 +26,12 @@ export default function MusicPlayerPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(0.7)
-
   // Playback Modes
-  const [isRepeat, setIsRepeat] = useState(false)
-  const [isShuffle, setIsShuffle] = useState(false)
+  const isRepeat = false
+  const isShuffle = false
 
   // UI State
   const [showAddSong, setShowAddSong] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
 
   // Form State
   const [newSongUrl, setNewSongUrl] = useState('')
@@ -57,7 +54,6 @@ export default function MusicPlayerPage() {
       console.error('Failed to load songs:', error)
       toast.error('加载歌单失败')
     } finally {
-      setIsLoading(false)
     }
   }, [toast])
 
@@ -147,7 +143,7 @@ export default function MusicPlayerPage() {
       if (currentSongIndex >= songs.length - 1) {
         setCurrentSongIndex(Math.max(0, songs.length - 2))
       }
-    } catch (error) {
+    } catch {
       toast.error('移除失败')
     }
   }

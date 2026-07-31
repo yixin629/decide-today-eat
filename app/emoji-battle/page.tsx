@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface EmojiCard {
   id: number
@@ -98,14 +98,11 @@ export default function EmojiBattlePage() {
     logs.push(`${card1.emoji} 发动技能「${card1.special}」！攻击力: ${score1.toFixed(0)}`)
     logs.push(`${card2.emoji} 发动技能「${card2.special}」！攻击力: ${score2.toFixed(0)}`)
 
-    let roundWinner = ''
     if (score1 > score2) {
       setPlayer1Score((prev) => prev + 1)
-      roundWinner = `${card1.emoji} ${card1.name} 获胜！`
       logs.push(`🎉 玩家1的 ${card1.emoji} 获胜！`)
     } else if (score2 > score1) {
       setPlayer2Score((prev) => prev + 1)
-      roundWinner = `${card2.emoji} ${card2.name} 获胜！`
       logs.push(`🎉 玩家2的 ${card2.emoji} 获胜！`)
     } else {
       logs.push('⚖️ 平局！双方势均力敌！')

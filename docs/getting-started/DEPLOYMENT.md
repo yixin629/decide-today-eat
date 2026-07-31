@@ -4,12 +4,12 @@
 
 ```bash
 npm ci
-npm run lint
-npm run typecheck
-npm run build
+npm run check
 ```
 
-Cloudflare 还应额外执行：
+也可以运行 `scripts/verify-project.bat`（Windows）或
+`scripts/verify-project.sh`（macOS/Linux）完成相同的安装和项目检查。
+Cloudflare 目标还应额外执行：
 
 ```bash
 npm run cf:build
@@ -71,7 +71,7 @@ zyxzlyforever0912
 
 `npm run deploy` 和 `npm run upload` 已包含构建步骤。两套配置任选一套，不要把 `npm run cf:build` 与包含构建的完整脚本混在同一次流水线中。
 
-Workers Builds 不会自动采用 `wrangler.toml` 的 `[build]` Custom Build 设置，因此 Dashboard 中的 Build command 必须明确填写。若以后添加了 Cloudflare Dashboard 普通运行时 Variables，可把正式部署命令改为
+仓库刻意不在 `wrangler.toml` 中配置 `[build]`，构建和上传职责由 Workers Builds 的两个命令明确分开，避免同一流水线重复构建。因此 Dashboard 中的 Build command 必须明确填写。若以后添加了 Cloudflare Dashboard 普通运行时 Variables，可把正式部署命令改为
 `npx @opennextjs/cloudflare deploy -- --keep-vars`，避免部署覆盖这些变量。
 
 ### Cloudflare 变量
@@ -109,8 +109,13 @@ CHATANYWHERE_API_KEY
 
 ```bash
 npm run cf:build
-npm run preview
 ```
+
+需要启动本地 Worker 预览时，改为运行 `npm run preview`；该命令本身已经包含
+Cloudflare 构建，不必先重复执行 `npm run cf:build`。
+
+OpenNext 在原生 Windows 上会提示兼容性警告；这是工具的运行环境提示，不代表本次构建失败。
+需要最接近线上 Linux 环境的本地验证时，使用 WSL；GitHub/Cloudflare 的 Linux 构建环境不受该提示影响。
 
 首次从本机部署前需要登录：
 
@@ -124,7 +129,7 @@ npm run deploy
 
 ## 配置文件职责
 
-- `wrangler.toml`：Worker 名称、入口、兼容日期、静态资源和 Service Binding。
+- `wrangler.toml`：Worker 名称、入口、兼容日期、静态资源和 Service Binding；不承担构建命令。
 - `open-next.config.ts`：OpenNext Cloudflare 适配器配置。
 - `package.json`：本地预览、构建、上传和部署命令。
 - `.env.local.example`：变量名称模板，不包含真实值。

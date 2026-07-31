@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import { useAuth } from '@/hooks/useAuth'
-import { GameMode, initializeGameState, GameState } from './engine/MahjongLogic'
+import { GameMode, initializeGameState } from './engine/MahjongLogic'
 
 export default function MahjongLobbyPage() {
   const router = useRouter()

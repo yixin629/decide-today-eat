@@ -12,6 +12,7 @@
 /.next/
 /out/
 /.open-next/
+/.wrangler/
 
 # production
 /build
@@ -26,8 +27,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env*.local
-.dev.vars
+.env*
+!.env.local.example
+.dev.vars*
+
+# local AI tool settings
+.claude/settings.local.json
 
 # vercel
 .vercel

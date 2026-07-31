@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
+import { readSessionUser } from '@/lib/auth-session'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
 
 interface CheckInRecord {
   id: string
@@ -77,7 +78,7 @@ export default function CheckInPage() {
 
   useEffect(() => {
     // 获取当前登录用户
-    const loggedInUser = localStorage.getItem('loggedInUser')
+    const loggedInUser = readSessionUser()
     if (loggedInUser) {
       setUserId(loggedInUser)
     }

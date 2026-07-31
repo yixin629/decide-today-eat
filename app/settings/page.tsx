@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
+import { clearSessionUser, readSessionUser } from '@/lib/auth-session'
 
 interface UserSettings {
   avatar: string // emoji or URL
@@ -50,8 +51,11 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const user = localStorage.getItem('loggedInUser')
-    if (!user) { router.push('/login'); return }
+    const user = readSessionUser()
+    if (!user) {
+      router.push('/login')
+      return
+    }
     setCurrentUser(user)
 
     const savedSettings = localStorage.getItem(`userSettings_${user}`)
@@ -385,7 +389,11 @@ export default function SettingsPage() {
         <div className="card mt-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">🎯 快捷功能</h2>
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => { localStorage.removeItem('loggedInUser'); router.push('/login') }}
+            <button
+              onClick={() => {
+                clearSessionUser()
+                router.push('/login')
+              }}
               className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors text-left"
             >
               <span className="text-2xl mb-2 block">🔄</span>

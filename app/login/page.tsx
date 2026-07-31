@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useToast } from '@/app/components/ToastProvider'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import { readSessionUser, writeSessionUser } from '@/lib/auth-session'
 
 export default function LoginPage() {
   const [selectedUser, setSelectedUser] = useState('')
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     // 检查是否已登录
-    const loggedInUser = localStorage.getItem('loggedInUser')
+    const loggedInUser = readSessionUser()
     if (loggedInUser) {
       router.push('/')
     }
@@ -38,8 +39,7 @@ export default function LoginPage() {
       return
     }
 
-    localStorage.setItem('loggedInUser', selectedUser)
-    localStorage.setItem('currentUser', selectedUser)
+    writeSessionUser(selectedUser)
     success('登录成功！')
     setTimeout(() => {
       router.push('/')

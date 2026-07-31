@@ -11,8 +11,8 @@
 ## 使用指南
 
 - [个人资料与提醒](./guides/PROFILE_GUIDE.md)
-- [互动功能与数据库依赖](./guides/NEW_FEATURES_GUIDE.md)
-- [计划与记录功能](./guides/NEW_FEATURES_README.md)
+- [互动功能与数据库依赖](./guides/INTERACTIVE_FEATURES.md)
+- [计划与记录功能](./guides/PLANNING_AND_RECORDS.md)
 
 ## 架构
 

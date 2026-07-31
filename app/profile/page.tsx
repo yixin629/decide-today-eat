@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface UserProfile {
   id: string
@@ -32,7 +31,6 @@ export default function ProfilePage() {
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState('')
   const [showAddProfile, setShowAddProfile] = useState(false)
   const [showAddReminder, setShowAddReminder] = useState(false)
 
@@ -55,12 +53,6 @@ export default function ProfilePage() {
   const emojiOptions = ['😊', '🥰', '😎', '🤗', '😘', '💕', '⭐', '🍐', '🌟', '💖']
 
   useEffect(() => {
-    // 从localStorage获取当前登录用户
-    const loggedInUser = localStorage.getItem('loggedInUser')
-    if (loggedInUser) {
-      setCurrentUser(loggedInUser)
-    }
-
     loadData()
     checkBirthdayReminders()
     // eslint-disable-next-line react-hooks/exhaustive-deps

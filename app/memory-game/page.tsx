@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import BackButton from '../components/BackButton'
+import { useState } from 'react'
+import BackButton from '@/app/components/ui/BackButton'
 
 const emojis = ['❤️', '💕', '💖', '💗', '💝', '💞', '🌹', '🌺']
 

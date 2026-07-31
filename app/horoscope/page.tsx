@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface ZodiacSign {
   name: string
@@ -52,7 +52,6 @@ export default function HoroscopePage() {
   const [partnerZodiac, setPartnerZodiac] = useState<ZodiacSign | null>(null)
   const [myReading, setMyReading] = useState<any>(null)
   const [partnerReading, setPartnerReading] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
 
   // 生成今日运势
   const generateReading = async (zodiac: ZodiacSign, isPartner: boolean) => {
@@ -117,9 +116,7 @@ export default function HoroscopePage() {
       setMyZodiac(zodiac)
     }
 
-    setLoading(true)
     await generateReading(zodiac, isPartner)
-    setLoading(false)
 
     // 触觉反馈
     if (navigator.vibrate) {

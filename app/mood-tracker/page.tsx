@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import { useAuth } from '@/hooks/useAuth'
 
 interface MoodRecord {
@@ -22,14 +22,6 @@ const MOODS = [
   { value: 2, emoji: '😔', label: '有点难过', color: 'bg-blue-500' },
   { value: 1, emoji: '😢', label: '很难过', color: 'bg-purple-500' },
 ]
-
-const MOOD_TIPS: Record<number, string[]> = {
-  5: ['太棒了！记得和TA分享你的快乐哦！', '开心的日子值得记录下来！', '你的笑容是最美的风景！'],
-  4: ['今天心情不错呢！', '保持好心情，继续加油！', '开心是最好的护肤品！'],
-  3: ['平淡也是一种幸福！', '有时候普通的一天也很珍贵！', '每一天都是新的开始！'],
-  2: ['抱抱你，会好起来的！', '难过的时候找TA聊聊吧！', '明天会更好的！'],
-  1: ['心疼你，给你一个大大的拥抱！', '不开心的时候更需要TA的陪伴！', '哭出来会好受一些！'],
-}
 
 export default function MoodTrackerPage() {
   const { showToast } = useToast()
@@ -157,11 +149,6 @@ export default function MoodTrackerPage() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const getRandomTip = (mood: number) => {
-    const tips = MOOD_TIPS[mood]
-    return tips[Math.floor(Math.random() * tips.length)]
   }
 
   const getMoodStats = () => {

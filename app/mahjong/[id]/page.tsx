@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { useToast } from '../../components/ToastProvider'
-import LoadingSkeleton from '../../components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import {
-  GameState, Player, Tile,
-  getBotAction, getBotDiscard,
+  GameState,
   applyDiscard, applyBotTurn, applyAction,
   ValidAction, ActionType,
 } from '../engine/MahjongLogic'

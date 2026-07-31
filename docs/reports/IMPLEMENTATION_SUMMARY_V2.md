@@ -143,7 +143,7 @@
 
 #### 13. ✅ 随机惊喜和彩蛋系统
 
-**文件**: `app/components/RandomSurprise.tsx` + `app/globals.css`
+**当前文件**: `app/components/layout/RandomSurprise.tsx` + `app/globals.css`
 
 - 10%概率触发惊喜消息
 - 10 条随机甜蜜消息
@@ -153,7 +153,7 @@
 
 #### 14. ✅ 全局动效优化
 
-**文件**: `app/components/HeartParticles.tsx` + `app/globals.css`
+**当前文件**: `app/components/layout/HeartParticles.tsx` + `app/globals.css`
 
 - 10%点击概率触发爱心粒子
 - 5 种爱心 emoji 随机选择
@@ -178,9 +178,9 @@
 ### 组件文件 (4 个)
 
 - `app/components/ThemeSettings.tsx`
-- `app/components/HeartParticles.tsx`
+- `app/components/layout/HeartParticles.tsx`
 - `app/components/PageLoadingEffect.tsx`
-- `app/components/RandomSurprise.tsx`
+- `app/components/layout/RandomSurprise.tsx`
 
 ### 数据库文件 (5 个)
 
@@ -197,7 +197,7 @@
 ### 核心文件
 
 - `app/layout.tsx` - 添加 4 个新全局组件
-- `app/components/Navigation.tsx` - 添加 7 个新导航项
+- `app/components/layout/Navigation.tsx` - 添加 7 个新导航项
 - `app/page.tsx` - 添加 6 个新功能卡片 + 优化纪念日倒计时
 - `app/globals.css` - 添加多个动画效果
 

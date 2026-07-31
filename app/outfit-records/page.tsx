@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import BackButton from '../components/BackButton'
-import { useToast } from '../components/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 
 const STYLE_TAGS = ['休闲', '正式', '运动', '约会', '甜美', '帅气', '复古', '潮流', '简约', '浪漫']
 const OCCASIONS = ['上班', '约会', '聚会', '运动', '居家', '旅行', '特殊场合']

@@ -14,7 +14,10 @@ export default defineConfig([
       'react-hooks/purity': 'off',
       // Legacy Supabase payloads are not yet generated from a typed database schema.
       '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
     },
   },
   globalIgnores([
@@ -23,5 +26,6 @@ export default defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    'cloudflare-env.d.ts',
   ]),
 ])

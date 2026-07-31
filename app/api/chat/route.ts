@@ -11,6 +11,19 @@ interface ChatMessage {
   content: string
 }
 
+function getCompletionContent(data: unknown): string | null {
+  if (!data || typeof data !== 'object' || !('choices' in data)) return null
+
+  const { choices } = data as { choices?: unknown }
+  if (!Array.isArray(choices) || !choices[0] || typeof choices[0] !== 'object') return null
+
+  const firstChoice = choices[0] as { message?: unknown }
+  if (!firstChoice.message || typeof firstChoice.message !== 'object') return null
+
+  const { content } = firstChoice.message as { content?: unknown }
+  return typeof content === 'string' && content.length > 0 ? content : null
+}
+
 const SYSTEM_PROMPT = `你是"小爱"，一个温暖贴心的情侣AI助手。
 
 特点：
@@ -101,7 +114,7 @@ export async function POST(req: NextRequest) {
     const GROQ_KEY = process.env.GROQ_API_KEY
     const CHATANYWHERE_KEY = process.env.CHATANYWHERE_API_KEY
 
-    const apis: Array<{ url: string; headers: Record<string, string>; body: any }> = []
+    const apis: Array<{ url: string; headers: Record<string, string>; body: unknown }> = []
 
     if (GROQ_KEY && GROQ_KEY.length > 10) {
       apis.push({
@@ -141,8 +154,8 @@ export async function POST(req: NextRequest) {
           signal: controller.signal,
         })
         if (res.ok) {
-          const data = await res.json()
-          const content = data?.choices?.[0]?.message?.content
+          const data: unknown = await res.json()
+          const content = getCompletionContent(data)
           if (content) return NextResponse.json({ content })
         } else {
           // Continue to next provider on non-ok

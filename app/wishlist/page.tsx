@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { useToast } from '../components/ToastProvider'
-import BackButton from '../components/BackButton'
-import LoadingSkeleton from '../components/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import BackButton from '@/app/components/ui/BackButton'
+import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 
 interface Wish {
   id: string
