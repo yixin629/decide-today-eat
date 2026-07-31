@@ -14,7 +14,7 @@
 
 ### 1. 创建数据库表
 
-在 Supabase SQL Editor 中执行 `profile-tables.sql` 文件中的 SQL 语句：
+在 Supabase SQL Editor 中执行 `database/migrations/profile-tables.sql` 文件中的 SQL 语句：
 
 ```sql
 -- 这会创建两个表：

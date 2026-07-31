@@ -47,7 +47,7 @@
 
 #### 5. ✅ 塔罗牌占卜 (Tarot Reading)
 
-**文件**: `app/tarot/page.tsx` + `tarot-table.sql`
+**文件**: `app/tarot/page.tsx` + `database/migrations/tarot-table.sql`
 
 - 22 张大阿尔卡纳塔罗牌
 - 每日一次抽卡限制
@@ -56,7 +56,7 @@
 
 #### 6. ✅ 星座运势 (Horoscope)
 
-**文件**: `app/horoscope/page.tsx` + `horoscope-table.sql`
+**文件**: `app/horoscope/page.tsx` + `database/migrations/horoscope-table.sql`
 
 - 12 星座选择
 - 双人运势查看
@@ -69,7 +69,7 @@
 
 #### 7. ✅ 穿搭记录 (Outfit Records)
 
-**文件**: `app/outfit-records/page.tsx` + `outfit-records-table.sql`
+**文件**: `app/outfit-records/page.tsx` + `database/migrations/outfit-records-table.sql`
 
 - 12 种 emoji 图标选择
 - 10 种风格标签（休闲、正式、运动等）
@@ -79,7 +79,7 @@
 
 #### 8. ✅ 心情日记本增强 (Enhanced Mood Diary)
 
-**文件**: `app/diary/page.tsx` + `enhance-diary-table.sql`
+**文件**: `app/diary/page.tsx` + `database/migrations/enhance-diary-table.sql`
 
 - ✨ **新增**: 15 种心情 emoji（扩充）
 - ✨ **新增**: 10 种天气图标选择
@@ -94,7 +94,7 @@
 
 #### 9. ✅ 留言板美化增强 (Enhanced Message Board)
 
-**文件**: `app/notes/page.tsx` + `enhance-notes-table.sql`
+**文件**: `app/notes/page.tsx` + `database/migrations/enhance-notes-table.sql`
 
 - ✨ **新增**: 4 种信纸样式（经典、爱心、可爱、优雅）
 - ✨ **新增**: 密封/拆封状态
@@ -181,11 +181,11 @@
 
 ### 数据库文件 (5 个)
 
-- `tarot-table.sql`
-- `horoscope-table.sql`
-- `outfit-records-table.sql`
-- `enhance-diary-table.sql`
-- `enhance-notes-table.sql`
+- `database/migrations/tarot-table.sql`
+- `database/migrations/horoscope-table.sql`
+- `database/migrations/outfit-records-table.sql`
+- `database/migrations/enhance-diary-table.sql`
+- `database/migrations/enhance-notes-table.sql`
 
 ---
 
@@ -297,11 +297,11 @@
 在 Supabase SQL 编辑器中依次执行：
 
 ```bash
-1. tarot-table.sql
-2. horoscope-table.sql
-3. outfit-records-table.sql
-4. enhance-diary-table.sql
-5. enhance-notes-table.sql
+1. `database/migrations/tarot-table.sql`
+2. `database/migrations/horoscope-table.sql`
+3. `database/migrations/outfit-records-table.sql`
+4. `database/migrations/enhance-diary-table.sql`
+5. `database/migrations/enhance-notes-table.sql`
 ```
 
 ### 功能访问

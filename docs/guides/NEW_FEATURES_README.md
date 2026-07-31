@@ -109,7 +109,7 @@
 1. 登录你的 [Supabase Dashboard](https://supabase.com/dashboard)
 2. 选择你的项目
 3. 进入 SQL Editor
-4. 打开 `supabase-new-tables.sql` 文件
+4. 打开 `database/migrations/supabase-new-tables-safe.sql` 文件
 5. 复制全部内容粘贴到SQL Editor
 6. 点击"Run"执行
 
@@ -162,7 +162,7 @@
 
 1. **执行数据库SQL**（重要！）
    ```
-   在Supabase执行 supabase-new-tables.sql
+在 Supabase 执行 `database/migrations/supabase-new-tables-safe.sql`
    ```
 
 2. **提交代码**

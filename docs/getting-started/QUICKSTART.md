@@ -15,7 +15,8 @@ npm install
    copy .env.local.example .env.local
    # 然后编辑 .env.local 填入你的配置
    ```
-4. 在 Supabase SQL Editor 中运行 `supabase-schema.sql`
+4. 在 Supabase SQL Editor 中运行 `database/setup/supabase-schema.sql`
+5. 再运行 `database/setup/complete-database-setup.sql`，补齐后续核心功能
 
 ### 第三步：启动项目 (1分钟)
 ```bash
@@ -26,7 +27,7 @@ npm run dev
 ## 📋 详细配置
 
 需要详细的配置说明？请查看：
-- 📖 [README.md](./README.md) - 完整文档
+- 📖 [README.md](../../README.md) - 完整文档
 - 🔧 [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) - Supabase 配置详解
 
 ## 🚀 一键部署到 Vercel

@@ -166,8 +166,8 @@
 
 ### 文档
 
-7. ✅ `UI_OPTIMIZATION_REPORT.md` - 优化报告
-8. ✅ `COMPLETE_OPTIMIZATION_REPORT.md` - 完整报告
+7. ✅ `docs/reports/UI_OPTIMIZATION_REPORT.md` - 优化报告
+8. ✅ `docs/reports/COMPLETE_OPTIMIZATION_REPORT.md` - 完整报告
 
 ---
 

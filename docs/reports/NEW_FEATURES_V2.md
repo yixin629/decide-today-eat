@@ -105,7 +105,7 @@
 
 ### 需要执行的 SQL 文件
 
-#### 1. `tarot-table.sql` - 塔罗牌占卜表
+#### 1. `database/migrations/tarot-table.sql` - 塔罗牌占卜表
 
 ```sql
 CREATE TABLE IF NOT EXISTS tarot_readings (
@@ -126,11 +126,11 @@ CREATE INDEX idx_tarot_readings_user_date ON tarot_readings(user_id, reading_dat
 
 - 打开 Supabase 控制台
 - 进入 SQL Editor
-- 复制 `tarot-table.sql` 内容并执行
+- 复制 `database/migrations/tarot-table.sql` 内容并执行
 
 ---
 
-#### 2. `horoscope-table.sql` - 星座运势表
+#### 2. `database/migrations/horoscope-table.sql` - 星座运势表
 
 ```sql
 CREATE TABLE IF NOT EXISTS horoscope_readings (
@@ -153,7 +153,7 @@ CREATE INDEX idx_horoscope_readings_user_date ON horoscope_readings(user_id, rea
 
 - 打开 Supabase 控制台
 - 进入 SQL Editor
-- 复制 `horoscope-table.sql` 内容并执行
+- 复制 `database/migrations/horoscope-table.sql` 内容并执行
 
 ---
 
@@ -258,8 +258,8 @@ npm run dev
 在 Supabase 中执行：
 
 ```bash
-# 1. 执行 tarot-table.sql
-# 2. 执行 horoscope-table.sql
+# 1. 执行 database/migrations/tarot-table.sql
+# 2. 执行 database/migrations/horoscope-table.sql
 ```
 
 ### 3. 访问新功能

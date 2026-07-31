@@ -30,7 +30,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon密钥
 
 1. 在 Supabase Dashboard，点击左侧菜单的 "SQL Editor"
 2. 点击 "New query"
-3. 复制项目根目录的 `supabase-schema.sql` 文件内容
+3. 复制 `database/setup/supabase-schema.sql` 文件内容
 4. 粘贴到 SQL 编辑器
 5. 点击 "Run" 执行 SQL
 

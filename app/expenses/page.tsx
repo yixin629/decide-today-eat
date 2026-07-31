@@ -89,7 +89,7 @@ export default function ExpensesPage() {
     } catch (err: any) {
       console.error(err)
       if (err?.code === '42P01') {
-        showToast('请先运行 expenses-table.sql 创建数据表', 'warning')
+      showToast('请先运行 database/migrations/expenses-table.sql 创建数据表', 'warning')
       } else {
         showToast('获取账单失败', 'error')
       }

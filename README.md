@@ -1,40 +1,30 @@
-# 💕 我们的小世界 - 情侣专属网站
+# 我们的小世界
 
-这是一个为情侣设计的温馨网站，包含照片分享、游戏、纪念日提醒等功能。
+一个使用 Next.js、TypeScript、Tailwind CSS 和 Supabase 开发的情侣专属网站，用于共同记录生活、管理计划、分享照片和进行双人互动。
 
-## ✨ 功能特性
+## 主要功能
 
-### 核心功能
+- 生活记录：照片、日记、留言、心情、纪念日、签到、穿搭和共同账本
+- 共同计划：日程、倒计时、心愿清单、愿望清单和时光胶囊
+- 双人互动：聊天、情书、甜言蜜语、情侣测试、真心话大冒险
+- 游戏娱乐：五子棋、麻将、你画我猜、记忆翻牌、石头剪刀布等
+- 个性体验：个人资料、主题设置、音乐播放器、塔罗和星座
+- AI 助手：通过服务端 API 调用已配置的模型服务
 
-- � **双人登录系统** - 专属的个人账号（密码提示：love+对方名字首字母缩写）
-- 👤 **个人资料管理** - 查看和编辑个人信息，显示专属昵称和 emoji
-- �📸 **照片相册** - 上传和分享你们的美好回忆
-- 💝 **纪念日提醒** - 永远记住重要的日子，支持农历纪念日
-- 🍱 **今晚吃什么** - 帮你们决定晚餐吃什么
-- 💌 **甜蜜留言板** - 给对方留下温馨的话语
-- 📔 **情侣日记** - 记录每天的点点滴滴
-- 🗓️ **日程安排** - 共同规划未来的约会和活动
-- ✨ **心愿清单** - 记录一起想完成的愿望
-- 💭 **随机回忆** - 在首页随机展示一条美好记忆
+完整页面位于 `app/`，当前功能路由可直接从该目录查看。
 
-### 游戏娱乐
+## 技术栈
 
-- ⚫⚪ **五子棋** - 来一场甜蜜的对战
-- 🎨 **你画我猜** - 画出你的想法让对方猜（已修复画笔精度问题）
-- 🎮 **记忆翻牌** - 考验默契的记忆游戏
-- ✊✋✌️ **石头剪刀布** - 简单有趣的小游戏
-- 🎯 **真心话大冒险** - 增进感情的互动游戏
-- 💑 **情侣小测验** - 测试你们彼此的了解
+| 类别 | 技术 |
+| --- | --- |
+| Web 框架 | Next.js 14（App Router） |
+| 开发语言 | TypeScript、React 18 |
+| 样式 | Tailwind CSS |
+| 数据与存储 | Supabase（PostgreSQL、Storage） |
+| 日期处理 | date-fns |
+| Markdown | react-markdown、remark-gfm |
 
-### 特色功能
-
-- ⏰ **倒计时** - 为重要日子设置倒计时
-- 💝 **情话语录** - 每日情话分享
-- 📝 **功能建议** - 提交你想要的新功能
-- ⏳ **时光胶囊** - 写下只能在未来打开的信件
-- 🪣 **愿望清单** - 列出一起想做的 100 件事
-
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 安装依赖
 
@@ -42,173 +32,109 @@
 npm install
 ```
 
-### 2. 配置 Supabase
+### 2. 配置环境变量
 
-1. 访问 [Supabase](https://supabase.com) 创建一个新项目
-2. 在项目设置中找到 API 配置信息
-3. 复制 `.env.local.example` 为 `.env.local`
-4. 填入你的 Supabase URL 和 Anon Key：
+复制 `.env.local.example` 为 `.env.local`，至少填写：
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=你的项目URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的anon密钥
+NEXT_PUBLIC_SUPABASE_URL=你的项目地址
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 ```
 
-### 3. 创建数据库表
+如需 AI 聊天功能，再按 `.env.local.example` 配置相应服务的 API Key。不要提交 `.env.local` 或任何真实密钥。
 
-在 Supabase Dashboard 的 SQL Editor 中执行 `supabase-schema.sql` 文件中的 SQL 语句。
+### 3. 初始化数据库
 
-### 4. 配置 Storage (可选)
+在 Supabase Dashboard 的 SQL Editor 中执行：
 
-如果需要照片上传功能：
+1. `database/setup/supabase-schema.sql`
+2. `database/setup/complete-database-setup.sql`
+3. 根据启用的功能，选择执行 `database/migrations/` 中的补充脚本
 
-1. 在 Supabase Dashboard 中创建一个名为 `photos` 的 Storage bucket
-2. 设置 bucket 为公开访问（或配置适当的访问策略）
+已有数据库不要直接重复执行所有脚本。请先阅读 [数据库脚本说明](./database/README.md)，确认迁移顺序和风险。
 
-### 5. 启动开发服务器
+### 4. 配置图片存储
+
+需要照片上传时，在 Supabase Storage 创建公开的 `photos` bucket，或根据实际认证方案配置对应访问策略。头像功能还可能需要 `avatars` bucket。
+
+### 5. 启动项目
 
 ```bash
 npm run dev
 ```
 
-在浏览器中打开 [http://localhost:3000](http://localhost:3000)
+浏览器访问 [http://localhost:3000](http://localhost:3000)。
 
-## 📦 技术栈
-
-- **前端框架**: Next.js 14 (App Router)
-- **样式**: Tailwind CSS
-- **后端服务**: Supabase
-  - 数据库: PostgreSQL
-  - 存储: Supabase Storage
-  - 实时功能: Supabase Realtime (可扩展)
-- **类型安全**: TypeScript
-- **日期处理**: date-fns
-
-## 🎨 自定义
-
-### 修改颜色主题
-
-编辑 `tailwind.config.ts` 中的颜色设置：
-
-```typescript
-theme: {
-  extend: {
-    colors: {
-      primary: '#ff6b9d',    // 主色调
-      secondary: '#c44569',  // 次要色
-      accent: '#ffa502',     // 强调色
-    },
-  },
-}
-```
-
-### 添加更多食物选项
-
-在 `app/food/page.tsx` 的 `FOOD_OPTIONS` 数组中添加：
-
-```typescript
-{ name: '你喜欢的食物', emoji: '🍜' }
-```
-
-## 📱 部署
-
-### 部署到 Vercel (推荐)
-
-1. 将代码推送到 GitHub
-2. 在 [Vercel](https://vercel.com) 导入你的仓库
-3. 配置环境变量（Supabase URL 和 Key）
-4. 点击部署
-
-### 其他部署选项
-
-- **Netlify**: 支持 Next.js
-- **Cloudflare Pages**: 支持 Next.js
-- **自托管**: 使用 `npm run build` 和 `npm start`
-
-## 🔐 安全提示
-
-- 这是一个私人网站，建议：
-  - 不要在公共场合分享网站链接
-  - 使用强密码保护 Supabase 项目
-  - 考虑添加身份验证功能
-  - 定期备份数据
-
-## 💡 最近更新
-
-### v2.1 (2024-11-13) - UI/UX 大优化 🎨
-
-**核心改进**:
-
-- ✅ **Toast 通知系统**: 替代 alert()，支持 4 种类型的优雅通知
-- ✅ **照片查看器增强**: 键盘导航、触摸滑动、循环浏览
-- ✅ **响应式优化**: 首页、导航栏、卡片全面优化移动端体验
-- ✅ **加载骨架屏**: 5 种类型的骨架屏组件，提升加载体验
-- ✅ **统一返回按钮**: 可复用的返回按钮组件
-- ✅ **动画系统**: 新增滑入、脉冲等动画效果
-- ✅ **照片批量上传**: 支持拖拽、多选（最多 10 张）
-- ✅ **图片自动压缩**: 上传前自动优化，节省 70%空间
-
-**新增组件**: Toast、BackButton、LoadingSkeleton、BatchUploadDialog、imageUtils
-
-详见 [COMPLETE_OPTIMIZATION_REPORT.md](./COMPLETE_OPTIMIZATION_REPORT.md)
-
-### v2.0 (2024-11)
-
-- ✅ 修复画笔位置不准确问题（已考虑画布缩放比例）
-- ✅ 优化登录页面密码提示文案
-- ✅ 新增个人资料页面
-- ✅ 新增随机回忆功能
-- ✅ 新增多个互动游戏
-- ✅ 完善数据库结构
-
-### v1.0 (2024-10)
-
-- ✅ 基础功能上线
-- ✅ 照片相册、纪念日、留言板
-- ✅ 五子棋游戏
-
-## 💡 未来功能扩展
-
-- [ ] 实时聊天功能
-- [ ] 照片批量上传和分类
-- [ ] 日记自动保存草稿
-- [ ] 纪念日提前提醒
-- [ ] 数据统计面板
-- [ ] 照片自动生成回忆视频
-- [ ] 移动端 App（React Native）
-- [ ] 推送通知提醒重要日子
-- [ ] AI 生成情话和祝福
-- [ ] 语音留言功能
-- [ ] 视频通话功能
-
-## 🐛 常见问题
-
-### 照片上传失败？
-
-1. 检查 Supabase Storage bucket 是否正确创建
-2. 确认 bucket 访问权限设置正确
-3. 查看浏览器控制台的错误信息
-
-### TypeScript 报错？
-
-运行 `npm install` 确保所有依赖都已安装。
-
-### 样式不生效？
-
-确保已安装 Tailwind CSS 相关依赖，运行：
+## 常用命令
 
 ```bash
-npm install -D tailwindcss postcss autoprefixer
+npm run dev
+npm run lint
+npm run build
+npm start
 ```
 
-## 📝 License
+## 项目结构
 
-这是一个个人项目，仅供学习和个人使用。
+```text
+.
+├── app/                    # 页面、组件、API 路由与游戏逻辑
+├── hooks/                  # React Hooks
+├── lib/                    # Supabase 客户端与通用工具
+├── database/
+│   ├── setup/              # 新环境初始化脚本
+│   ├── migrations/         # 增量功能和数据变更
+│   ├── fixes/              # 兼容性、安全与历史修复
+│   └── diagnostics/        # 数据库检查脚本
+├── docs/
+│   ├── getting-started/    # 安装与配置
+│   ├── guides/             # 功能使用指南
+│   ├── architecture/       # 项目结构说明
+│   └── reports/            # 历史实现与优化报告
+├── scripts/                # 部署辅助脚本
+├── AGENTS.md               # AI/自动化开发协作规范
+└── README.md               # 项目入口文档
+```
 
-## ❤️ 致谢
+更多说明见 [文档索引](./docs/README.md) 和 [项目结构说明](./docs/architecture/PROJECT_STRUCTURE.md)。
 
-感谢所有开源项目的贡献者！
+## 数据库维护约定
 
----
+- 新功能建表或加字段放入 `database/migrations/`。
+- 全新环境的一次性初始化脚本放入 `database/setup/`。
+- 修复历史数据、权限或兼容性问题放入 `database/fixes/`。
+- 只读排查脚本放入 `database/diagnostics/`。
+- SQL 文件名使用小写 kebab-case；已有历史文件暂时保留原名。
+- 任何会清空数据、删除对象或放宽安全策略的脚本，都必须在文件顶部明确标注。
 
-**愿你们的爱情永远甜蜜！** 💕
+## 部署
+
+推荐将仓库连接到 Vercel，并在部署平台配置与本地相同的环境变量。仓库也保留了：
+
+- Windows：`scripts/deploy.bat`
+- Linux/macOS：`scripts/deploy.sh`
+- Cloudflare 配置：`wrangler.toml`
+
+执行部署脚本前请先阅读脚本内容，确认其中的分支、构建和目标平台符合当前环境。
+
+## 安全说明
+
+本项目最初面向私人使用，部分数据库脚本采用宽松的公开访问策略，前端登录状态也主要保存在浏览器本地。若要公开部署或供更多用户使用，应优先完成：
+
+- 接入 Supabase Auth 或其他可靠认证方案
+- 按用户和资源重新设计 RLS 策略
+- 将敏感调用限制在服务端
+- 审查 Storage bucket 的公开权限
+- 定期备份数据库并轮换泄露的密钥
+
+## 文档维护
+
+- `README.md` 只保留当前项目概览、启动方式和关键约定。
+- 操作指南放入 `docs/getting-started/` 或 `docs/guides/`。
+- 阶段性总结和已完成报告放入 `docs/reports/`，仅作为历史记录。
+- 目录或脚本路径变化时，同步更新 `README.md`、`AGENTS.md` 和相关文档链接。
+
+## License
+
+个人学习与私人使用项目。若计划公开分发，请补充明确的开源许可证。
+

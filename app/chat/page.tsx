@@ -101,7 +101,7 @@ export default function ChatPage() {
         // Check if error is due to missing table
         if (error.code === '42P01') {
           console.error('Chat table missing:', error)
-          showToast('聊天功能未初始化，请联系管理员运行数据库脚本 (chat-table.sql)', 'error')
+        showToast('聊天功能未初始化，请联系管理员运行 database/migrations/chat-table-safe.sql', 'error')
           return
         }
         throw error

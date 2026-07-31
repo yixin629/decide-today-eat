@@ -63,7 +63,7 @@
 
 1. 打开 Supabase Dashboard
 2. 进入 **SQL Editor**
-3. 打开项目中的 `supabase-new-features.sql` 文件
+3. 打开项目中的 `database/migrations/supabase-new-features.sql` 文件
 4. 复制全部内容到 SQL Editor
 5. 点击 **RUN** 执行
 
