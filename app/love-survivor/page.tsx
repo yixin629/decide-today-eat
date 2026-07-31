@@ -147,19 +147,6 @@ export default function ThunderFighterPage() {
     if (saved) setHighScore(parseInt(saved))
   }, [])
 
-  // Keyboard
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      keysRef.current.add(e.key.toLowerCase())
-      if (e.key === 'Escape') setPaused(p => !p)
-      if ((e.key === 'b' || e.key === 'B') && started && !over && bombs > 0) useBomb()
-    }
-    const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase())
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
-  }, [started, over, bombs])
-
   // Touch control
   const handleTouch = useCallback((e: React.TouchEvent) => {
     if (!started || over || paused) return
@@ -261,7 +248,7 @@ export default function ThunderFighterPage() {
     comboTimerRef.current = setTimeout(() => setCombo(0), 2500)
   }, [maxCombo])
 
-  const useBomb = useCallback(() => {
+  const activateBomb = useCallback(() => {
     if (bombs <= 0) return
     setBombs(b => b - 1)
     enemiesRef.current.forEach(e => {
@@ -273,6 +260,19 @@ export default function ThunderFighterPage() {
     setBullets(prev => prev.filter(b => !b.isEnemy))
     toast.warning('💣 核弹引爆！')
   }, [bombs, spawnExplosion, toast])
+
+  // Keyboard
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      keysRef.current.add(e.key.toLowerCase())
+      if (e.key === 'Escape') setPaused(p => !p)
+      if ((e.key === 'b' || e.key === 'B') && started && !over && bombs > 0) activateBomb()
+    }
+    const up = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase())
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+  }, [started, over, bombs, activateBomb])
 
   // ── Enemy Spawning ──
   const spawnEnemy = useCallback(() => {
@@ -1137,7 +1137,7 @@ export default function ThunderFighterPage() {
                 </span>
                 <span className="bg-white/10 px-3 py-1 rounded border border-white/10">⚡ {speed.toFixed(1)}</span>
                 {shield && <span className="bg-cyan-500/20 text-cyan-300 px-3 py-1 rounded animate-pulse">🛡️</span>}
-                <button onClick={useBomb} disabled={bombs === 0}
+                <button onClick={activateBomb} disabled={bombs === 0}
                   className="bg-orange-500/20 text-orange-300 px-3 py-1 rounded border border-orange-500/30 font-bold disabled:opacity-30 active:scale-95"
                 >💣 核弹 (B)</button>
               </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
@@ -157,7 +158,13 @@ export default function SettingsPage() {
                 onClick={() => setShowAvatarPicker(true)}
               >
                 {isImageAvatar ? (
-                  <img src={settings.avatar} alt="avatar" className="w-full h-full object-cover" />
+                  <Image
+                    src={settings.avatar}
+                    alt={`${settings.nickname || currentUser}的头像`}
+                    width={80}
+                    height={80}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span className="text-5xl">{settings.avatar}</span>
                 )}
@@ -195,7 +202,13 @@ export default function SettingsPage() {
                       {uploading ? (
                         <span className="animate-spin text-2xl">⏳</span>
                       ) : isImageAvatar ? (
-                        <img src={settings.avatar} alt="" className="w-full h-full object-cover" />
+                        <Image
+                          src={settings.avatar}
+                          alt="当前头像预览"
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <span className="text-3xl">{settings.avatar}</span>
                       )}
@@ -339,7 +352,13 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-white shadow flex items-center justify-center overflow-hidden">
                   {partnerSettings.avatar.startsWith('http') ? (
-                    <img src={partnerSettings.avatar} alt="" className="w-full h-full object-cover" />
+                    <Image
+                      src={partnerSettings.avatar}
+                      alt={`${partnerSettings.nickname || getPartnerName()}的头像`}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <span className="text-4xl">{partnerSettings.avatar}</span>
                   )}

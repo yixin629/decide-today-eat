@@ -13,18 +13,6 @@ const nextConfig = {
     // Vercel支持图片优化，可以保持这个设置以减少复杂性
     unoptimized: true,
   },
-  // 禁用SWC，使用Babel
-  swcMinify: false,
-  compiler: {
-    // 禁用 SWC，使用 Babel
-  },
-  // 忽略构建错误
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 }
 
 module.exports = nextConfig

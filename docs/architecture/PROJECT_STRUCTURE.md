@@ -20,6 +20,8 @@
 │   ├── architecture/          # 架构与目录说明
 │   └── reports/               # 历史开发报告
 ├── scripts/                   # 部署辅助脚本
+├── patches/                   # 安全依赖兼容补丁
+├── eslint.config.mjs          # ESLint 9 Flat Config
 ├── AGENTS.md                  # AI 开发协作规则
 ├── README.md                  # 项目入口
 ├── package.json               # npm 依赖与命令
@@ -100,6 +102,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 npm install
 npm run dev
 npm run lint
+npm run typecheck
 npm run build
 npm start
 ```
@@ -111,5 +114,4 @@ npm start
 3. 如需数据表，在 `database/migrations/` 新建独立、尽量可重复执行的 SQL。
 4. 将入口加入首页或导航组件。
 5. 更新根 `README.md` 或相应 `docs/guides/` 文档。
-6. 运行 lint；涉及路由、类型或配置时再运行生产构建。
-
+6. 运行 lint 和类型检查；涉及路由、配置或生产行为时再运行生产构建。

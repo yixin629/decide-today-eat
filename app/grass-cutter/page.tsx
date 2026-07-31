@@ -312,6 +312,18 @@ export default function GrassCutterPage() {
     }])
   }, [])
 
+  const spawnBoss = useCallback(() => {
+    const t = timeRef.current
+    const minute = t / 60000
+    setEnemies(prev => [...prev, {
+      id: Date.now(),
+      x: W / 2, y: -40,
+      hp: 400 + minute * 200, maxHp: 400 + minute * 200,
+      speed: 0.7, type: 'boss', dmg: 30,
+    }])
+    toast.error('👿 Boss 降临！')
+  }, [toast])
+
   // Spawn enemies based on time
   const spawnEnemies = useCallback(() => {
     const t = timeRef.current
@@ -355,19 +367,7 @@ export default function GrassCutterPage() {
       speed: baseSpd + minute * 0.05,
       type, dmg: baseDmg,
     }])
-  }, [])
-
-  const spawnBoss = useCallback(() => {
-    const t = timeRef.current
-    const minute = t / 60000
-    setEnemies(prev => [...prev, {
-      id: Date.now(),
-      x: W / 2, y: -40,
-      hp: 400 + minute * 200, maxHp: 400 + minute * 200,
-      speed: 0.7, type: 'boss', dmg: 30,
-    }])
-    toast.error('👿 Boss 降临！')
-  }, [toast])
+  }, [spawnBoss])
 
   // Fire weapons
   const fireWeapons = useCallback((now: number) => {
@@ -439,8 +439,8 @@ export default function GrassCutterPage() {
         const thickness = 35
         const dirs = w.level >= 3 ? [-1, 1, 0] : [-1, 1]
         dirs.forEach(dir => {
-          let offX = dir * range * 0.5
-          let offY = dir === 0 ? -range * 0.6 : 0
+          const offX = dir * range * 0.5
+          const offY = dir === 0 ? -range * 0.6 : 0
           const cx = p.x + offX
           const cy = p.y + offY
           enemiesRef.current.forEach(e => {
@@ -605,7 +605,7 @@ export default function GrassCutterPage() {
               pr.hitIds.add(e.id)
               hits++
               if (hits >= pr.pierce + 1 && pr.kind !== 'orbit') consumed = true
-              let dmg = pr.damage
+              const dmg = pr.damage
               // Fireball explodes - handled below
               if (pr.kind === 'fire') {
                 // Damage all enemies in blast radius
@@ -724,7 +724,7 @@ export default function GrassCutterPage() {
     }
     rafRef.current = requestAnimationFrame(loop)
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-  }, [started, over, victory, paused, showLevelUp, spawnEnemies, fireWeapons, triggerLevelUp, addFloat, xpToNext, score, highScore, highTime]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [started, over, victory, paused, showLevelUp, spawnEnemies, fireWeapons, triggerLevelUp, addFloat, xpToNext, score, highScore, highTime])
 
   // ── Render ────────────────────────────────────────────────
   useEffect(() => {

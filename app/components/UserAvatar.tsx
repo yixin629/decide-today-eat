@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -136,7 +137,13 @@ export default function UserAvatar() {
             className="flex items-center gap-2 bg-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 border-2 border-primary/20 hover:border-primary"
           >
             {isImg ? (
-              <img src={displayAvatar} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+              <Image
+                src={displayAvatar}
+                alt={`${userInfo?.nickname || '用户'}的头像`}
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full object-cover"
+              />
             ) : (
               <span className="text-2xl">{displayAvatar}</span>
             )}
@@ -178,9 +185,11 @@ export default function UserAvatar() {
                       title="更换头像"
                     >
                       {isImg ? (
-                        <img
+                        <Image
                           src={displayAvatar}
-                          alt="Avatar"
+                          alt={`${userInfo?.nickname || '用户'}的头像`}
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
                         />
                       ) : (

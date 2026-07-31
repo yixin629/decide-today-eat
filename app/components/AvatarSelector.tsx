@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { useToast } from './ToastProvider'
 
@@ -176,9 +177,11 @@ export default function AvatarSelector({
                 )}
                 {/* Preview current if it's an image */}
                 {currentAvatar && currentAvatar.startsWith('http') && !uploading && (
-                  <img
+                  <Image
                     src={currentAvatar}
-                    alt="Current"
+                    alt="当前头像"
+                    width={96}
+                    height={96}
                     className="absolute inset-0 w-full h-full object-cover opacity-50"
                   />
                 )}

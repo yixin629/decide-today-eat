@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import type { JSX } from 'react'
 import BackButton from '../components/BackButton'
 import { useToast } from '../components/ToastProvider'
 

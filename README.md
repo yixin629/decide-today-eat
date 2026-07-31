@@ -17,8 +17,8 @@
 
 | 类别 | 技术 |
 | --- | --- |
-| Web 框架 | Next.js 14（App Router） |
-| 开发语言 | TypeScript、React 18 |
+| Web 框架 | Next.js 16（App Router、Turbopack） |
+| 开发语言 | TypeScript、React 19 |
 | 样式 | Tailwind CSS |
 | 数据与存储 | Supabase（PostgreSQL、Storage） |
 | 日期处理 | date-fns |
@@ -27,6 +27,8 @@
 ## 快速开始
 
 ### 1. 安装依赖
+
+请先安装 Node.js 20.9 或更高版本。
 
 ```bash
 npm install
@@ -70,6 +72,7 @@ npm run dev
 ```bash
 npm run dev
 npm run lint
+npm run typecheck
 npm run build
 npm start
 ```
@@ -92,6 +95,8 @@ npm start
 │   ├── architecture/       # 项目结构说明
 │   └── reports/            # 历史实现与优化报告
 ├── scripts/                # 部署辅助脚本
+├── patches/                # 第三方依赖兼容补丁
+├── eslint.config.mjs       # ESLint Flat Config
 ├── AGENTS.md               # AI/自动化开发协作规范
 └── README.md               # 项目入口文档
 ```
@@ -117,6 +122,13 @@ npm start
 
 执行部署脚本前请先阅读脚本内容，确认其中的分支、构建和目标平台符合当前环境。
 
+## 依赖安全
+
+- 使用 `npm audit` 检查完整依赖树。
+- `package.json` 中的 `overrides` 用于将上游间接依赖固定到已修复版本。
+- `patches/` 中的补丁由 `postinstall` 自动应用，用于兼容安全版依赖的导出变化。
+- 调整 Next.js、ESLint、PostCSS、Sharp、minimatch 或 brace-expansion 时，必须重新运行安装、lint、类型检查、构建和安全审计。
+
 ## 安全说明
 
 本项目最初面向私人使用，部分数据库脚本采用宽松的公开访问策略，前端登录状态也主要保存在浏览器本地。若要公开部署或供更多用户使用，应优先完成：
@@ -137,4 +149,3 @@ npm start
 ## License
 
 个人学习与私人使用项目。若计划公开分发，请补充明确的开源许可证。
-

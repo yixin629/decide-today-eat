@@ -445,7 +445,7 @@ export function canHu(
 
   // Seven pairs special check (14 tiles only)
   if (allTiles.length === 14) {
-    let pairs = 0;
+    const pairs = 0;
     const countMap = new Map<string, number>();
     allTiles.forEach(t => {
       const key = `${t.suit}-${t.value}`;

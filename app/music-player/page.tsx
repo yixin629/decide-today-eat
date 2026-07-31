@@ -101,7 +101,7 @@ export default function MusicPlayerPage() {
     }
 
     try {
-      let finalUrl = newSongUrl
+      const finalUrl = newSongUrl
       let finalCover = '🎵'
 
       // Process Links
@@ -167,7 +167,7 @@ export default function MusicPlayerPage() {
 
   const playNext = () => {
     if (songs.length === 0) return
-    let nextIndex = isShuffle
+    const nextIndex = isShuffle
       ? Math.floor(Math.random() * songs.length)
       : (currentSongIndex + 1) % songs.length
     setCurrentSongIndex(nextIndex)
@@ -206,7 +206,7 @@ export default function MusicPlayerPage() {
     if (currentSong.source === 'youtube') {
       // https://www.youtube.com/watch?v=ID -> https://www.youtube.com/embed/ID
       // https://youtu.be/ID -> https://www.youtube.com/embed/ID
-      let embedUrl = currentSong.url
+      const embedUrl = currentSong.url
       let videoId = ''
 
       if (embedUrl.includes('v=')) {

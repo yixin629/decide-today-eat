@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import BackButton from '../components/BackButton'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
@@ -17,7 +17,7 @@ interface Expense {
   title: string
   amount: number
   category: Category
-  paid_by: string
+  paid_by: 'zyx' | 'zly'
   split_mode: 'equal' | 'full' | 'custom'
   split_ratio: number
   note?: string
@@ -62,6 +62,27 @@ export default function ExpensesPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
 
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('shared_expenses')
+        .select('*')
+        .order('expense_date', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setExpenses(data || [])
+    } catch (err: any) {
+      console.error(err)
+      if (err?.code === '42P01') {
+        showToast('请先运行 database/migrations/expenses-table.sql 创建数据表', 'warning')
+      } else {
+        showToast('获取账单失败', 'error')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [showToast])
+
   useEffect(() => {
     if (authLoading) return
     if (!currentUser) { setPaidBy('zyx'); return }
@@ -75,28 +96,7 @@ export default function ExpensesPage() {
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [currentUser, authLoading])
-
-  const fetchExpenses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('shared_expenses')
-        .select('*')
-        .order('expense_date', { ascending: false })
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setExpenses(data || [])
-    } catch (err: any) {
-      console.error(err)
-      if (err?.code === '42P01') {
-      showToast('请先运行 database/migrations/expenses-table.sql 创建数据表', 'warning')
-      } else {
-        showToast('获取账单失败', 'error')
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [currentUser, authLoading, fetchExpenses])
 
   const resetForm = () => {
     setEditId(null)

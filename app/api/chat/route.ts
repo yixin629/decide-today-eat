@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 const SYSTEM_PROMPT = `你是"小爱"，一个温暖贴心的情侣AI助手。
 

@@ -49,7 +49,7 @@ export default function AnniversaryReminders() {
 
         data.forEach((anniversary) => {
           const anniversaryDate = new Date(anniversary.date)
-          let nextDate = new Date(anniversaryDate)
+          const nextDate = new Date(anniversaryDate)
 
           // 如果是年度纪念日，计算下一年的日期
           if (anniversary.recurring) {

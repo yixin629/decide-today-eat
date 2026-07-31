@@ -189,7 +189,7 @@ export default function MahjongLobbyPage() {
 
       const isFull = newPlayers.filter(p => !p.id.startsWith('empty_')).length === 4
       
-      let updateData: any = { players: newPlayers }
+      const updateData: any = { players: newPlayers }
       
       if (isFull) {
          updateData.status = 'playing'

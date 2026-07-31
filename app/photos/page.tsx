@@ -619,7 +619,6 @@ export default function PhotosPage() {
               onTouchEnd={onTouchEnd}
             >
               <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <Image
                   src={selectedPhoto.url}
                   alt={selectedPhoto.title}

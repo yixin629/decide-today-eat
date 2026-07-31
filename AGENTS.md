@@ -5,8 +5,8 @@
 ## 项目概况
 
 - 项目：我们的小世界（情侣生活记录与互动网站）
-- 框架：Next.js 14 App Router
-- 语言：TypeScript、React 18
+- 框架：Next.js 16 App Router（Turbopack）
+- 语言：TypeScript、React 19
 - 样式：Tailwind CSS
 - 数据：Supabase PostgreSQL 与 Storage
 - 包管理：npm
@@ -42,12 +42,14 @@
 
 ```bash
 npm run lint
+npm run typecheck
 npm run build
 ```
 
 - 小范围文档或纯路径调整：检查链接、引用和目录即可。
 - 页面或组件调整：至少运行 `npm run lint`。
-- 类型、路由、配置、依赖或生产行为调整：运行 `npm run lint` 和 `npm run build`。
+- 类型、路由、配置、依赖或生产行为调整：运行 `npm run lint`、`npm run typecheck` 和 `npm run build`。
+- 依赖调整后额外运行 `npm audit`，并确认 `postinstall` 补丁成功应用。
 - 如果现有脚本本身失效，应说明是既有问题还是本次变更导致，不要隐瞒或绕过。
 
 ## 代码约定
@@ -60,6 +62,7 @@ npm run build
 - 保持现有无分号代码风格和项目 Prettier 配置。
 - 优先复用现有 `ToastProvider`、`BackButton`、`LoadingSkeleton` 等组件。
 - 不在客户端代码中放置服务端密钥。
+- 不要删除 `package.json` 中的安全依赖覆盖或 `patches/` 中的兼容补丁；如需调整，必须重新验证 lint、类型、构建和审计。
 
 ## Supabase 与数据库规则
 
@@ -115,4 +118,3 @@ AI 聊天功能使用的第三方 Key 仅允许出现在本地或部署平台的
 - 仍存在的限制、风险或需要用户手动完成的步骤
 
 不要声称未实际运行的测试已经通过。
-
