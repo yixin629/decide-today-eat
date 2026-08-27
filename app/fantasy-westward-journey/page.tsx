@@ -4,9 +4,9 @@ const GAME_URL = 'https://xyh5.163.com/game/'
 
 export default function FantasyWestwardJourneyPage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#713f12_0,_#172554_34%,_#020617_100%)] px-3 py-4 text-white md:px-6">
-      <div className="mx-auto max-w-[1600px]">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#713f12_0,_#172554_34%,_#020617_100%)] px-3 pb-20 pt-[max(1rem,env(safe-area-inset-top))] text-white md:h-dvh md:min-h-0 md:overflow-hidden md:px-6 md:pb-4">
+      <div className="mx-auto flex min-h-full max-w-[1600px] flex-col md:h-full">
+        <header className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3">
           <BackButton
             className="mb-0 border border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-amber-200"
           />
@@ -33,7 +33,7 @@ export default function FantasyWestwardJourneyPage() {
           </a>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-amber-300/40 bg-slate-950 shadow-2xl">
+        <section className="flex min-h-[680px] flex-col overflow-hidden rounded-2xl border border-amber-300/40 bg-slate-950 shadow-2xl md:min-h-0 md:flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-white/5 px-4 py-3 text-sm">
             <p className="text-slate-200">
               游戏内容、登录与账号数据均由网易官方页面提供和处理。
@@ -46,14 +46,14 @@ export default function FantasyWestwardJourneyPage() {
           <iframe
             src={GAME_URL}
             title="梦幻西游网页版官方游戏"
-            className="h-[calc(100vh-13.5rem)] min-h-[620px] w-full bg-black"
+            className="min-h-0 w-full flex-1 bg-black"
             allow="autoplay; fullscreen"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
         </section>
 
-        <p className="mx-auto mt-3 max-w-4xl text-center text-xs leading-5 text-slate-400">
+        <p className="mx-auto mt-3 max-w-4xl shrink-0 text-center text-xs leading-5 text-slate-400">
           本页面仅提供通往网易官方游戏的嵌入入口，不代理游戏服务，也不会读取或保存你的网易账号、密码或游戏数据。
           第三方浏览器 Cookie、登录策略或官方页面的安全设置可能限制站内显示。
         </p>
