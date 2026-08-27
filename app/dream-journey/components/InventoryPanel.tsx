@@ -2,6 +2,7 @@
 
 import { ITEMS, equipmentBonuses } from '../engine/equipment'
 import type { EquipmentState, InventoryState, ItemId } from '../types'
+import AtlasSprite, { itemQuadrant } from './AtlasSprite'
 
 interface InventoryPanelProps {
   inventory: InventoryState
@@ -33,7 +34,7 @@ export default function InventoryPanel({ inventory, equipment, onEquip, onClose 
             const equipped = equipment[item.slot] === item.id
             return (
               <button key={item.id} type="button" onClick={() => onEquip(item.id)} className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${equipped ? 'border-amber-300 bg-amber-300/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}>
-                <span className="text-3xl">{item.icon}</span>
+                <AtlasSprite atlas="items" quadrant={itemQuadrant(item.id)} alt={item.name} className="h-16 w-16 shrink-0 rounded-xl bg-slate-900/50" />
                 <span className="min-w-0 flex-1"><b>{item.name}</b><span className="ml-2 text-xs text-slate-400">{SLOT_NAMES[item.slot]}</span><span className="block text-xs text-slate-300">{item.description}</span></span>
                 <span className="text-right text-xs text-slate-300">攻 +{item.attack} · 防 +{item.defense}<br />暴击 +{item.crit}%</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${equipped ? 'bg-amber-300 text-slate-950' : 'bg-white/10'}`}>{equipped ? '已装备' : '装备'}</span>

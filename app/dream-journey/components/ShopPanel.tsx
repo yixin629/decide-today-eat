@@ -2,6 +2,7 @@
 
 import { POTION_PRICE, REST_PRICE } from '../engine/progression'
 import type { HeroStats } from '../types'
+import AtlasSprite from './AtlasSprite'
 
 interface ShopPanelProps {
   stats: HeroStats
@@ -25,7 +26,8 @@ export default function ShopPanel({ stats, onBuyPotion, onRest, onClose }: ShopP
         <p className="mt-3 rounded-xl bg-black/25 px-3 py-2 text-sm text-amber-200">当前银两：{stats.gold} 两</p>
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div><b>🧪 金创药</b><p className="mt-1 text-xs text-slate-300">战斗中恢复最多 42 点气血</p></div>
+            <AtlasSprite atlas="items" quadrant="bottom-right" alt="金创药" className="h-16 w-16 shrink-0 rounded-xl bg-emerald-950/60" />
+            <div className="min-w-0 flex-1"><b>金创药</b><p className="mt-1 text-xs text-slate-300">战斗中恢复最多 42 点气血</p></div>
             <button type="button" onClick={onBuyPotion} disabled={stats.gold < POTION_PRICE} className="shrink-0 rounded-full bg-emerald-400 px-4 py-2 font-bold text-slate-950 disabled:opacity-40">{POTION_PRICE} 两</button>
           </div>
           <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">

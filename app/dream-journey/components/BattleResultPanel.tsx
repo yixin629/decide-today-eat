@@ -1,6 +1,7 @@
 'use client'
 
 import type { BattleResult } from '../types'
+import AtlasSprite, { monsterQuadrant } from './AtlasSprite'
 
 interface BattleResultPanelProps {
   result: BattleResult
@@ -12,11 +13,11 @@ export default function BattleResultPanel({ result, onContinue }: BattleResultPa
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={victory ? '战斗胜利结算' : '战斗失败结算'}>
       <div className={`w-full max-w-md overflow-hidden rounded-3xl border-2 bg-gradient-to-b p-6 text-center text-white shadow-2xl ${victory ? 'border-amber-300 from-amber-950 to-slate-950' : 'border-rose-400 from-rose-950 to-slate-950'}`}>
-        <div className="text-6xl">{victory ? '🎉' : '🌧️'}</div>
+        <AtlasSprite atlas="monsters" quadrant={monsterQuadrant(result.enemyName)} alt={result.enemyName} className={`mx-auto h-32 w-32 ${victory ? '' : 'grayscale opacity-70'}`} />
         <p className={`mt-3 text-xs font-black tracking-[0.3em] ${victory ? 'text-amber-300' : 'text-rose-300'}`}>
           {victory ? '战斗胜利' : '战斗失败'}
         </p>
-        <h2 className="mt-1 text-3xl font-black">{result.enemyIcon} {result.enemyName}</h2>
+        <h2 className="mt-1 text-3xl font-black">{result.enemyName}</h2>
         {result.enemyKind === 'boss' && <span className="mt-2 inline-flex rounded-full bg-rose-600/80 px-3 py-1 text-xs font-bold">首领战</span>}
 
         <div className="mt-5 grid grid-cols-2 gap-3">
