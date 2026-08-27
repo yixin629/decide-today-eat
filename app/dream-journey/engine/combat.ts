@@ -1,10 +1,19 @@
 import type { BattleAction, BattleState, Enemy, HeroStats } from '../types'
 
 const ENEMIES: Omit<Enemy, 'hp' | 'maxHp'>[] = [
-  { name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
-  { name: '花妖', icon: '🌺', attack: 10, exp: 22, gold: 15 },
-  { name: '巡山小妖', icon: '👹', attack: 12, exp: 28, gold: 20 },
+  { kind: 'mob', name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
+  { kind: 'mob', name: '花妖', icon: '🌺', attack: 10, exp: 22, gold: 15 },
+  { kind: 'mob', name: '巡山小妖', icon: '👹', attack: 12, exp: 28, gold: 20 },
 ]
+
+const BOSS: Omit<Enemy, 'hp' | 'maxHp'> = {
+  kind: 'boss',
+  name: '赤焰妖王',
+  icon: '👺',
+  attack: 16,
+  exp: 90,
+  gold: 68,
+}
 
 export const INITIAL_STATS: HeroStats = {
   level: 1,
@@ -18,32 +27,41 @@ export const INITIAL_STATS: HeroStats = {
   questProgress: 0,
 }
 
-export function createBattle(level: number): BattleState {
-  const template = ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
-  const maxHp = 42 + level * 11 + Math.floor(Math.random() * 12)
+export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): BattleState {
+  const template = kind === 'boss' ? BOSS : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
+  const maxHp = kind === 'boss'
+    ? 145 + level * 24
+    : 42 + level * 11 + Math.floor(Math.random() * 12)
 
   return {
-    enemy: { ...template, hp: maxHp, maxHp, attack: template.attack + level * 2 },
-    log: [`野外突然跳出一只${template.name}！`],
+    enemy: {
+      ...template,
+      hp: maxHp,
+      maxHp,
+      attack: template.attack + level * (kind === 'boss' ? 3 : 2),
+    },
+    log: [kind === 'boss' ? `妖气冲天，${template.name}降临！` : `野外突然跳出一只${template.name}！`],
     guarding: false,
   }
 }
 
 function levelUp(stats: HeroStats) {
-  const needed = stats.level * 60
-  if (stats.exp < needed) return stats
-
-  const maxHp = stats.maxHp + 18
-  const maxMp = stats.maxMp + 8
-  return {
-    ...stats,
-    level: stats.level + 1,
-    exp: stats.exp - needed,
-    maxHp,
-    hp: maxHp,
-    maxMp,
-    mp: maxMp,
+  let next = { ...stats }
+  while (next.exp >= next.level * 60) {
+    const needed = next.level * 60
+    const maxHp = next.maxHp + 18
+    const maxMp = next.maxMp + 8
+    next = {
+      ...next,
+      level: next.level + 1,
+      exp: next.exp - needed,
+      maxHp,
+      hp: maxHp,
+      maxMp,
+      mp: maxMp,
+    }
   }
+  return next
 }
 
 export function resolveRound(
@@ -58,6 +76,7 @@ export function resolveRound(
 
   if (action === 'potion') {
     if (nextStats.potions <= 0) return { stats, battle: { ...battle, log: ['包里已经没有金创药了。', ...battle.log] } }
+    if (nextStats.hp >= nextStats.maxHp) return { stats, battle: { ...battle, log: ['气血已满，无需使用金创药。', ...battle.log] } }
     const healed = Math.min(42, nextStats.maxHp - nextStats.hp)
     nextStats = { ...nextStats, hp: nextStats.hp + healed, potions: nextStats.potions - 1 }
     log.push(`你服下金创药，恢复 ${healed} 点气血。`)
@@ -82,7 +101,6 @@ export function resolveRound(
       ...nextStats,
       exp: nextStats.exp + enemy.exp,
       gold: nextStats.gold + enemy.gold,
-      questProgress: Math.min(3, nextStats.questProgress + 1),
     })
     return { stats: nextStats, battle: null, result: 'victory' }
   }

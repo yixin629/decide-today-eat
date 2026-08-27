@@ -1,23 +1,20 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Direction, NpcDefinition, Point } from '../types'
+import type { Direction, NpcDefinition, Point, QuestStage } from '../types'
+import { BOSS, NPCS, WORLD_SIZE, isBlocked } from '../engine/world'
 
-const WORLD_SIZE = 2410
 const FRAME_COUNT = 8
 const SPEED = 190
 const ASSET_ROOT = '/games/dream-journey'
 
-const NPCS: NpcDefinition[] = [
-  { id: 'master', name: '云游师父', icon: '🧙', title: '新手指引', dialogue: '少侠，城外近日妖气浮动。击退三只小妖，回来便有奖励。', x: 1280, y: 1120 },
-  { id: 'merchant', name: '药铺掌柜', icon: '👨‍⚕️', title: '药铺', dialogue: '出门在外，记得带上金创药。愿少侠平安归来。', x: 965, y: 1350 },
-  { id: 'fairy', name: '月宫仙子', icon: '🧚', title: '传闻', dialogue: '水榭东边常有花妖出没，战胜它们能得到不少修为。', x: 1530, y: 920 },
-]
-
 interface GameCanvasProps {
   paused: boolean
+  initialPosition: Point
+  questStage: QuestStage
   onEncounter: () => void
   onNpcChange: (npc: NpcDefinition | null) => void
+  onPositionChange: (position: Point) => void
 }
 
 function directionFrom(dx: number, dy: number): Direction {
@@ -26,14 +23,33 @@ function directionFrom(dx: number, dy: number): Direction {
   return ([2, 3, 4, 5, 6, 7, 0, 1] as const)[octant]
 }
 
-export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCanvasProps) {
+export default function GameCanvas({
+  paused,
+  initialPosition,
+  questStage,
+  onEncounter,
+  onNpcChange,
+  onPositionChange,
+}: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const positionRef = useRef<Point>({ x: 1205, y: 1240 })
-  const targetRef = useRef<Point>({ x: 1205, y: 1240 })
+  const positionRef = useRef<Point>({ ...initialPosition })
+  const targetRef = useRef<Point>({ ...initialPosition })
   const keysRef = useRef(new Set<string>())
   const distanceRef = useRef(0)
   const encounterCooldownRef = useRef(0)
+  const nearbyIdRef = useRef<string | null>(null)
+  const pausedRef = useRef(paused)
+  const questStageRef = useRef(questStage)
+  const onEncounterRef = useRef(onEncounter)
+  const onNpcChangeRef = useRef(onNpcChange)
+  const onPositionChangeRef = useRef(onPositionChange)
   const [ready, setReady] = useState(false)
+
+  useEffect(() => { pausedRef.current = paused }, [paused])
+  useEffect(() => { questStageRef.current = questStage }, [questStage])
+  useEffect(() => { onEncounterRef.current = onEncounter }, [onEncounter])
+  useEffect(() => { onNpcChangeRef.current = onNpcChange }, [onNpcChange])
+  useEffect(() => { onPositionChangeRef.current = onPositionChange }, [onPositionChange])
 
   const setTargetFromPointer = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -49,6 +65,11 @@ export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCan
       y: Math.max(45, Math.min(WORLD_SIZE - 20, cameraY + (clientY - rect.top) * scaleY)),
     }
   }, [])
+
+  const setControlKey = (key: string, active: boolean) => {
+    if (active) keysRef.current.add(key)
+    else keysRef.current.delete(key)
+  }
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -70,6 +91,7 @@ export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCan
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if (!canvas || !context) return
+    const persistedPosition = positionRef.current
 
     const background = new Image()
     const frames: Record<'run' | 'stand', HTMLImageElement[][]> = { run: [], stand: [] }
@@ -84,15 +106,16 @@ export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCan
       )
     }
 
-    let animationFrame = 0
+    let requestId = 0
     let previous = performance.now()
     let elapsed = 0
     let direction: Direction = 4
     let cancelled = false
+    let lastPositionReport = 0
 
     const render = (now: number) => {
       if (cancelled) return
-      const delta = Math.min(0.04, (now - previous) / 1000)
+      const delta = Math.max(0, Math.min(0.04, (now - previous) / 1000))
       previous = now
       const position = positionRef.current
       const keys = keysRef.current
@@ -112,62 +135,111 @@ export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCan
         targetRef.current = { ...position }
       }
 
-      const moving = !paused && (dx !== 0 || dy !== 0)
-      if (moving) {
+      const wantsToMove = !pausedRef.current && (dx !== 0 || dy !== 0)
+      let moved = false
+      if (wantsToMove) {
         direction = directionFrom(dx, dy)
         const step = SPEED * delta
-        position.x = Math.max(20, Math.min(WORLD_SIZE - 20, position.x + dx * step))
-        position.y = Math.max(45, Math.min(WORLD_SIZE - 20, position.y + dy * step))
+        const nextX = { x: Math.max(20, Math.min(WORLD_SIZE - 20, position.x + dx * step)), y: position.y }
+        if (!isBlocked(nextX)) {
+          position.x = nextX.x
+          moved = true
+        }
+        const nextY = { x: position.x, y: Math.max(45, Math.min(WORLD_SIZE - 20, position.y + dy * step)) }
+        if (!isBlocked(nextY)) {
+          position.y = nextY.y
+          moved = true
+        }
+        if (!moved) targetRef.current = { ...position }
+      }
+
+      if (moved) {
+        const step = SPEED * delta
         distanceRef.current += step
         encounterCooldownRef.current = Math.max(0, encounterCooldownRef.current - step)
+        if (now - lastPositionReport > 700) {
+          lastPositionReport = now
+          onPositionChangeRef.current({ ...position })
+        }
         if (distanceRef.current > 760 && encounterCooldownRef.current === 0 && Math.random() < 0.012) {
           distanceRef.current = 0
           encounterCooldownRef.current = 500
-          onEncounter()
+          onEncounterRef.current()
         }
       }
 
       elapsed += delta
-      animationFrame = Math.floor(elapsed * (moving ? 9 : 5)) % FRAME_COUNT
+      const animationFrame = Math.floor(elapsed * (moved ? 9 : 5)) % FRAME_COUNT
       const cameraX = Math.max(0, Math.min(WORLD_SIZE - canvas.width, position.x - canvas.width / 2))
       const cameraY = Math.max(0, Math.min(WORLD_SIZE - canvas.height, position.y - canvas.height / 2))
       context.clearRect(0, 0, canvas.width, canvas.height)
       if (background.complete) context.drawImage(background, -cameraX, -cameraY)
 
+      const entities = questStageRef.current === 'boss-ready' ? [...NPCS, BOSS] : NPCS
       let nearest: NpcDefinition | null = null
-      for (const npc of NPCS) {
-        const screenX = npc.x - cameraX
-        const screenY = npc.y - cameraY
-        const near = Math.hypot(npc.x - position.x, npc.y - position.y) < 105
-        if (near) nearest = npc
-        context.font = '42px sans-serif'
+      for (const entity of entities) {
+        const screenX = entity.x - cameraX
+        const screenY = entity.y - cameraY
+        const near = Math.hypot(entity.x - position.x, entity.y - position.y) < 105
+        const objective = (
+          (entity.id === 'master' && ['not-started', 'returning'].includes(questStageRef.current))
+          || (entity.id === 'boss' && questStageRef.current === 'boss-ready')
+        )
+        if (near) nearest = entity
+        if (objective) {
+          context.beginPath()
+          context.arc(screenX, screenY - 18, 35 + Math.sin(elapsed * 4) * 4, 0, Math.PI * 2)
+          context.strokeStyle = '#fde047'
+          context.lineWidth = 3
+          context.stroke()
+        }
+        context.font = entity.id === 'boss' ? '54px sans-serif' : '42px sans-serif'
         context.textAlign = 'center'
-        context.fillText(npc.icon, screenX, screenY)
-        context.fillStyle = near ? '#fef08a' : '#fff'
+        context.fillText(entity.icon, screenX, screenY)
+        context.fillStyle = near || objective ? '#fef08a' : '#fff'
         context.font = 'bold 14px sans-serif'
         context.strokeStyle = 'rgba(15, 23, 42, .85)'
         context.lineWidth = 4
-        context.strokeText(npc.name, screenX, screenY - 42)
-        context.fillText(npc.name, screenX, screenY - 42)
+        context.strokeText(entity.name, screenX, screenY - 42)
+        context.fillText(entity.name, screenX, screenY - 42)
       }
-      onNpcChange(nearest)
+      const nearestId = nearest?.id ?? null
+      if (nearestId !== nearbyIdRef.current) {
+        nearbyIdRef.current = nearestId
+        onNpcChangeRef.current(nearest)
+      }
 
-      const sprite = frames[moving ? 'run' : 'stand'][direction][animationFrame]
-      if (sprite.complete) {
+      const sprite = frames[moved ? 'run' : 'stand'][direction]?.[animationFrame]
+      if (sprite?.complete) {
         const screenX = position.x - cameraX
         const screenY = position.y - cameraY
         context.drawImage(sprite, screenX - sprite.width / 2, screenY - sprite.height + 20)
       }
-      animationFrame = requestAnimationFrame(render)
+      requestId = requestAnimationFrame(render)
     }
 
     background.onload = () => setReady(true)
-    animationFrame = requestAnimationFrame(render)
+    requestId = requestAnimationFrame(render)
     return () => {
       cancelled = true
-      cancelAnimationFrame(animationFrame)
+      onPositionChangeRef.current({ ...persistedPosition })
+      cancelAnimationFrame(requestId)
     }
-  }, [onEncounter, onNpcChange, paused])
+  }, [])
+
+  const directionButton = (label: string, key: string, className: string) => (
+    <button
+      type="button"
+      aria-label={label}
+      className={`pointer-events-auto grid h-11 w-11 select-none place-items-center rounded-xl border border-white/30 bg-slate-950/75 text-lg font-black text-white shadow-lg backdrop-blur active:bg-amber-400 active:text-slate-950 ${className}`}
+      onPointerDown={(event) => { event.preventDefault(); setControlKey(key, true) }}
+      onPointerUp={() => setControlKey(key, false)}
+      onPointerCancel={() => setControlKey(key, false)}
+      onPointerLeave={() => setControlKey(key, false)}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <div className="relative overflow-hidden rounded-2xl border-4 border-amber-200/80 bg-slate-900 shadow-2xl">
@@ -177,10 +249,16 @@ export default function GameCanvas({ paused, onEncounter, onNpcChange }: GameCan
         height={560}
         className="block aspect-[9/5.6] w-full touch-none cursor-crosshair"
         onPointerDown={(event) => setTargetFromPointer(event.clientX, event.clientY)}
-        aria-label="梦境长安游戏地图，使用方向键、WASD 或点击地图移动"
+        aria-label="梦境长安游戏地图，使用方向键、WASD、虚拟方向键或点击地图移动"
       />
       {!ready && <div className="absolute inset-0 grid place-items-center bg-slate-950 text-amber-100">正在进入梦境长安…</div>}
       <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-slate-950/70 px-3 py-1 text-xs text-white backdrop-blur">WASD / 方向键 / 点击移动</div>
+      <div className="pointer-events-none absolute bottom-3 right-3 grid grid-cols-3 gap-1 md:hidden">
+        {directionButton('↑', 'w', 'col-start-2')}
+        {directionButton('←', 'a', 'col-start-1 row-start-2')}
+        {directionButton('↓', 's', 'col-start-2 row-start-2')}
+        {directionButton('→', 'd', 'col-start-3 row-start-2')}
+      </div>
     </div>
   )
 }

@@ -19,7 +19,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
         <div className="relative h-52 overflow-hidden bg-gradient-to-b from-sky-700 via-indigo-700 to-fuchsia-950">
           <div className="absolute inset-x-0 bottom-0 h-20 bg-[radial-gradient(ellipse_at_center,_#fde68a55,_transparent_65%)]" />
           <div className="absolute left-[16%] bottom-7 text-center"><div className="text-7xl drop-shadow-xl">⚔️</div><b>少侠</b></div>
-          <div className="absolute right-[16%] bottom-7 text-center animate-bounce"><div className="text-7xl drop-shadow-xl">{battle.enemy.icon}</div><b>{battle.enemy.name}</b></div>
+          <div className="absolute right-[16%] bottom-7 text-center animate-bounce"><div className="text-7xl drop-shadow-xl">{battle.enemy.icon}</div><b>{battle.enemy.name}</b>{battle.enemy.kind === 'boss' && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs">首领</span>}</div>
         </div>
         <div className="grid gap-4 p-4 md:grid-cols-[1fr_1.25fr]">
           <div className="space-y-3">
@@ -30,7 +30,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
               <button onClick={() => onAction('attack')} className="rounded-xl bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400">⚔️ 攻击</button>
               <button onClick={() => onAction('skill')} disabled={stats.mp < 12} className="rounded-xl bg-fuchsia-600 px-3 py-2 font-bold hover:bg-fuchsia-500 disabled:opacity-40">✨ 横扫千星</button>
               <button onClick={() => onAction('guard')} className="rounded-xl bg-sky-700 px-3 py-2 font-bold hover:bg-sky-600">🛡️ 防御</button>
-              <button onClick={() => onAction('potion')} disabled={stats.potions === 0} className="rounded-xl bg-emerald-700 px-3 py-2 font-bold hover:bg-emerald-600 disabled:opacity-40">🧪 丹药 ×{stats.potions}</button>
+              <button onClick={() => onAction('potion')} disabled={stats.potions === 0 || stats.hp >= stats.maxHp} className="rounded-xl bg-emerald-700 px-3 py-2 font-bold hover:bg-emerald-600 disabled:opacity-40">🧪 丹药 ×{stats.potions}</button>
             </div>
           </div>
           <div className="min-h-40 rounded-2xl border border-white/10 bg-black/30 p-3 text-sm leading-7" aria-live="polite">

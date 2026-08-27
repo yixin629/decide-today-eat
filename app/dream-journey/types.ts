@@ -17,7 +17,17 @@ export interface HeroStats {
   questProgress: number
 }
 
+export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
+
+export interface GameSave {
+  version: 2
+  stats: HeroStats
+  position: Point
+  questStage: QuestStage
+}
+
 export interface Enemy {
+  kind: 'mob' | 'boss'
   name: string
   icon: string
   hp: number
@@ -41,4 +51,5 @@ export interface NpcDefinition extends Point {
   icon: string
   title: string
   dialogue: string
+  actionLabel?: string
 }
