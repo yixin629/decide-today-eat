@@ -1,0 +1,6 @@
+Source: https://github.com/liangtongzhuo/game_web
+
+This local-practice prototype reuses the background image and eight-direction
+character animation frames from the source project. The original Canvas demo
+was rewritten as a typed React/Next.js feature with desktop controls, NPCs,
+quests, combat, responsive rendering, and local save data.
