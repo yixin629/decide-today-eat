@@ -1,4 +1,4 @@
-import type { BattleAction, BattleState, Enemy, HeroStats } from '../types'
+import type { BattleAction, BattleState, Enemy, EnemyIntent, HeroStats } from '../types'
 
 const ENEMIES: Omit<Enemy, 'hp' | 'maxHp'>[] = [
   { kind: 'mob', name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
@@ -25,6 +25,9 @@ export const INITIAL_STATS: HeroStats = {
   gold: 36,
   potions: 3,
   questProgress: 0,
+  attack: 6,
+  defense: 2,
+  crit: 5,
 }
 
 export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): BattleState {
@@ -40,9 +43,25 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): Battle
       maxHp,
       attack: template.attack + level * (kind === 'boss' ? 3 : 2),
     },
-    log: [kind === 'boss' ? `妖气冲天，${template.name}降临！` : `野外突然跳出一只${template.name}！`],
+    log: [kind === 'boss' ? `妖气冲天，${template.name}降临！留意它下一回合的招式。` : `野外突然跳出一只${template.name}！`],
     guarding: false,
+    turn: 1,
+    intent: 'strike',
+    enraged: false,
   }
+}
+
+export const INTENT_LABELS: Record<EnemyIntent, { name: string; description: string; icon: string }> = {
+  strike: { name: '妖爪突袭', description: '普通单体攻击', icon: '⚔️' },
+  inferno: { name: '焚天重击', description: '高额伤害，建议防御', icon: '🔥' },
+  roar: { name: '摄魂咆哮', description: '造成伤害并削减法力', icon: '🌋' },
+}
+
+function nextIntent(turn: number, enraged: boolean): EnemyIntent {
+  if (enraged && turn % 2 === 0) return 'inferno'
+  if (turn % 3 === 0) return 'inferno'
+  if (turn % 2 === 0) return 'roar'
+  return 'strike'
 }
 
 function levelUp(stats: HeroStats) {
@@ -68,6 +87,7 @@ export function resolveRound(
   stats: HeroStats,
   battle: BattleState,
   action: BattleAction,
+  bonuses = { attack: 0, defense: 0, crit: 0 },
 ): { stats: HeroStats; battle: BattleState | null; result?: 'victory' | 'defeat' } {
   let nextStats = { ...stats }
   const enemy = { ...battle.enemy }
@@ -80,6 +100,12 @@ export function resolveRound(
     const healed = Math.min(42, nextStats.maxHp - nextStats.hp)
     nextStats = { ...nextStats, hp: nextStats.hp + healed, potions: nextStats.potions - 1 }
     log.push(`你服下金创药，恢复 ${healed} 点气血。`)
+  } else if (action === 'heal') {
+    if (nextStats.mp < 10) return { stats, battle: { ...battle, log: ['法力不足，无法施展回春诀。', ...battle.log] } }
+    if (nextStats.hp >= nextStats.maxHp) return { stats, battle: { ...battle, log: ['气血已满，无需施展回春诀。', ...battle.log] } }
+    const healed = Math.min(26 + nextStats.level * 5, nextStats.maxHp - nextStats.hp)
+    nextStats = { ...nextStats, hp: nextStats.hp + healed, mp: nextStats.mp - 10 }
+    log.push(`回春诀恢复 ${healed} 点气血。`)
   } else if (action === 'guard') {
     guarding = true
     log.push('你凝神架势，本回合受到的伤害减半。')
@@ -88,12 +114,14 @@ export function resolveRound(
     if (skill && nextStats.mp < 12) {
       return { stats, battle: { ...battle, log: ['法力不足，无法施展横扫千星。', ...battle.log] } }
     }
-    const damage = skill
-      ? 22 + nextStats.level * 7 + Math.floor(Math.random() * 9)
-      : 11 + nextStats.level * 4 + Math.floor(Math.random() * 7)
+    const critical = Math.random() * 100 < nextStats.crit + bonuses.crit
+    const baseDamage = skill
+      ? 18 + nextStats.level * 7 + Math.floor(Math.random() * 9)
+      : 8 + nextStats.level * 4 + Math.floor(Math.random() * 7)
+    const damage = Math.round((baseDamage + nextStats.attack + bonuses.attack) * (critical ? 1.6 : 1))
     enemy.hp = Math.max(0, enemy.hp - damage)
     nextStats.mp -= skill ? 12 : 0
-    log.push(`${skill ? '横扫千星' : '普通攻击'}造成 ${damage} 点伤害。`)
+    log.push(`${skill ? '横扫千星' : '普通攻击'}造成 ${damage} 点伤害${critical ? '（暴击）' : ''}。`)
   }
 
   if (enemy.hp <= 0) {
@@ -105,15 +133,41 @@ export function resolveRound(
     return { stats: nextStats, battle: null, result: 'victory' }
   }
 
-  const rawDamage = enemy.attack + Math.floor(Math.random() * 7)
-  const damage = guarding ? Math.ceil(rawDamage / 2) : rawDamage
+  const enraged = battle.enraged || (enemy.kind === 'boss' && enemy.hp <= enemy.maxHp / 2)
+  if (enraged && !battle.enraged) log.push(`${enemy.name}进入狂暴阶段，焚天重击将更加频繁！`)
+
+  let rawDamage = enemy.attack + Math.floor(Math.random() * 7)
+  let ignoresDefense = false
+  if (enemy.kind === 'boss' && battle.intent === 'inferno') {
+    rawDamage = Math.round(enemy.attack * (enraged ? 1.85 : 1.6)) + Math.floor(Math.random() * 6)
+    log.push(`${enemy.name}释放焚天重击！`)
+  } else if (enemy.kind === 'boss' && battle.intent === 'roar') {
+    rawDamage = Math.round(enemy.attack * 0.8) + Math.floor(Math.random() * 5)
+    const drained = Math.min(8, nextStats.mp)
+    nextStats.mp -= drained
+    ignoresDefense = true
+    log.push(`${enemy.name}发出摄魂咆哮，震散 ${drained} 点法力！`)
+  }
+  const reducedDamage = Math.max(1, rawDamage - (ignoresDefense ? 0 : nextStats.defense + bonuses.defense))
+  const damage = guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
   nextStats.hp = Math.max(0, nextStats.hp - damage)
-  log.push(`${enemy.name}反击，造成 ${damage} 点伤害。`)
+  log.push(`${enemy.name}${battle.intent === 'strike' ? '反击' : '的招式'}造成 ${damage} 点伤害。`)
 
   if (nextStats.hp <= 0) {
     nextStats = { ...nextStats, hp: nextStats.maxHp, mp: nextStats.maxMp, gold: Math.max(0, nextStats.gold - 10) }
     return { stats: nextStats, battle: null, result: 'defeat' }
   }
 
-  return { stats: nextStats, battle: { enemy, guarding: false, log: [...log, ...battle.log].slice(0, 5) } }
+  const turn = battle.turn + 1
+  return {
+    stats: nextStats,
+    battle: {
+      enemy,
+      guarding: false,
+      turn,
+      intent: enemy.kind === 'boss' ? nextIntent(turn, enraged) : 'strike',
+      enraged,
+      log: [...log, ...battle.log].slice(0, 7),
+    },
+  }
 }

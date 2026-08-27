@@ -15,15 +15,32 @@ export interface HeroStats {
   gold: number
   potions: number
   questProgress: number
+  attack: number
+  defense: number
+  crit: number
+}
+
+export type SceneId = 'overworld' | 'crimson-cave'
+export type EquipmentSlot = 'weapon' | 'armor' | 'accessory'
+export type ItemId = 'traveler-sword' | 'cloud-robe' | 'crimson-charm'
+export type InventoryState = Record<ItemId, number>
+export type EquipmentState = Record<EquipmentSlot, ItemId | null>
+
+export interface WorldFlags {
+  caveChestOpened: boolean
 }
 
 export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
 
 export interface GameSave {
-  version: 2
+  version: 4
   stats: HeroStats
   position: Point
   questStage: QuestStage
+  scene: SceneId
+  inventory: InventoryState
+  equipment: EquipmentState
+  worldFlags: WorldFlags
 }
 
 export interface Enemy {
@@ -41,9 +58,25 @@ export interface BattleState {
   enemy: Enemy
   log: string[]
   guarding: boolean
+  turn: number
+  intent: EnemyIntent
+  enraged: boolean
 }
 
-export type BattleAction = 'attack' | 'skill' | 'guard' | 'potion'
+export type EnemyIntent = 'strike' | 'inferno' | 'roar'
+
+export interface BattleResult {
+  outcome: 'victory' | 'defeat'
+  enemyName: string
+  enemyIcon: string
+  enemyKind: Enemy['kind']
+  expGained: number
+  goldChange: number
+  leveledUp: boolean
+  message: string
+}
+
+export type BattleAction = 'attack' | 'skill' | 'heal' | 'guard' | 'potion'
 
 export interface NpcDefinition extends Point {
   id: string
@@ -52,4 +85,11 @@ export interface NpcDefinition extends Point {
   title: string
   dialogue: string
   actionLabel?: string
+}
+
+export interface PortalDefinition extends Point {
+  id: string
+  name: string
+  destination: Point
+  destinationName: string
 }
