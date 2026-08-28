@@ -8,9 +8,11 @@ import CaveCanvas from './components/CaveCanvas'
 import GameCanvas from './components/GameCanvas'
 import InventoryPanel from './components/InventoryPanel'
 import MiniMap from './components/MiniMap'
+import PetPanel from './components/PetPanel'
 import ShopPanel from './components/ShopPanel'
 import { createBattle, INITIAL_STATS, resolveRound } from './engine/combat'
 import { INITIAL_EQUIPMENT, INITIAL_INVENTORY, ITEMS, equipmentBonuses } from './engine/equipment'
+import { INITIAL_PET, starUpPet, trainPet, upgradePetSkill } from './engine/pet'
 import { getSceneName } from './engine/world'
 import {
   CHAPTER_REWARD,
@@ -31,14 +33,16 @@ import type {
   ItemId,
   NpcDefinition,
   Point,
+  PetState,
   QuestStage,
   SceneId,
   WorldFlags,
 } from './types'
 
-const SAVE_KEY = 'dream-journey-save-v4'
-const PREVIOUS_SAVE_KEY = 'dream-journey-save-v3'
-const OLDER_SAVE_KEY = 'dream-journey-save-v2'
+const SAVE_KEY = 'dream-journey-save-v5'
+const PREVIOUS_SAVE_KEY = 'dream-journey-save-v4'
+const OLDER_SAVE_KEY = 'dream-journey-save-v3'
+const EARLIER_SAVE_KEY = 'dream-journey-save-v2'
 const LEGACY_SAVE_KEY = 'dream-journey-save-v1'
 
 interface DialogueState {
@@ -55,19 +59,21 @@ export default function DreamJourneyPage() {
   const [inventory, setInventory] = useState<InventoryState>(INITIAL_INVENTORY)
   const [equipment, setEquipment] = useState<EquipmentState>(INITIAL_EQUIPMENT)
   const [worldFlags, setWorldFlags] = useState<WorldFlags>({ caveChestOpened: false })
+  const [pet, setPet] = useState<PetState>(INITIAL_PET)
   const [battle, setBattle] = useState<BattleState | null>(null)
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null)
   const [nearbyNpc, setNearbyNpc] = useState<NpcDefinition | null>(null)
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
   const [shopOpen, setShopOpen] = useState(false)
   const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [petOpen, setPetOpen] = useState(false)
   const [notice, setNotice] = useState(questNotice('not-started', 0))
   const [sceneName, setSceneName] = useState('长安郊野')
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     const saved = parseGameSave(
-      window.localStorage.getItem(SAVE_KEY) ?? window.localStorage.getItem(PREVIOUS_SAVE_KEY) ?? window.localStorage.getItem(OLDER_SAVE_KEY),
+      window.localStorage.getItem(SAVE_KEY) ?? window.localStorage.getItem(PREVIOUS_SAVE_KEY) ?? window.localStorage.getItem(OLDER_SAVE_KEY) ?? window.localStorage.getItem(EARLIER_SAVE_KEY),
       window.localStorage.getItem(LEGACY_SAVE_KEY),
     )
     setStats(saved.stats)
@@ -77,6 +83,7 @@ export default function DreamJourneyPage() {
     setInventory(saved.inventory)
     setEquipment(saved.equipment)
     setWorldFlags(saved.worldFlags)
+    setPet(saved.pet)
     setNotice(questNotice(saved.questStage, saved.stats.questProgress))
     setSceneName(saved.scene === 'crimson-cave' ? '赤焰妖王洞窟' : getSceneName(saved.position))
     setLoaded(true)
@@ -85,7 +92,7 @@ export default function DreamJourneyPage() {
   useEffect(() => {
     if (!loaded) return
     window.localStorage.setItem(SAVE_KEY, JSON.stringify({
-      version: 4,
+      version: 5,
       stats,
       position,
       questStage,
@@ -93,22 +100,23 @@ export default function DreamJourneyPage() {
       inventory,
       equipment,
       worldFlags,
+      pet,
     }))
-  }, [equipment, inventory, loaded, position, questStage, scene, stats, worldFlags])
+  }, [equipment, inventory, loaded, pet, position, questStage, scene, stats, worldFlags])
 
   const bonuses = useMemo(() => equipmentBonuses(equipment), [equipment])
 
   const beginEncounter = useCallback(() => {
     if (questStage !== 'hunting' && questStage !== 'completed') return
     setBattleResult(null)
-    setBattle((current) => current ?? createBattle(stats.level))
-  }, [questStage, stats.level])
+    setBattle((current) => current ?? createBattle(stats.level, 'mob', pet))
+  }, [pet, questStage, stats.level])
 
   const beginBossEncounter = () => {
     if (questStage !== 'boss-ready') return
     setDialogue(null)
     setBattleResult(null)
-    setBattle(createBattle(stats.level, 'boss'))
+    setBattle(createBattle(stats.level, 'boss', pet))
     setNotice('赤焰妖王现身，小心它的重击！')
   }
 
@@ -277,6 +285,18 @@ export default function DreamJourneyPage() {
     setNotice(`已装备${item.name}：攻击 +${item.attack}，防御 +${item.defense}，暴击 +${item.crit}%。`)
   }
 
+  const applyPetProgress = (result: ReturnType<typeof trainPet>) => {
+    if (result.success) {
+      setPet(result.pet)
+      setStats(result.stats)
+    }
+    setNotice(result.message)
+  }
+
+  const handleTrainPet = () => applyPetProgress(trainPet(pet, stats))
+  const handleStarUpPet = () => applyPetProgress(starUpPet(pet, stats))
+  const handleUpgradePetSkill = () => applyPetProgress(upgradePetSkill(pet, stats))
+
   const questPercent = questStage === 'completed'
     ? 100
     : questStage === 'returning'
@@ -305,7 +325,7 @@ export default function DreamJourneyPage() {
             {loaded ? (
               scene === 'overworld' ? (
                 <GameCanvas
-                  paused={Boolean(battle || battleResult || dialogue || shopOpen || inventoryOpen)}
+                  paused={Boolean(battle || battleResult || dialogue || shopOpen || inventoryOpen || petOpen)}
                   initialPosition={position}
                   questStage={questStage}
                   onEncounter={beginEncounter}
@@ -316,7 +336,7 @@ export default function DreamJourneyPage() {
                 />
               ) : (
                 <CaveCanvas
-                  paused={Boolean(battle || battleResult || inventoryOpen)}
+                  paused={Boolean(battle || battleResult || inventoryOpen || petOpen)}
                   bossActive={questStage === 'boss-ready'}
                   chestOpened={worldFlags.caveChestOpened}
                   initialPosition={position}
@@ -359,6 +379,7 @@ export default function DreamJourneyPage() {
               />
             )}
             {inventoryOpen && <InventoryPanel inventory={inventory} equipment={equipment} onEquip={handleEquip} onClose={() => setInventoryOpen(false)} />}
+            {petOpen && <PetPanel pet={pet} gold={stats.gold} onTrain={handleTrainPet} onStarUp={handleStarUpPet} onUpgradeSkill={handleUpgradePetSkill} onClose={() => setPetOpen(false)} />}
           </section>
 
           <aside className="space-y-4">
@@ -378,6 +399,7 @@ export default function DreamJourneyPage() {
                 <p className="flex justify-between"><span>🎯 暴击</span><b>{stats.crit + bonuses.crit}%</b></p>
               </div>
               <button type="button" onClick={() => setInventoryOpen(true)} className="mt-3 w-full rounded-xl bg-amber-300 px-3 py-2 font-black text-slate-950">🎒 装备背包</button>
+              <button type="button" onClick={() => setPetOpen(true)} className="mt-2 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2 font-black text-white">🫧 宠物养成 · {pet.level}级</button>
             </div>
 
             <div className="rounded-2xl border border-amber-300/30 bg-amber-100/10 p-4">

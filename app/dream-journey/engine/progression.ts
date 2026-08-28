@@ -1,6 +1,7 @@
-import type { EquipmentState, GameSave, HeroStats, InventoryState, Point, QuestStage, SceneId, WorldFlags } from '../types'
+import type { EquipmentState, GameSave, HeroStats, InventoryState, PetState, Point, QuestStage, SceneId, WorldFlags } from '../types'
 import { INITIAL_STATS } from './combat'
 import { INITIAL_EQUIPMENT, INITIAL_INVENTORY } from './equipment'
+import { INITIAL_PET } from './pet'
 
 export const QUEST_TARGET = 3
 export const POTION_PRICE = 18
@@ -9,7 +10,7 @@ export const CHAPTER_REWARD = { gold: 120, potions: 3 } as const
 export const INITIAL_POSITION: Point = { x: 1205, y: 1240 }
 
 export const INITIAL_SAVE: GameSave = {
-  version: 4,
+  version: 5,
   stats: INITIAL_STATS,
   position: INITIAL_POSITION,
   questStage: 'not-started',
@@ -17,6 +18,7 @@ export const INITIAL_SAVE: GameSave = {
   inventory: INITIAL_INVENTORY,
   equipment: INITIAL_EQUIPMENT,
   worldFlags: { caveChestOpened: false },
+  pet: INITIAL_PET,
 }
 
 const QUEST_STAGES: readonly QuestStage[] = [
@@ -78,6 +80,16 @@ function parseWorldFlags(value: unknown): WorldFlags {
   return { caveChestOpened: saved.caveChestOpened === true }
 }
 
+function parsePet(value: unknown): PetState {
+  const saved = value && typeof value === 'object' ? value as Partial<PetState> : {}
+  return {
+    level: Math.min(30, Math.max(1, Math.floor(finiteNumber(saved.level, INITIAL_PET.level)))),
+    exp: Math.max(0, Math.floor(finiteNumber(saved.exp, INITIAL_PET.exp))),
+    stars: Math.min(5, Math.max(0, Math.floor(finiteNumber(saved.stars, INITIAL_PET.stars)))),
+    skillLevel: Math.min(5, Math.max(1, Math.floor(finiteNumber(saved.skillLevel, INITIAL_PET.skillLevel)))),
+  }
+}
+
 export function parseGameSave(raw: string | null, legacyRaw: string | null): GameSave {
   try {
     if (raw) {
@@ -90,7 +102,7 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
         : INITIAL_POSITION
       const inventory = parseInventory(saved.inventory)
       return {
-        version: 4,
+        version: 5,
         stats: parseStats(saved.stats),
         position,
         questStage: QUEST_STAGES.includes(saved.questStage as QuestStage)
@@ -100,6 +112,7 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
         inventory,
         equipment: parseEquipment(saved.equipment, inventory),
         worldFlags: parseWorldFlags(saved.worldFlags),
+        pet: parsePet(saved.pet),
       }
     }
     if (legacyRaw) {

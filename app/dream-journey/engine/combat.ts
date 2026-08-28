@@ -1,4 +1,5 @@
-import type { BattleAction, BattleState, Enemy, EnemyIntent, HeroStats } from '../types'
+import type { BattleAction, BattleState, Enemy, EnemyIntent, HeroStats, PetState } from '../types'
+import { INITIAL_PET, petAttack } from './pet'
 
 const ENEMIES: Omit<Enemy, 'hp' | 'maxHp'>[] = [
   { kind: 'mob', name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
@@ -30,7 +31,7 @@ export const INITIAL_STATS: HeroStats = {
   crit: 5,
 }
 
-export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): BattleState {
+export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET): BattleState {
   const template = kind === 'boss' ? BOSS : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
   const maxHp = kind === 'boss'
     ? 145 + level * 24
@@ -49,7 +50,7 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): Battle
           { ...ENEMIES[1], name: '花妖', hp: 30 + level * 6, maxHp: 30 + level * 6, attack: 3 + level, exp: 0, gold: 0 },
         ]
       : [],
-    companion: { name: '泡泡灵宠', model: '泡泡精', attack: 6 + level * 2 },
+    companion: { name: '泡泡灵宠', model: '泡泡精', attack: petAttack(pet) },
     lastCompanionAttack: null,
     log: [kind === 'boss' ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。` : `野外突然跳出一只${template.name}！`],
     guarding: false,

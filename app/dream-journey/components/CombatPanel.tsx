@@ -12,12 +12,12 @@ interface CombatPanelProps {
   onAction: (action: BattleAction, targetIndex: number) => void
 }
 
-type BattlePhase = 'idle' | 'hero-action' | 'enemy-counter'
+type BattlePhase = 'idle' | 'hero-action' | 'companion-action' | 'enemy-counter'
 
 interface FloatingNumber {
   id: number
   text: string
-  tone: 'damage' | 'heal'
+  tone: 'damage' | 'heal' | 'companion'
   lane: number
   targetIndex: number
 }
@@ -30,7 +30,7 @@ function FloatingNumbers({ items }: { items: FloatingNumber[] }) {
   return items.map((item) => (
     <span
       key={item.id}
-      className={`pointer-events-none absolute top-5 z-30 text-3xl font-black drop-shadow-[0_2px_2px_rgba(0,0,0,1)] motion-safe:animate-[battle-number-rise_760ms_ease-out_forwards] ${item.tone === 'heal' ? 'text-emerald-300' : 'text-amber-200'}`}
+      className={`pointer-events-none absolute top-5 z-30 text-3xl font-black drop-shadow-[0_2px_2px_rgba(0,0,0,1)] motion-safe:animate-[battle-number-rise_760ms_ease-out_forwards] ${item.tone === 'heal' ? 'text-emerald-300' : item.tone === 'companion' ? 'text-cyan-200' : 'text-amber-200'}`}
       style={{ marginLeft: `${item.lane * 34}px` }}
     >
       {item.text}
@@ -77,18 +77,23 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
 
     enemyDifferences.forEach((enemyDifference, targetIndex) => {
       if (enemyDifference <= 0) return
-      if (activeAction === 'skill' && targetIndex === selectedTargetIndex) {
-        const first = Math.floor(enemyDifference / 3)
-        const second = Math.floor((enemyDifference - first) / 2)
-        const hits = [first, second, enemyDifference - first - second]
+      const companionDamage = battle.lastCompanionAttack?.targetIndex === targetIndex
+        ? Math.min(enemyDifference, battle.lastCompanionAttack.damage)
+        : 0
+      const heroDamage = enemyDifference - companionDamage
+      if (activeAction === 'skill' && targetIndex === selectedTargetIndex && heroDamage >= 3) {
+        const first = Math.floor(heroDamage / 3)
+        const second = Math.floor((heroDamage - first) / 2)
+        const hits = [first, second, heroDamage - first - second]
         hits.forEach((damage, index) => showPopup('enemy', `-${damage}`, 'damage', index * 150, index - 1, targetIndex))
-      } else {
-        showPopup('enemy', `-${enemyDifference}`, 'damage', targetIndex * 70, 0, targetIndex)
+      } else if (heroDamage > 0) {
+        showPopup('enemy', `-${heroDamage}`, 'damage', targetIndex * 70, 0, targetIndex)
       }
+      if (companionDamage > 0) showPopup('enemy', `-${companionDamage}`, 'companion', 360, 0, targetIndex)
     })
-    if (heroDifference > 0) showPopup('hero', `-${heroDifference}`, 'damage', 360, 0)
+    if (heroDifference > 0) showPopup('hero', `-${heroDifference}`, 'damage', 720, 0)
     if (heroDifference < 0) showPopup('hero', `+${Math.abs(heroDifference)}`, 'heal', 0, 0)
-  }, [activeAction, battle.enemy.hp, battle.reinforcements, selectedTargetIndex, stats.hp])
+  }, [activeAction, battle.enemy.hp, battle.lastCompanionAttack, battle.reinforcements, selectedTargetIndex, stats.hp])
 
   useEffect(() => {
     const enemies = [battle.enemy, ...battle.reinforcements]
@@ -106,13 +111,16 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
       onAction(action, selectedTargetIndex)
     }, 560))
     timersRef.current.push(window.setTimeout(() => {
-      setPhase('enemy-counter')
+      setPhase('companion-action')
     }, 920))
+    timersRef.current.push(window.setTimeout(() => {
+      setPhase('enemy-counter')
+    }, 1280))
     timersRef.current.push(window.setTimeout(() => {
       setPhase('idle')
       setActiveAction(null)
       setEnemyActionIntent(null)
-    }, 1650))
+    }, 2050))
   }
 
   const heroFrame = '/games/dream-journey/jxk/stand/02000.png'
@@ -132,6 +140,13 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
   const enemies = [battle.enemy, ...battle.reinforcements]
   const selectedEnemy = enemies[selectedTargetIndex] ?? battle.enemy
   const counterLabel = battle.enemy.hp > 0 ? `${battle.enemy.name} · ${intent.name}` : '残余护卫 · 联手反击'
+  const phaseLabel = phase === 'idle'
+    ? `当前目标 · ${selectedEnemy.name}`
+    : phase === 'hero-action'
+      ? actionName
+      : phase === 'companion-action'
+        ? `${battle.companion.name} · 灵泡追击`
+        : counterLabel
   const formationClasses = [
     'right-[11%] top-[22%] w-44 md:right-[15%] md:w-56',
     'right-[2%] top-[5%] w-28 md:right-[4%] md:w-32',
@@ -139,14 +154,14 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
   ]
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="动态回合战斗">
-      <div className="w-full max-w-4xl overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-indigo-950 to-slate-950 text-white shadow-2xl">
+    <div className="absolute inset-0 z-30 flex items-start justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm md:items-center" role="dialog" aria-modal="true" aria-label="动态回合战斗">
+      <div className="my-auto w-full max-w-4xl overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-b from-indigo-950 to-slate-950 text-white shadow-2xl">
         <div className={`relative h-80 overflow-hidden transition-colors duration-500 md:h-[390px] ${phase === 'enemy-counter' ? 'motion-safe:animate-pulse' : ''}`}>
           <Image src="/games/dream-journey/battle/arena-night-v1.png" alt="月下长安斜向战斗场景" fill sizes="896px" className={`object-cover transition-all duration-500 ${battle.enraged ? 'scale-105 saturate-150 contrast-125' : ''}`} priority unoptimized />
           <div className={`absolute inset-0 bg-gradient-to-tr transition-colors duration-500 ${battle.enraged ? 'from-red-950/55 via-transparent to-orange-600/20' : 'from-indigo-950/20 via-transparent to-sky-500/10'}`} />
           {phase === 'enemy-counter' && <div className={`absolute inset-0 ${displayIntent === 'inferno' ? 'bg-orange-500/20' : 'bg-fuchsia-500/10'} motion-safe:animate-pulse`} />}
           <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full border border-white/20 bg-slate-950/60 px-4 py-1 text-xs font-bold tracking-widest text-amber-100">
-            {phase === 'idle' ? `当前目标 · ${selectedEnemy.name}` : phase === 'hero-action' ? actionName : counterLabel}
+            {phaseLabel}
           </div>
           {battle.enemy.kind === 'boss' && battle.enemy.hp > 0 && <div className={`absolute right-3 top-3 rounded-xl border px-3 py-2 text-right text-xs backdrop-blur ${displayIntent === 'inferno' ? 'animate-pulse border-orange-300 bg-red-950/85 text-orange-100' : 'border-white/20 bg-slate-950/65 text-white'}`}><b>{intent.icon} {phase === 'enemy-counter' ? '正在施放' : '妖王意图'}：{intent.name}</b><span className="block text-[11px] opacity-80">{intent.description}</span></div>}
           {battle.enraged && <div className="absolute left-3 top-3 animate-pulse rounded-full bg-rose-600 px-3 py-1 text-xs font-black">🔥 狂暴阶段</div>}
@@ -166,11 +181,20 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
             <b className="relative -mt-5 rounded-full border border-white/20 bg-slate-950/80 px-3 py-1 text-sm shadow">逍遥少侠</b>
           </div>
 
+          <div className={`absolute bottom-[13%] left-[3%] z-10 flex w-24 flex-col items-center transition-[filter] duration-300 md:left-[6%] md:w-28 ${phase === 'companion-action' ? 'brightness-150' : phase === 'enemy-counter' ? 'brightness-75' : ''}`}>
+            <div className="absolute bottom-3 h-5 w-16 rounded-[50%] bg-slate-950/55 blur-sm" />
+            {phase === 'companion-action' && <div className="absolute bottom-1 h-16 w-24 rounded-[50%] border-2 border-cyan-200 bg-[conic-gradient(from_0deg,transparent,rgba(34,211,238,0.5),transparent)] opacity-90 motion-safe:animate-spin" style={{ animationDuration: '1.6s' }} />}
+            <AtlasSprite atlas="monsters" quadrant={monsterQuadrant(battle.companion.model)} alt={`${battle.companion.name}协战模型`} className="h-24 w-24 md:h-28 md:w-28" />
+            <b className="relative -mt-3 rounded-full border border-cyan-200/60 bg-cyan-950/85 px-2 py-0.5 text-xs text-cyan-100 shadow">{battle.companion.name}</b>
+          </div>
+
           {enemies.map((enemy, index) => {
             const selected = index === selectedTargetIndex
             const defeated = enemy.hp <= 0
             const mainEnemy = index === 0
             const offensiveAction = phase === 'hero-action' && activeAction !== 'guard' && activeAction !== 'potion' && activeAction !== 'heal'
+            const companionTarget = phase === 'companion-action' && battle.lastCompanionAttack?.targetIndex === index
+            const highlighted = (offensiveAction && (activeAction === 'skill' || selected)) || companionTarget
             return (
               <button
                 key={`${enemy.name}-${index}`}
@@ -179,7 +203,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
                 aria-pressed={selected}
                 disabled={busy || defeated}
                 onClick={() => setSelectedTargetIndex(index)}
-                className={`absolute z-10 flex flex-col items-center rounded-2xl transition-[filter,box-shadow] duration-300 disabled:cursor-default ${formationClasses[index]} ${selected && !defeated ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-transparent' : ''} ${defeated ? 'grayscale opacity-35' : ''} ${offensiveAction && (activeAction === 'skill' || selected) ? 'brightness-150' : phase === 'enemy-counter' ? 'brightness-125' : ''}`}
+                className={`absolute z-10 flex flex-col items-center rounded-2xl transition-[filter,box-shadow] duration-300 disabled:cursor-default ${formationClasses[index]} ${selected && !defeated ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-transparent' : ''} ${defeated ? 'grayscale opacity-35' : ''} ${highlighted ? 'brightness-150' : phase === 'enemy-counter' ? 'brightness-125' : ''}`}
               >
                 <div className={`absolute bottom-5 rounded-[50%] bg-slate-950/60 blur-sm ${mainEnemy ? 'h-9 w-32' : 'h-6 w-20'}`} />
                 {phase === 'enemy-counter' && !defeated && <div className={`absolute bottom-3 rounded-[50%] border-2 border-orange-300 bg-[conic-gradient(from_0deg,transparent,rgba(249,115,22,0.55),transparent)] opacity-85 motion-safe:animate-spin ${mainEnemy ? 'h-28 w-48' : 'h-16 w-28'}`} style={{ animationDuration: '2s' }} />}
@@ -189,6 +213,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
                 <div className={`relative ${mainEnemy && battle.enraged ? 'drop-shadow-[0_0_28px_rgba(251,80,30,0.95)]' : 'drop-shadow-[0_16px_12px_rgba(0,0,0,0.65)]'}`}>
                   <AtlasSprite atlas="monsters" quadrant={monsterQuadrant(enemy.name)} alt={`${enemy.name}战斗模型`} className={mainEnemy ? 'h-44 w-44 md:h-56 md:w-56' : 'h-24 w-24 md:h-32 md:w-32'} />
                   {phase === 'hero-action' && activeAction === 'attack' && selected && <AtlasSprite atlas="effects" quadrant="top-left" alt="金色剑气斩击" className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 animate-pulse ${mainEnemy ? 'h-52 w-52 md:h-64 md:w-64' : 'h-32 w-32 md:h-40 md:w-40'}`} />}
+                  {companionTarget && <AtlasSprite atlas="effects" quadrant="bottom-left" alt="灵泡追击特效" className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 animate-pulse hue-rotate-90 ${mainEnemy ? 'h-44 w-44 md:h-56 md:w-56' : 'h-28 w-28 md:h-36 md:w-36'}`} />}
                 </div>
                 <FloatingNumbers items={enemyPopups.filter((popup) => popup.targetIndex === index)} />
                 <div className={`relative rounded-full border px-2 py-0.5 shadow ${mainEnemy ? '-mt-4 bg-slate-950/80 text-sm' : '-mt-2 bg-slate-950/85 text-xs'} ${selected ? 'border-amber-300 text-amber-100' : 'border-white/20'}`}><b>{enemy.name}</b>{mainEnemy && enemy.kind === 'boss' && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs">首领</span>}</div>
@@ -209,6 +234,14 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
               100% { opacity: 0; transform: translateY(-42px) scale(0.92); }
             }
           `}</style>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-1.5 border-y border-white/10 bg-slate-950/75 px-3 py-2 text-[11px] md:gap-2 md:px-4 md:text-xs" aria-label="本回合行动顺序">
+          <span className={`rounded-full border px-3 py-1 ${phase === 'hero-action' ? 'border-amber-300 bg-amber-400/20 text-amber-100' : 'border-white/15 bg-white/5 text-slate-300'}`}>① 逍遥少侠</span>
+          <span className="text-slate-500">→</span>
+          <span className={`rounded-full border px-3 py-1 ${phase === 'companion-action' ? 'border-cyan-200 bg-cyan-400/20 text-cyan-100' : 'border-white/15 bg-white/5 text-slate-300'}`}>② {battle.companion.name}</span>
+          <span className="text-slate-500">→</span>
+          <span className={`rounded-full border px-3 py-1 ${phase === 'enemy-counter' ? 'border-rose-300 bg-rose-500/20 text-rose-100' : 'border-white/15 bg-white/5 text-slate-300'}`}>③ 妖王阵营</span>
         </div>
 
         <div className="grid gap-4 p-4 md:grid-cols-[1fr_1.25fr]">

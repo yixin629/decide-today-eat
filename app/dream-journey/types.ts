@@ -33,7 +33,7 @@ export interface WorldFlags {
 export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
 
 export interface GameSave {
-  version: 4
+  version: 5
   stats: HeroStats
   position: Point
   questStage: QuestStage
@@ -41,6 +41,14 @@ export interface GameSave {
   inventory: InventoryState
   equipment: EquipmentState
   worldFlags: WorldFlags
+  pet: PetState
+}
+
+export interface PetState {
+  level: number
+  exp: number
+  stars: number
+  skillLevel: number
 }
 
 export interface Enemy {
