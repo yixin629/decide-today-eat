@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Direction, NpcDefinition, Point, QuestStage } from '../types'
-import { PORTALS, WORLD_SIZE, getWorldEntities, isBlocked } from '../engine/world'
+import { PORTALS, WORLD_SIZE, getQuestTarget, getWorldEntities, isBlocked } from '../engine/world'
+import { buildNavigationPath } from '../engine/navigation'
 
 const FRAME_COUNT = 8
 const SPEED = 190
@@ -19,6 +20,8 @@ interface GameCanvasProps {
   onNpcChange: (npc: NpcDefinition | null) => void
   onPositionChange: (position: Point) => void
   onSceneChange: (sceneName: string) => void
+  navigationRequest: { id: number; target: Point; name: string } | null
+  onGuideArrival: () => void
 }
 
 function directionFrom(dx: number, dy: number): Direction {
@@ -36,10 +39,15 @@ export default function GameCanvas({
   onNpcChange,
   onPositionChange,
   onSceneChange,
+  navigationRequest,
+  onGuideArrival,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const positionRef = useRef<Point>({ ...initialPosition })
   const targetRef = useRef<Point>({ ...initialPosition })
+  const routeRef = useRef<Point[]>([])
+  const guideActiveRef = useRef(false)
+  const navigationRequestIdRef = useRef(0)
   const keysRef = useRef(new Set<string>())
   const distanceRef = useRef(0)
   const encounterCooldownRef = useRef(0)
@@ -53,10 +61,12 @@ export default function GameCanvas({
   const onNpcChangeRef = useRef(onNpcChange)
   const onPositionChangeRef = useRef(onPositionChange)
   const onSceneChangeRef = useRef(onSceneChange)
+  const onGuideArrivalRef = useRef(onGuideArrival)
   const [ready, setReady] = useState(false)
   const [assetProgress, setAssetProgress] = useState({ loaded: 0, failed: 0 })
   const [interactionNpc, setInteractionNpc] = useState<NpcDefinition | null>(null)
   const [sceneTransition, setSceneTransition] = useState<string | null>(null)
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   useEffect(() => { pausedRef.current = paused }, [paused])
   useEffect(() => { questStageRef.current = questStage }, [questStage])
@@ -65,6 +75,15 @@ export default function GameCanvas({
   useEffect(() => { onNpcChangeRef.current = onNpcChange }, [onNpcChange])
   useEffect(() => { onPositionChangeRef.current = onPositionChange }, [onPositionChange])
   useEffect(() => { onSceneChangeRef.current = onSceneChange }, [onSceneChange])
+  useEffect(() => { onGuideArrivalRef.current = onGuideArrival }, [onGuideArrival])
+  useEffect(() => {
+    if (!navigationRequest || navigationRequest.id === navigationRequestIdRef.current) return
+    navigationRequestIdRef.current = navigationRequest.id
+    routeRef.current = buildNavigationPath(positionRef.current, navigationRequest.target)
+    targetRef.current = routeRef.current[0] ?? navigationRequest.target
+    guideActiveRef.current = true
+    setNavigatingTo(navigationRequest.name)
+  }, [navigationRequest])
 
   const setTargetFromPointer = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -86,7 +105,11 @@ export default function GameCanvas({
       onInteractRef.current(clickedNpc)
       return
     }
-    targetRef.current = clickedNpc ? { x: clickedNpc.x, y: clickedNpc.y } : worldTarget
+    const destination = clickedNpc ? { x: clickedNpc.x, y: clickedNpc.y } : worldTarget
+    routeRef.current = buildNavigationPath(position, destination)
+    targetRef.current = routeRef.current[0] ?? destination
+    guideActiveRef.current = false
+    setNavigatingTo(null)
   }, [])
 
   const setControlKey = (key: string, active: boolean) => {
@@ -166,9 +189,21 @@ export default function GameCanvas({
       let dy = Number(keys.has('s') || keys.has('arrowdown')) - Number(keys.has('w') || keys.has('arrowup'))
 
       if (!dx && !dy) {
-        dx = targetRef.current.x - position.x
-        dy = targetRef.current.y - position.y
-        const distance = Math.hypot(dx, dy)
+        let movementTarget = routeRef.current[0] ?? targetRef.current
+        let distance = Math.hypot(movementTarget.x - position.x, movementTarget.y - position.y)
+        if (distance < 14 && routeRef.current.length > 0) {
+          routeRef.current.shift()
+          movementTarget = routeRef.current[0] ?? movementTarget
+          distance = Math.hypot(movementTarget.x - position.x, movementTarget.y - position.y)
+          if (routeRef.current.length === 0 && guideActiveRef.current) {
+            guideActiveRef.current = false
+            setNavigatingTo(null)
+            onPositionChangeRef.current({ ...position })
+            onGuideArrivalRef.current()
+          }
+        }
+        dx = movementTarget.x - position.x
+        dy = movementTarget.y - position.y
         if (distance < 4) dx = dy = 0
         else { dx /= distance; dy /= distance }
       } else {
@@ -176,6 +211,9 @@ export default function GameCanvas({
         dx /= magnitude
         dy /= magnitude
         targetRef.current = { ...position }
+        routeRef.current = []
+        guideActiveRef.current = false
+        setNavigatingTo(null)
       }
 
       const wantsToMove = !pausedRef.current && (dx !== 0 || dy !== 0)
@@ -233,6 +271,68 @@ export default function GameCanvas({
       context.clearRect(0, 0, canvas.width, canvas.height)
       if (background.complete) context.drawImage(background, -cameraX, -cameraY)
 
+      const questTarget = getQuestTarget(questStageRef.current)
+      if (questTarget) {
+        const playerX = position.x - cameraX
+        const playerY = position.y - cameraY
+        const targetX = questTarget.x - cameraX
+        const targetY = questTarget.y - cameraY
+        context.save()
+        context.setLineDash([10, 12])
+        context.beginPath()
+        context.moveTo(playerX, playerY)
+        context.lineTo(targetX, targetY)
+        context.strokeStyle = 'rgba(253, 224, 71, .28)'
+        context.lineWidth = 4
+        context.stroke()
+        context.restore()
+
+        if (questTarget.id === 'spirit-patrol') {
+          const pulse = 42 + Math.sin(elapsed * 4) * 7
+          context.beginPath()
+          context.arc(targetX, targetY, pulse, 0, Math.PI * 2)
+          context.fillStyle = 'rgba(245, 158, 11, .16)'
+          context.fill()
+          context.strokeStyle = '#fde047'
+          context.lineWidth = 3
+          context.stroke()
+          context.fillStyle = '#fff7b2'
+          context.font = 'bold 15px sans-serif'
+          context.textAlign = 'center'
+          context.strokeStyle = 'rgba(15, 23, 42, .9)'
+          context.lineWidth = 4
+          context.strokeText('妖气巡逻区', targetX, targetY - 54)
+          context.fillText('妖气巡逻区', targetX, targetY - 54)
+        }
+
+        const offscreen = targetX < 42 || targetY < 65 || targetX > canvas.width - 42 || targetY > canvas.height - 48
+        if (offscreen) {
+          const edgeX = Math.max(58, Math.min(canvas.width - 58, targetX))
+          const edgeY = Math.max(82, Math.min(canvas.height - 58, targetY))
+          const angle = Math.atan2(targetY - playerY, targetX - playerX)
+          context.save()
+          context.translate(edgeX, edgeY)
+          context.rotate(angle + Math.PI / 2)
+          context.beginPath()
+          context.moveTo(0, -18)
+          context.lineTo(14, 12)
+          context.lineTo(-14, 12)
+          context.closePath()
+          context.fillStyle = '#fde047'
+          context.shadowColor = '#f59e0b'
+          context.shadowBlur = 14
+          context.fill()
+          context.restore()
+          context.fillStyle = '#fff7b2'
+          context.font = 'bold 12px sans-serif'
+          context.textAlign = 'center'
+          context.strokeStyle = 'rgba(15, 23, 42, .95)'
+          context.lineWidth = 4
+          context.strokeText(questTarget.name, edgeX, edgeY + 30)
+          context.fillText(questTarget.name, edgeX, edgeY + 30)
+        }
+      }
+
       const entities = getWorldEntities(questStageRef.current)
       let nearest: NpcDefinition | null = null
       for (const entity of entities) {
@@ -241,7 +341,7 @@ export default function GameCanvas({
         const near = Math.hypot(entity.x - position.x, entity.y - position.y) < INTERACTION_DISTANCE
         const objective = (
           (entity.id === 'master' && ['not-started', 'returning'].includes(questStageRef.current))
-          || (entity.id === 'boss' && questStageRef.current === 'boss-ready')
+          || (entity.id === 'cave-gate' && questStageRef.current === 'boss-ready')
         )
         if (near) nearest = entity
         if (objective) {
@@ -250,6 +350,15 @@ export default function GameCanvas({
           context.strokeStyle = '#fde047'
           context.lineWidth = 3
           context.stroke()
+          const marker = questStageRef.current === 'returning' ? '?' : '!'
+          context.beginPath()
+          context.arc(screenX, screenY - 76, 16 + Math.sin(elapsed * 5) * 2, 0, Math.PI * 2)
+          context.fillStyle = '#fde047'
+          context.fill()
+          context.fillStyle = '#172554'
+          context.font = 'black 20px sans-serif'
+          context.textAlign = 'center'
+          context.fillText(marker, screenX, screenY - 69)
         }
         context.font = entity.id === 'boss' ? '54px sans-serif' : '42px sans-serif'
         context.textAlign = 'center'
@@ -347,6 +456,9 @@ export default function GameCanvas({
         </div>
       )}
       <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-slate-950/70 px-3 py-1 text-xs text-white backdrop-blur">WASD / 方向键 / 点击移动 / E 交互</div>
+      {navigatingTo && !paused && (
+        <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-amber-200/50 bg-slate-950/80 px-3 py-1 text-xs font-bold text-amber-200 shadow-lg backdrop-blur">➤ 自动寻路：{navigatingTo}</div>
+      )}
       {interactionNpc && !paused && (
         <button
           type="button"

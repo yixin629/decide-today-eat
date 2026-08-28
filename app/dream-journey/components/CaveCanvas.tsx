@@ -19,6 +19,8 @@ interface CaveCanvasProps {
   onNpcChange: (npc: NpcDefinition | null) => void
   onPositionChange: (position: Point) => void
   onLeave: () => void
+  navigationRequest: { id: number; target: Point; name: string } | null
+  onGuideArrival: () => void
 }
 
 function directionFrom(dx: number, dy: number): Direction {
@@ -32,7 +34,7 @@ function isWalkable(point: Point) {
   return point.x > 105 && point.x < 795 && point.y < 455
 }
 
-export default function CaveCanvas({ paused, bossActive, chestOpened, initialPosition, onInteract, onNpcChange, onPositionChange, onLeave }: CaveCanvasProps) {
+export default function CaveCanvas({ paused, bossActive, chestOpened, initialPosition, onInteract, onNpcChange, onPositionChange, onLeave, navigationRequest, onGuideArrival }: CaveCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const startPosition = isWalkable(initialPosition) ? { ...initialPosition } : { x: 450, y: 475 }
   const positionRef = useRef<Point>(startPosition)
@@ -40,12 +42,22 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
   const keysRef = useRef(new Set<string>())
   const pausedRef = useRef(paused)
   const nearbyRef = useRef<NpcDefinition | null>(null)
-  const callbacksRef = useRef({ onInteract, onNpcChange, onPositionChange, onLeave })
+  const navigationRequestIdRef = useRef(0)
+  const guideActiveRef = useRef(false)
+  const callbacksRef = useRef({ onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival })
   const [ready, setReady] = useState(false)
   const [interactionNpc, setInteractionNpc] = useState<NpcDefinition | null>(null)
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   useEffect(() => { pausedRef.current = paused }, [paused])
-  useEffect(() => { callbacksRef.current = { onInteract, onNpcChange, onPositionChange, onLeave } }, [onInteract, onLeave, onNpcChange, onPositionChange])
+  useEffect(() => { callbacksRef.current = { onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival } }, [onGuideArrival, onInteract, onLeave, onNpcChange, onPositionChange])
+  useEffect(() => {
+    if (!navigationRequest || navigationRequest.id === navigationRequestIdRef.current) return
+    navigationRequestIdRef.current = navigationRequest.id
+    targetRef.current = { ...navigationRequest.target }
+    guideActiveRef.current = true
+    setNavigatingTo(navigationRequest.name)
+  }, [navigationRequest])
 
   const setTarget = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current
@@ -102,7 +114,11 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
       if (!dx && !dy) {
         dx = targetRef.current.x - position.x
         dy = targetRef.current.y - position.y
-      } else targetRef.current = { ...position }
+      } else {
+        targetRef.current = { ...position }
+        guideActiveRef.current = false
+        setNavigatingTo(null)
+      }
       const distance = Math.hypot(dx, dy)
       const moved = !pausedRef.current && distance > 4
       if (moved) {
@@ -111,6 +127,12 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
         if (isWalkable(next)) { position.x = next.x; position.y = next.y } else targetRef.current = { ...position }
         if (now - lastReport > 700) { lastReport = now; callbacksRef.current.onPositionChange({ ...position }) }
         if (Math.hypot(position.x - EXIT.x, position.y - EXIT.y) < 28) callbacksRef.current.onLeave()
+      }
+      if (guideActiveRef.current && Math.hypot(position.x - targetRef.current.x, position.y - targetRef.current.y) < 8) {
+        guideActiveRef.current = false
+        setNavigatingTo(null)
+        callbacksRef.current.onPositionChange({ ...position })
+        callbacksRef.current.onGuideArrival()
       }
       const entities = [...(bossActive ? [BOSS] : []), ...(!chestOpened ? [CHEST] : [])]
       const nearby = entities.find((entity) => Math.hypot(position.x - entity.x, position.y - entity.y) < 130) ?? null
@@ -144,6 +166,7 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="block aspect-[9/5.6] w-full touch-none cursor-crosshair" onPointerDown={(event) => setTarget(event.clientX, event.clientY)} aria-label="赤焰妖王洞窟，使用方向键、WASD或点击移动" />
       {!ready && <div className="absolute inset-0 grid place-items-center bg-slate-950 text-rose-200">🔥 正在进入赤焰洞窟…</div>}
       <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-slate-950/75 px-3 py-1 text-xs">独立场景 · 洞窟祭坛</div>
+      {navigatingTo && !paused && <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-rose-200/50 bg-slate-950/80 px-3 py-1 text-xs font-bold text-rose-100">➤ 自动寻路：{navigatingTo}</div>}
       {interactionNpc && !paused && <button type="button" onClick={() => callbacksRef.current.onInteract(interactionNpc)} className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border-2 border-amber-200 bg-slate-950/90 px-5 py-2 text-sm font-black text-amber-100">E · {interactionNpc.actionLabel}</button>}
       <div className="pointer-events-none absolute bottom-3 right-3 grid grid-cols-3 gap-1 md:hidden">{control('↑', 'w', 'col-start-2')}{control('←', 'a', 'col-start-1 row-start-2')}{control('↓', 's', 'col-start-2 row-start-2')}{control('→', 'd', 'col-start-3 row-start-2')}</div>
     </div>

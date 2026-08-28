@@ -19,6 +19,25 @@ export const BOSS: NpcDefinition = {
   y: 700,
 }
 
+export const PATROL_TARGET: NpcDefinition = {
+  id: 'spirit-patrol',
+  name: '妖气巡逻区',
+  icon: '✦',
+  title: '城外试炼',
+  dialogue: '附近妖气翻涌，做好战斗准备。',
+  actionLabel: '开始巡逻',
+  x: 1570,
+  y: 1570,
+}
+
+export const MAP_LANDMARKS = [
+  { id: 'grove', name: '翠林', x: 420, y: 530 },
+  { id: 'changan', name: '长安', x: 1210, y: 1210 },
+  { id: 'cave', name: '赤焰洞', x: 2050, y: 700 },
+  { id: 'shore', name: '南海', x: 480, y: 2140 },
+  { id: 'dock', name: '东海', x: 1990, y: 2140 },
+] as const
+
 export const PORTALS: readonly PortalDefinition[] = [
   { id: 'north-grove', name: '翠林仙径', x: 550, y: 85, destination: { x: 115, y: 2180 }, destinationName: '南海沙洲' },
   { id: 'south-shore', name: '南海归途', x: 50, y: 2280, destination: { x: 550, y: 175 }, destinationName: '翠林秘境' },
@@ -39,8 +58,47 @@ export function getSceneName(point: Point) {
 
 export function getQuestTarget(stage: QuestStage): NpcDefinition | null {
   if (stage === 'not-started' || stage === 'returning') return NPCS[0]
+  if (stage === 'hunting') return PATROL_TARGET
   if (stage === 'boss-ready') return BOSS
   return null
+}
+
+export function getQuestGuidance(stage: QuestStage, progress: number) {
+  if (stage === 'not-started') return {
+    step: 1,
+    title: '拜访云游师父',
+    description: '前往长安郊野中央，与头顶金色叹号的云游师父交谈。',
+    progress: '尚未领取',
+    actionLabel: '自动前往师父',
+  }
+  if (stage === 'hunting') return {
+    step: 2,
+    title: '清剿城外妖气',
+    description: '前往东南方妖气巡逻区。抵达后会立即进入小妖战斗。',
+    progress: `${progress}/3 只小妖`,
+    actionLabel: '前往妖气区域',
+  }
+  if (stage === 'boss-ready') return {
+    step: 3,
+    title: '进入赤焰洞窟',
+    description: '沿东北方向前往赤焰洞口，靠近金色任务标记后进入洞窟。',
+    progress: '洞窟已开启',
+    actionLabel: '前往赤焰洞窟',
+  }
+  if (stage === 'returning') return {
+    step: 4,
+    title: '向云游师父复命',
+    description: '返回长安郊野中央，将击败妖王的消息告诉云游师父。',
+    progress: '等待复命',
+    actionLabel: '返回云游师父',
+  }
+  return {
+    step: 4,
+    title: '城外试炼完成',
+    description: '新手章节已经完成。你可以自由探索、巡逻历练或培养宠物。',
+    progress: '全部完成',
+    actionLabel: '自由探索',
+  }
 }
 
 interface CollisionRect {

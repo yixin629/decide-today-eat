@@ -9,11 +9,12 @@ import GameCanvas from './components/GameCanvas'
 import InventoryPanel from './components/InventoryPanel'
 import MiniMap from './components/MiniMap'
 import PetPanel from './components/PetPanel'
+import QuestGuide from './components/QuestGuide'
 import ShopPanel from './components/ShopPanel'
 import { createBattle, INITIAL_STATS, resolveRound } from './engine/combat'
 import { INITIAL_EQUIPMENT, INITIAL_INVENTORY, ITEMS, equipmentBonuses } from './engine/equipment'
 import { INITIAL_PET, starUpPet, trainPet, upgradePetSkill } from './engine/pet'
-import { getSceneName } from './engine/world'
+import { getQuestTarget, getSceneName } from './engine/world'
 import {
   CHAPTER_REWARD,
   INITIAL_POSITION,
@@ -69,6 +70,7 @@ export default function DreamJourneyPage() {
   const [petOpen, setPetOpen] = useState(false)
   const [notice, setNotice] = useState(questNotice('not-started', 0))
   const [sceneName, setSceneName] = useState('长安郊野')
+  const [navigationRequest, setNavigationRequest] = useState<{ id: number; target: Point; name: string } | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -238,6 +240,22 @@ export default function DreamJourneyPage() {
     })
   }
 
+  const navigateToQuestTarget = (target: Point) => {
+    const objective = getQuestTarget(questStage)
+    setNavigationRequest({ id: Date.now(), target, name: objective?.name ?? '地图目标' })
+    setNotice(`自动寻路已开启：正在前往${objective?.name ?? '地图目标'}。使用方向键可随时取消。`)
+  }
+
+  const handleGuideArrival = () => {
+    if (questStage === 'hunting') {
+      setNotice('已抵达妖气巡逻区，小妖现身！')
+      beginEncounter()
+      return
+    }
+    const objective = getQuestTarget(questStage)
+    if (objective) interactWithNpc(objective)
+  }
+
   const handleDialogueAction = () => {
     if (!dialogue?.action) return
     if (dialogue.action === 'accept-quest') {
@@ -297,17 +315,6 @@ export default function DreamJourneyPage() {
   const handleStarUpPet = () => applyPetProgress(starUpPet(pet, stats))
   const handleUpgradePetSkill = () => applyPetProgress(upgradePetSkill(pet, stats))
 
-  const questPercent = questStage === 'completed'
-    ? 100
-    : questStage === 'returning'
-      ? 90
-      : questStage === 'boss-ready'
-        ? 75
-        : questStage === 'hunting'
-          ? stats.questProgress / (QUEST_TARGET + 1) * 100
-          : 0
-  const canPatrol = questStage === 'hunting' || questStage === 'completed'
-
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#4338ca_0,_#172554_36%,_#071120_100%)] px-3 py-5 pb-24 text-white md:px-6 md:pb-6">
       <div className="mx-auto max-w-7xl">
@@ -333,6 +340,8 @@ export default function DreamJourneyPage() {
                   onNpcChange={handleNpcChange}
                   onPositionChange={handlePositionChange}
                   onSceneChange={handleSceneChange}
+                  navigationRequest={navigationRequest}
+                  onGuideArrival={handleGuideArrival}
                 />
               ) : (
                 <CaveCanvas
@@ -382,8 +391,8 @@ export default function DreamJourneyPage() {
             {petOpen && <PetPanel pet={pet} gold={stats.gold} onTrain={handleTrainPet} onStarUp={handleStarUpPet} onUpgradeSkill={handleUpgradePetSkill} onClose={() => setPetOpen(false)} />}
           </section>
 
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+          <aside className="flex flex-col gap-4">
+            <div className="order-4 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
               <div className="mb-3 flex items-center gap-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-2xl">⚔️</div>
                 <div><b className="text-lg">逍遥少侠</b><p className="text-xs text-sky-200">等级 {stats.level} · 人族</p></div>
@@ -402,35 +411,31 @@ export default function DreamJourneyPage() {
               <button type="button" onClick={() => setPetOpen(true)} className="mt-2 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-2 font-black text-white">🫧 宠物养成 · {pet.level}级</button>
             </div>
 
-            <div className="rounded-2xl border border-amber-300/30 bg-amber-100/10 p-4">
-              <p className="text-xs font-bold tracking-widest text-amber-300">当前任务</p>
-              <h2 className="mt-1 font-bold">初入长安 · 城外试炼</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-200">{notice}</p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-900">
-                <div className="h-full bg-amber-400 transition-all" style={{ width: `${questPercent}%` }} />
-              </div>
+            <div className="order-1">
+              <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} />
             </div>
 
-            {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} /> : (
-              <div className="rounded-2xl border border-rose-300/25 bg-rose-950/30 p-4 text-sm text-rose-100"><b>🔥 赤焰洞窟</b><p className="mt-2 text-slate-300">上方祭坛：赤焰妖王<br />右侧平台：{worldFlags.caveChestOpened ? '宝箱已开启' : '熔岩宝箱'}<br />下方传送阵：返回长安</p></div>
-            )}
+            <div className="order-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-xs leading-5 text-slate-300">
+              <b className="mr-2 text-sky-300">历练动态</b>{notice}
+            </div>
+
+            <div className="order-2">
+              {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} sceneName={sceneName} onNavigate={navigateToQuestTarget} /> : (
+                <div className="rounded-2xl border border-rose-300/25 bg-rose-950/30 p-4 text-sm text-rose-100"><b>🔥 赤焰洞窟</b><p className="mt-2 text-slate-300">上方祭坛：赤焰妖王<br />右侧平台：{worldFlags.caveChestOpened ? '宝箱已开启' : '熔岩宝箱'}<br />下方传送阵：返回长安</p></div>
+              )}
+            </div>
 
             {nearbyNpc ? (
-              <button type="button" onClick={() => interactWithNpc(nearbyNpc)} className="w-full animate-pulse rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 p-4 font-black text-slate-950 shadow-lg">
+              <button type="button" onClick={() => interactWithNpc(nearbyNpc)} className="order-5 w-full animate-pulse rounded-2xl bg-gradient-to-r from-amber-300 to-orange-400 p-4 font-black text-slate-950 shadow-lg">
                 {nearbyNpc.id === 'boss' ? '⚔️' : '💬'} E · {nearbyNpc.actionLabel ?? `与${nearbyNpc.name}交谈`}
               </button>
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/20 p-4 text-center text-sm text-slate-300">靠近头顶有名字的人物即可交互</div>
+              <div className="order-5 rounded-2xl border border-dashed border-white/20 p-4 text-center text-sm text-slate-300">靠近头顶有名字的人物即可交互</div>
             )}
 
-            <button
-              type="button"
-              onClick={beginEncounter}
-              disabled={scene !== 'overworld' || !canPatrol || Boolean(battle)}
-              className="w-full rounded-2xl border border-fuchsia-300/30 bg-fuchsia-500/20 p-3 font-bold hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ⚡ {canPatrol ? '前往野外巡逻' : questStage === 'boss-ready' ? '前往东北方的赤焰洞窟' : '请先推进当前任务'}
-            </button>
+            {questStage === 'completed' && scene === 'overworld' && (
+              <button type="button" onClick={beginEncounter} disabled={Boolean(battle)} className="order-6 w-full rounded-2xl border border-fuchsia-300/30 bg-fuchsia-500/20 p-3 font-bold hover:bg-fuchsia-500/30 disabled:opacity-40">⚡ 自由巡逻历练</button>
+            )}
           </aside>
         </div>
       </div>
