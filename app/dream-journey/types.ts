@@ -54,8 +54,22 @@ export interface Enemy {
   gold: number
 }
 
+export interface BattleCompanion {
+  name: string
+  model: '泡泡精'
+  attack: number
+}
+
+export interface CompanionAttack {
+  targetIndex: number
+  damage: number
+}
+
 export interface BattleState {
   enemy: Enemy
+  reinforcements: Enemy[]
+  companion: BattleCompanion
+  lastCompanionAttack: CompanionAttack | null
   log: string[]
   guarding: boolean
   turn: number

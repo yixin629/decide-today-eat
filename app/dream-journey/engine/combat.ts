@@ -43,7 +43,15 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob'): Battle
       maxHp,
       attack: template.attack + level * (kind === 'boss' ? 3 : 2),
     },
-    log: [kind === 'boss' ? `妖气冲天，${template.name}降临！留意它下一回合的招式。` : `野外突然跳出一只${template.name}！`],
+    reinforcements: kind === 'boss'
+      ? [
+          { ...ENEMIES[2], name: '巡山小妖', hp: 36 + level * 7, maxHp: 36 + level * 7, attack: 4 + level, exp: 0, gold: 0 },
+          { ...ENEMIES[1], name: '花妖', hp: 30 + level * 6, maxHp: 30 + level * 6, attack: 3 + level, exp: 0, gold: 0 },
+        ]
+      : [],
+    companion: { name: '泡泡灵宠', model: '泡泡精', attack: 6 + level * 2 },
+    lastCompanionAttack: null,
+    log: [kind === 'boss' ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。` : `野外突然跳出一只${template.name}！`],
     guarding: false,
     turn: 1,
     intent: 'strike',
@@ -88,9 +96,13 @@ export function resolveRound(
   battle: BattleState,
   action: BattleAction,
   bonuses = { attack: 0, defense: 0, crit: 0 },
+  targetIndex = 0,
 ): { stats: HeroStats; battle: BattleState | null; result?: 'victory' | 'defeat' } {
   let nextStats = { ...stats }
   const enemy = { ...battle.enemy }
+  const reinforcements = battle.reinforcements.map((unit) => ({ ...unit }))
+  const enemies = [enemy, ...reinforcements]
+  const companion = { ...battle.companion }
   const log: string[] = []
   let guarding = false
 
@@ -119,12 +131,41 @@ export function resolveRound(
       ? 18 + nextStats.level * 7 + Math.floor(Math.random() * 9)
       : 8 + nextStats.level * 4 + Math.floor(Math.random() * 7)
     const damage = Math.round((baseDamage + nextStats.attack + bonuses.attack) * (critical ? 1.6 : 1))
-    enemy.hp = Math.max(0, enemy.hp - damage)
     nextStats.mp -= skill ? 12 : 0
-    log.push(`${skill ? '横扫千星' : '普通攻击'}造成 ${damage} 点伤害${critical ? '（暴击）' : ''}。`)
+    if (skill) {
+      let totalDamage = 0
+      let targetsHit = 0
+      enemies.forEach((target, index) => {
+        if (target.hp <= 0) return
+        const targetDamage = index === targetIndex ? damage : Math.max(1, Math.round(damage * 0.7))
+        target.hp = Math.max(0, target.hp - targetDamage)
+        totalDamage += targetDamage
+        targetsHit += 1
+      })
+      log.push(`横扫千星席卷 ${targetsHit} 个目标，造成 ${totalDamage} 点伤害${critical ? '（暴击）' : ''}。`)
+    } else {
+      const fallbackIndex = enemies.findIndex((target) => target.hp > 0)
+      const resolvedTargetIndex = enemies[targetIndex]?.hp > 0 ? targetIndex : fallbackIndex
+      const target = enemies[resolvedTargetIndex]
+      target.hp = Math.max(0, target.hp - damage)
+      log.push(`普通攻击命中${target.name}，造成 ${damage} 点伤害${critical ? '（暴击）' : ''}。`)
+    }
   }
 
-  if (enemy.hp <= 0) {
+  let lastCompanionAttack: BattleState['lastCompanionAttack'] = null
+  const companionTargetIndex = enemies[targetIndex]?.hp > 0
+    ? targetIndex
+    : enemies.findIndex((target) => target.hp > 0)
+  if (companionTargetIndex >= 0) {
+    const target = enemies[companionTargetIndex]
+    const companionDamage = companion.attack + Math.floor(Math.random() * 5)
+    const previousHp = target.hp
+    target.hp = Math.max(0, target.hp - companionDamage)
+    lastCompanionAttack = { targetIndex: companionTargetIndex, damage: previousHp - target.hp }
+    log.push(`${companion.name}施展灵泡追击，对${target.name}造成 ${lastCompanionAttack.damage} 点伤害。`)
+  }
+
+  if (enemies.every((target) => target.hp <= 0)) {
     nextStats = levelUp({
       ...nextStats,
       exp: nextStats.exp + enemy.exp,
@@ -133,25 +174,34 @@ export function resolveRound(
     return { stats: nextStats, battle: null, result: 'victory' }
   }
 
-  const enraged = battle.enraged || (enemy.kind === 'boss' && enemy.hp <= enemy.maxHp / 2)
+  const enraged = battle.enraged || (enemy.kind === 'boss' && enemy.hp > 0 && enemy.hp <= enemy.maxHp / 2)
   if (enraged && !battle.enraged) log.push(`${enemy.name}进入狂暴阶段，焚天重击将更加频繁！`)
 
-  let rawDamage = enemy.attack + Math.floor(Math.random() * 7)
-  let ignoresDefense = false
-  if (enemy.kind === 'boss' && battle.intent === 'inferno') {
-    rawDamage = Math.round(enemy.attack * (enraged ? 1.85 : 1.6)) + Math.floor(Math.random() * 6)
-    log.push(`${enemy.name}释放焚天重击！`)
-  } else if (enemy.kind === 'boss' && battle.intent === 'roar') {
-    rawDamage = Math.round(enemy.attack * 0.8) + Math.floor(Math.random() * 5)
-    const drained = Math.min(8, nextStats.mp)
-    nextStats.mp -= drained
-    ignoresDefense = true
-    log.push(`${enemy.name}发出摄魂咆哮，震散 ${drained} 点法力！`)
+  let totalIncomingDamage = 0
+  if (enemy.hp > 0) {
+    let rawDamage = enemy.attack + Math.floor(Math.random() * 7)
+    let ignoresDefense = false
+    if (enemy.kind === 'boss' && battle.intent === 'inferno') {
+      rawDamage = Math.round(enemy.attack * (enraged ? 1.85 : 1.6)) + Math.floor(Math.random() * 6)
+      log.push(`${enemy.name}释放焚天重击！`)
+    } else if (enemy.kind === 'boss' && battle.intent === 'roar') {
+      rawDamage = Math.round(enemy.attack * 0.8) + Math.floor(Math.random() * 5)
+      const drained = Math.min(8, nextStats.mp)
+      nextStats.mp -= drained
+      ignoresDefense = true
+      log.push(`${enemy.name}发出摄魂咆哮，震散 ${drained} 点法力！`)
+    }
+    const reducedDamage = Math.max(1, rawDamage - (ignoresDefense ? 0 : nextStats.defense + bonuses.defense))
+    totalIncomingDamage += guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
   }
-  const reducedDamage = Math.max(1, rawDamage - (ignoresDefense ? 0 : nextStats.defense + bonuses.defense))
-  const damage = guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
-  nextStats.hp = Math.max(0, nextStats.hp - damage)
-  log.push(`${enemy.name}${battle.intent === 'strike' ? '反击' : '的招式'}造成 ${damage} 点伤害。`)
+  reinforcements.forEach((unit) => {
+    if (unit.hp <= 0) return
+    const reducedDamage = Math.max(1, unit.attack + Math.floor(Math.random() * 4) - nextStats.defense - bonuses.defense)
+    totalIncomingDamage += guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
+  })
+  nextStats.hp = Math.max(0, nextStats.hp - totalIncomingDamage)
+  const attackers = enemies.filter((target) => target.hp > 0).length
+  log.push(`${attackers} 名敌人联手反击，造成 ${totalIncomingDamage} 点伤害。`)
 
   if (nextStats.hp <= 0) {
     nextStats = { ...nextStats, hp: nextStats.maxHp, mp: nextStats.maxMp, gold: Math.max(0, nextStats.gold - 10) }
@@ -163,6 +213,9 @@ export function resolveRound(
     stats: nextStats,
     battle: {
       enemy,
+      reinforcements,
+      companion,
+      lastCompanionAttack,
       guarding: false,
       turn,
       intent: enemy.kind === 'boss' ? nextIntent(turn, enraged) : 'strike',

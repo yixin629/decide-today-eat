@@ -116,11 +116,11 @@ export default function DreamJourneyPage() {
   const handlePositionChange = useCallback((nextPosition: Point) => setPosition(nextPosition), [])
   const handleSceneChange = useCallback((nextScene: string) => setSceneName(nextScene), [])
 
-  const handleAction = (action: BattleAction) => {
+  const handleAction = (action: BattleAction, targetIndex = 0) => {
     if (!battle) return
     const defeatedEnemy = battle.enemy
     const previousLevel = stats.level
-    const outcome = resolveRound(stats, battle, action, bonuses)
+    const outcome = resolveRound(stats, battle, action, bonuses, targetIndex)
     let nextStats = outcome.stats
     setBattle(outcome.battle)
 
