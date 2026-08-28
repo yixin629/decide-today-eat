@@ -35,7 +35,7 @@ function MapSurface({ position, questStage, expanded = false, onNavigate }: Omit
     <div
       className={`relative overflow-hidden border border-white/25 bg-cover bg-center shadow-inner ${expanded ? 'aspect-square rounded-2xl' : 'aspect-[5/4] rounded-xl'}`}
       style={{ backgroundImage: "url('/games/dream-journey/background/bg.jpg')" }}
-      role="img"
+      role="group"
       aria-label={target ? `长安地图，任务目标${target.name}` : '梦境长安地图'}
     >
       <div className="absolute inset-0 bg-slate-950/20" />

@@ -5,6 +5,8 @@ import BackButton from '@/app/components/ui/BackButton'
 import CombatPanel from './components/CombatPanel'
 import BattleResultPanel from './components/BattleResultPanel'
 import CaveCanvas from './components/CaveCanvas'
+import CaveGuide from './components/CaveGuide'
+import CaveMiniMap from './components/CaveMiniMap'
 import GameCanvas from './components/GameCanvas'
 import InventoryPanel from './components/InventoryPanel'
 import MiniMap from './components/MiniMap'
@@ -246,6 +248,11 @@ export default function DreamJourneyPage() {
     setNotice(`自动寻路已开启：正在前往${objective?.name ?? '地图目标'}。使用方向键可随时取消。`)
   }
 
+  const navigateInCave = (target: Point, name: string) => {
+    setNavigationRequest({ id: Date.now(), target, name })
+    setNotice(`洞窟寻路已开启：正在前往${name}。使用方向键可随时取消。`)
+  }
+
   const handleGuideArrival = () => {
     if (questStage === 'hunting') {
       setNotice('已抵达妖气巡逻区，小妖现身！')
@@ -295,6 +302,10 @@ export default function DreamJourneyPage() {
     setNearbyNpc(null)
     setNotice(questStage === 'returning' ? '妖王已败，回去找云游师父复命。' : questNotice(questStage, stats.questProgress))
   }, [questStage, stats.questProgress])
+
+  const handleCaveGuideArrival = () => {
+    if (questStage === 'boss-ready') beginBossEncounter()
+  }
 
   const handleEquip = (itemId: ItemId) => {
     const item = ITEMS[itemId]
@@ -353,6 +364,8 @@ export default function DreamJourneyPage() {
                   onNpcChange={handleNpcChange}
                   onPositionChange={handlePositionChange}
                   onLeave={handleLeaveCave}
+                  navigationRequest={navigationRequest}
+                  onGuideArrival={handleCaveGuideArrival}
                 />
               )
             ) : (
@@ -412,7 +425,11 @@ export default function DreamJourneyPage() {
             </div>
 
             <div className="order-1">
-              <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} />
+              {scene === 'overworld' ? (
+                <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} />
+              ) : (
+                <CaveGuide position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
+              )}
             </div>
 
             <div className="order-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-xs leading-5 text-slate-300">
@@ -421,7 +438,7 @@ export default function DreamJourneyPage() {
 
             <div className="order-2">
               {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} sceneName={sceneName} onNavigate={navigateToQuestTarget} /> : (
-                <div className="rounded-2xl border border-rose-300/25 bg-rose-950/30 p-4 text-sm text-rose-100"><b>🔥 赤焰洞窟</b><p className="mt-2 text-slate-300">上方祭坛：赤焰妖王<br />右侧平台：{worldFlags.caveChestOpened ? '宝箱已开启' : '熔岩宝箱'}<br />下方传送阵：返回长安</p></div>
+                <CaveMiniMap position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
               )}
             </div>
 
