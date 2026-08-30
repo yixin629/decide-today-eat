@@ -21,6 +21,7 @@ interface CaveCanvasProps {
   onLeave: () => void
   navigationRequest: { id: number; target: Point; name: string } | null
   onGuideArrival: () => void
+  onGuideCancel: () => void
 }
 
 function directionFrom(dx: number, dy: number): Direction {
@@ -34,7 +35,7 @@ function isWalkable(point: Point) {
   return point.x > 105 && point.x < 795 && point.y < 455
 }
 
-export default function CaveCanvas({ paused, bossActive, chestOpened, initialPosition, onInteract, onNpcChange, onPositionChange, onLeave, navigationRequest, onGuideArrival }: CaveCanvasProps) {
+export default function CaveCanvas({ paused, bossActive, chestOpened, initialPosition, onInteract, onNpcChange, onPositionChange, onLeave, navigationRequest, onGuideArrival, onGuideCancel }: CaveCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const startPosition = isWalkable(initialPosition) ? { ...initialPosition } : { x: 450, y: 475 }
   const positionRef = useRef<Point>(startPosition)
@@ -44,13 +45,13 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
   const nearbyRef = useRef<NpcDefinition | null>(null)
   const navigationRequestIdRef = useRef(0)
   const guideActiveRef = useRef(false)
-  const callbacksRef = useRef({ onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival })
+  const callbacksRef = useRef({ onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival, onGuideCancel })
   const [ready, setReady] = useState(false)
   const [interactionNpc, setInteractionNpc] = useState<NpcDefinition | null>(null)
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   useEffect(() => { pausedRef.current = paused }, [paused])
-  useEffect(() => { callbacksRef.current = { onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival } }, [onGuideArrival, onInteract, onLeave, onNpcChange, onPositionChange])
+  useEffect(() => { callbacksRef.current = { onInteract, onNpcChange, onPositionChange, onLeave, onGuideArrival, onGuideCancel } }, [onGuideArrival, onGuideCancel, onInteract, onLeave, onNpcChange, onPositionChange])
   useEffect(() => {
     if (!navigationRequest || navigationRequest.id === navigationRequestIdRef.current) return
     navigationRequestIdRef.current = navigationRequest.id
@@ -67,7 +68,12 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
     const entities = [...(bossActive ? [BOSS] : []), ...(!chestOpened ? [CHEST] : [])]
     const clicked = entities.find((entity) => Math.hypot(next.x - entity.x, next.y - entity.y) < 60)
     if (clicked && nearbyRef.current?.id === clicked.id) callbacksRef.current.onInteract(clicked)
-    else if (isWalkable(next)) targetRef.current = clicked ? { x: clicked.x, y: clicked.y } : next
+    else if (isWalkable(next)) {
+      if (guideActiveRef.current) callbacksRef.current.onGuideCancel()
+      guideActiveRef.current = false
+      setNavigatingTo(null)
+      targetRef.current = clicked ? { x: clicked.x, y: clicked.y } : next
+    }
   }, [bossActive, chestOpened])
 
   useEffect(() => {
@@ -116,6 +122,7 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
         dy = targetRef.current.y - position.y
       } else {
         targetRef.current = { ...position }
+        if (guideActiveRef.current) callbacksRef.current.onGuideCancel()
         guideActiveRef.current = false
         setNavigatingTo(null)
       }

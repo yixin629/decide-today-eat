@@ -22,6 +22,7 @@ interface GameCanvasProps {
   onSceneChange: (sceneName: string) => void
   navigationRequest: { id: number; target: Point; name: string } | null
   onGuideArrival: () => void
+  onGuideCancel: () => void
 }
 
 function directionFrom(dx: number, dy: number): Direction {
@@ -41,6 +42,7 @@ export default function GameCanvas({
   onSceneChange,
   navigationRequest,
   onGuideArrival,
+  onGuideCancel,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const positionRef = useRef<Point>({ ...initialPosition })
@@ -62,6 +64,7 @@ export default function GameCanvas({
   const onPositionChangeRef = useRef(onPositionChange)
   const onSceneChangeRef = useRef(onSceneChange)
   const onGuideArrivalRef = useRef(onGuideArrival)
+  const onGuideCancelRef = useRef(onGuideCancel)
   const [ready, setReady] = useState(false)
   const [assetProgress, setAssetProgress] = useState({ loaded: 0, failed: 0 })
   const [interactionNpc, setInteractionNpc] = useState<NpcDefinition | null>(null)
@@ -76,6 +79,7 @@ export default function GameCanvas({
   useEffect(() => { onPositionChangeRef.current = onPositionChange }, [onPositionChange])
   useEffect(() => { onSceneChangeRef.current = onSceneChange }, [onSceneChange])
   useEffect(() => { onGuideArrivalRef.current = onGuideArrival }, [onGuideArrival])
+  useEffect(() => { onGuideCancelRef.current = onGuideCancel }, [onGuideCancel])
   useEffect(() => {
     if (!navigationRequest || navigationRequest.id === navigationRequestIdRef.current) return
     navigationRequestIdRef.current = navigationRequest.id
@@ -102,12 +106,17 @@ export default function GameCanvas({
       Math.hypot(npc.x - worldTarget.x, npc.y - worldTarget.y) < 65
     ))
     if (clickedNpc && Math.hypot(clickedNpc.x - position.x, clickedNpc.y - position.y) < INTERACTION_DISTANCE) {
+      if (guideActiveRef.current) onGuideCancelRef.current()
+      guideActiveRef.current = false
+      routeRef.current = []
+      setNavigatingTo(null)
       onInteractRef.current(clickedNpc)
       return
     }
     const destination = clickedNpc ? { x: clickedNpc.x, y: clickedNpc.y } : worldTarget
     routeRef.current = buildNavigationPath(position, destination)
     targetRef.current = routeRef.current[0] ?? destination
+    if (guideActiveRef.current) onGuideCancelRef.current()
     guideActiveRef.current = false
     setNavigatingTo(null)
   }, [])
@@ -212,6 +221,7 @@ export default function GameCanvas({
         dy /= magnitude
         targetRef.current = { ...position }
         routeRef.current = []
+        if (guideActiveRef.current) onGuideCancelRef.current()
         guideActiveRef.current = false
         setNavigatingTo(null)
       }
@@ -231,7 +241,13 @@ export default function GameCanvas({
           position.y = nextY.y
           moved = true
         }
-        if (!moved) targetRef.current = { ...position }
+        if (!moved) {
+          targetRef.current = { ...position }
+          routeRef.current = []
+          if (guideActiveRef.current) onGuideCancelRef.current()
+          guideActiveRef.current = false
+          setNavigatingTo(null)
+        }
       }
 
       if (moved) {
@@ -250,6 +266,10 @@ export default function GameCanvas({
         if (now >= portalCooldownRef.current) {
           const portal = PORTALS.find((candidate) => Math.hypot(candidate.x - position.x, candidate.y - position.y) < 62)
           if (portal) {
+            if (guideActiveRef.current) onGuideCancelRef.current()
+            guideActiveRef.current = false
+            routeRef.current = []
+            setNavigatingTo(null)
             position.x = portal.destination.x
             position.y = portal.destination.y
             targetRef.current = { ...portal.destination }

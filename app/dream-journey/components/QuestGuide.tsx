@@ -6,9 +6,10 @@ interface QuestGuideProps {
   progress: number
   questStage: QuestStage
   onNavigate: (target: Point) => void
+  onFreePatrol: () => void
 }
 
-export default function QuestGuide({ position, progress, questStage, onNavigate }: QuestGuideProps) {
+export default function QuestGuide({ position, progress, questStage, onNavigate, onFreePatrol }: QuestGuideProps) {
   const guide = getQuestGuidance(questStage, progress)
   const target = getQuestTarget(questStage)
   const distance = target ? Math.round(Math.hypot(target.x - position.x, target.y - position.y) / 10) : 0
@@ -36,9 +37,8 @@ export default function QuestGuide({ position, progress, questStage, onNavigate 
         </div>
         <button
           type="button"
-          disabled={!target}
-          onClick={() => target && onNavigate(target)}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-amber-300 to-orange-500 px-4 py-3 font-black text-slate-950 shadow-[0_4px_0_#9a3412] transition active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:from-slate-600 disabled:to-slate-700 disabled:text-slate-300 disabled:shadow-none"
+          onClick={() => target ? onNavigate(target) : onFreePatrol()}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-amber-300 to-orange-500 px-4 py-3 font-black text-slate-950 shadow-[0_4px_0_#9a3412] transition active:translate-y-1 active:shadow-none"
         >
           <span aria-hidden>➤</span>
           {guide.actionLabel}

@@ -73,6 +73,7 @@ export default function DreamJourneyPage() {
   const [notice, setNotice] = useState(questNotice('not-started', 0))
   const [sceneName, setSceneName] = useState('长安郊野')
   const [navigationRequest, setNavigationRequest] = useState<{ id: number; target: Point; name: string } | null>(null)
+  const [navigationNpc, setNavigationNpc] = useState<NpcDefinition | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -244,16 +245,31 @@ export default function DreamJourneyPage() {
 
   const navigateToQuestTarget = (target: Point) => {
     const objective = getQuestTarget(questStage)
+    setNavigationNpc(objective?.id === 'spirit-patrol' ? null : objective)
     setNavigationRequest({ id: Date.now(), target, name: objective?.name ?? '地图目标' })
     setNotice(`自动寻路已开启：正在前往${objective?.name ?? '地图目标'}。使用方向键可随时取消。`)
   }
 
+  const navigateToMapTarget = (target: Point, name: string, npc?: NpcDefinition) => {
+    setNavigationNpc(npc ?? null)
+    setNavigationRequest({ id: Date.now(), target, name })
+    setNotice(`地图寻路已开启：正在前往${name}。使用方向键可随时取消。`)
+  }
+
   const navigateInCave = (target: Point, name: string) => {
+    setNavigationNpc(null)
     setNavigationRequest({ id: Date.now(), target, name })
     setNotice(`洞窟寻路已开启：正在前往${name}。使用方向键可随时取消。`)
   }
 
   const handleGuideArrival = () => {
+    if (navigationNpc) {
+      const npc = navigationNpc
+      setNavigationNpc(null)
+      setNotice(`已抵达${npc.name}，可以开始互动。`)
+      interactWithNpc(npc)
+      return
+    }
     if (questStage === 'hunting') {
       setNotice('已抵达妖气巡逻区，小妖现身！')
       beginEncounter()
@@ -261,6 +277,11 @@ export default function DreamJourneyPage() {
     }
     const objective = getQuestTarget(questStage)
     if (objective) interactWithNpc(objective)
+  }
+
+  const handleGuideCancel = () => {
+    setNavigationNpc(null)
+    setNotice('自动寻路已取消。你可以点击地图目标重新开始，或继续手动探索。')
   }
 
   const handleDialogueAction = () => {
@@ -353,6 +374,7 @@ export default function DreamJourneyPage() {
                   onSceneChange={handleSceneChange}
                   navigationRequest={navigationRequest}
                   onGuideArrival={handleGuideArrival}
+                  onGuideCancel={handleGuideCancel}
                 />
               ) : (
                 <CaveCanvas
@@ -366,6 +388,7 @@ export default function DreamJourneyPage() {
                   onLeave={handleLeaveCave}
                   navigationRequest={navigationRequest}
                   onGuideArrival={handleCaveGuideArrival}
+                  onGuideCancel={handleGuideCancel}
                 />
               )
             ) : (
@@ -426,7 +449,7 @@ export default function DreamJourneyPage() {
 
             <div className="order-1">
               {scene === 'overworld' ? (
-                <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} />
+                <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} onFreePatrol={beginEncounter} />
               ) : (
                 <CaveGuide position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
               )}
@@ -437,7 +460,7 @@ export default function DreamJourneyPage() {
             </div>
 
             <div className="order-2">
-              {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} sceneName={sceneName} onNavigate={navigateToQuestTarget} /> : (
+              {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} sceneName={sceneName} onNavigate={navigateToMapTarget} /> : (
                 <CaveMiniMap position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
               )}
             </div>
@@ -450,9 +473,6 @@ export default function DreamJourneyPage() {
               <div className="order-5 rounded-2xl border border-dashed border-white/20 p-4 text-center text-sm text-slate-300">靠近头顶有名字的人物即可交互</div>
             )}
 
-            {questStage === 'completed' && scene === 'overworld' && (
-              <button type="button" onClick={beginEncounter} disabled={Boolean(battle)} className="order-6 w-full rounded-2xl border border-fuchsia-300/30 bg-fuchsia-500/20 p-3 font-bold hover:bg-fuchsia-500/30 disabled:opacity-40">⚡ 自由巡逻历练</button>
-            )}
           </aside>
         </div>
       </div>

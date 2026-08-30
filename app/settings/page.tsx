@@ -7,6 +7,7 @@ import BackButton from '@/app/components/ui/BackButton'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
 import { clearSessionUser, readSessionUser } from '@/lib/auth-session'
+import { getPrimaryUserProfile, updatePrimaryUserAvatar } from '@/lib/user-profiles'
 
 interface UserSettings {
   avatar: string // emoji or URL
@@ -70,13 +71,10 @@ export default function SettingsPage() {
     setSettings(baseSettings)
 
     // Fetch latest avatar from Supabase (overrides localStorage if newer)
-    supabase.from('user_profiles')
-      .select('avatar_url, avatar_emoji')
-      .eq('name', user)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data && (data.avatar_url || data.avatar_emoji)) {
-          const remoteAvatar = data.avatar_url || data.avatar_emoji
+    getPrimaryUserProfile(user)
+      .then((data) => {
+        const remoteAvatar = data?.avatar_url ?? data?.avatar_emoji
+        if (remoteAvatar) {
           setSettings(prev => ({ ...prev, avatar: remoteAvatar }))
         }
       })
@@ -91,14 +89,7 @@ export default function SettingsPage() {
 
     // Sync avatar to Supabase (UPDATE only - profile row must exist via Profile page)
     try {
-      const isUrl = settings.avatar.startsWith('http')
-      await supabase
-        .from('user_profiles')
-        .update({
-          avatar_emoji: isUrl ? null : settings.avatar,
-          avatar_url: isUrl ? settings.avatar : null,
-        })
-        .eq('name', currentUser)
+      await updatePrimaryUserAvatar(currentUser, settings.avatar)
     } catch (e) {
       // Profile row might not exist yet - that's fine, localStorage still works
       console.debug('Avatar Supabase sync skipped', e)

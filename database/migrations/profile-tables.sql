@@ -33,3 +33,5 @@ CREATE POLICY "Allow all operations on reminders" ON reminders FOR ALL USING (tr
 CREATE INDEX IF NOT EXISTS idx_reminders_remind_date ON reminders(remind_date);
 CREATE INDEX IF NOT EXISTS idx_reminders_remind_to ON reminders(remind_to);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_birthday ON user_profiles(birthday);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_profiles_normalized_name
+ON user_profiles (LOWER(BTRIM(name)));

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { clearSessionUser, readSessionUser } from '@/lib/auth-session'
 import AvatarSelector from '@/app/components/avatar/AvatarSelector'
 import { useToast } from '@/app/components/feedback/ToastProvider'
+import { getPrimaryUserProfile, updatePrimaryUserAvatar } from '@/lib/user-profiles'
 
 const users = [
   { name: 'zyx', emoji: '⭐', nickname: '星星' },
@@ -65,14 +66,7 @@ export default function UserAvatar() {
 
   const fetchAvatar = async (userName: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('avatar_url, avatar_emoji')
-        .eq('name', userName)
-        .maybeSingle()
-
-      if (error) throw error
-
+      const data = await getPrimaryUserProfile(userName)
       if (data) {
         setAvatarUrl(data.avatar_url || data.avatar_emoji || '')
       }
@@ -110,25 +104,13 @@ export default function UserAvatar() {
 
   const handleAvatarUpdate = async (newAvatar: string) => {
     // Determine if it's emoji or url
-    const isEmoji = !newAvatar.startsWith('http')
     const previousAvatar = avatarUrl
 
     setAvatarUrl(newAvatar)
 
     try {
-      const updateData = isEmoji
-        ? { avatar_emoji: newAvatar, avatar_url: null }
-        : { avatar_url: newAvatar, avatar_emoji: null }
-
-      // We need to upsert. Assuming 'name' is unique enough or we have ID.
-      // Since we don't have UUID easily, we rely on name matching existing profile or creating one.
-      // But wait, standard profiles should exist.
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(updateData)
-        .eq('name', currentUser)
-
-      if (error) throw error
+      const updated = await updatePrimaryUserAvatar(currentUser, newAvatar)
+      if (!updated) throw new Error('请先创建个人资料后再更新头像')
 
       showToast('头像更新成功', 'success')
       setShowAvatarSelector(false)

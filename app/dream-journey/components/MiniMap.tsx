@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { BOSS, MAP_LANDMARKS, NPCS, PATROL_TARGET, PORTALS, WORLD_SIZE, getQuestTarget } from '../engine/world'
-import type { Point, QuestStage } from '../types'
+import type { NpcDefinition, Point, QuestStage } from '../types'
 
 interface MiniMapProps {
   position: Point
   questStage: QuestStage
   sceneName: string
-  onNavigate: (target: Point) => void
+  onNavigate: (target: Point, name: string, npc?: NpcDefinition) => void
 }
 
 function markerPosition(point: Point) {
@@ -61,8 +61,9 @@ function MapSurface({ position, questStage, expanded = false, onNavigate }: Omit
             key={entity.id}
             className={`absolute z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border shadow ${objective ? 'h-5 w-5 animate-pulse border-white bg-amber-300 text-[10px] text-slate-950 ring-4 ring-amber-300/45' : 'h-3 w-3 border-white/80 bg-fuchsia-400'}`}
             style={markerPosition(entity)}
-            title={objective ? `自动前往${entity.name}` : entity.name}
-            onClick={() => objective && onNavigate(entity)}
+            title={`自动前往${entity.name}`}
+            aria-label={`自动前往${entity.name}`}
+            onClick={() => onNavigate(entity, entity.name, entity)}
           >
             {objective ? '!' : ''}
           </button>
@@ -87,7 +88,7 @@ export default function MiniMap({ position, questStage, sceneName, onNavigate }:
         </div>
         <MapSurface position={position} questStage={questStage} onNavigate={onNavigate} />
         {target ? (
-          <button type="button" onClick={() => onNavigate(target)} className="mt-2 flex w-full items-center justify-between rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-left text-xs hover:bg-amber-300/20">
+          <button type="button" onClick={() => onNavigate(target, target.name, target)} className="mt-2 flex w-full items-center justify-between rounded-xl border border-amber-300/35 bg-amber-300/10 px-3 py-2 text-left text-xs hover:bg-amber-300/20">
             <span><b className="text-amber-200">任务目标</b><br /><span className="text-white">{target.name}</span></span>
             <b className="text-amber-200">{directionTo(position, target)} · {distance} 步 ➤</b>
           </button>
@@ -107,7 +108,7 @@ export default function MiniMap({ position, questStage, sceneName, onNavigate }:
               <div><p className="text-xs font-black tracking-[0.25em] text-amber-300">梦境长安 · 世界地图</p><h2 className="text-xl font-black">{sceneName}</h2></div>
               <button type="button" onClick={() => setExpanded(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-xl" aria-label="关闭世界地图">×</button>
             </div>
-            <MapSurface position={position} questStage={questStage} expanded onNavigate={(nextTarget) => { onNavigate(nextTarget); setExpanded(false) }} />
+            <MapSurface position={position} questStage={questStage} expanded onNavigate={(nextTarget, name, npc) => { onNavigate(nextTarget, name, npc); setExpanded(false) }} />
             <p className="mt-3 text-center text-sm text-slate-300">点击金色任务标记即可关闭地图并开始自动寻路</p>
           </div>
         </div>

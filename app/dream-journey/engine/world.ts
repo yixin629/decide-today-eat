@@ -97,7 +97,7 @@ export function getQuestGuidance(stage: QuestStage, progress: number) {
     title: '城外试炼完成',
     description: '新手章节已经完成。你可以自由探索、巡逻历练或培养宠物。',
     progress: '全部完成',
-    actionLabel: '自由探索',
+    actionLabel: '自由巡逻历练',
   }
 }
 

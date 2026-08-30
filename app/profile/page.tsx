@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import BackButton from '@/app/components/ui/BackButton'
 import { useToast } from '@/app/components/feedback/ToastProvider'
+import { normalizeProfileName } from '@/lib/user-profiles'
 
 interface UserProfile {
   id: string
@@ -132,13 +133,18 @@ export default function ProfilePage() {
   }
 
   const handleAddProfile = async () => {
-    if (!newProfile.name || !newProfile.birthday) {
+    const normalizedName = normalizeProfileName(newProfile.name)
+    if (!normalizedName || !newProfile.birthday) {
       toast.warning('请填写姓名和生日')
       return
     }
 
     try {
-      const { error } = await supabase.from('user_profiles').insert([newProfile])
+      const existingProfile = profiles.find((profile) => normalizeProfileName(profile.name) === normalizedName)
+      const profileData = { ...newProfile, name: normalizedName }
+      const { error } = existingProfile
+        ? await supabase.from('user_profiles').update(profileData).eq('id', existingProfile.id)
+        : await supabase.from('user_profiles').insert([profileData])
 
       if (error) throw error
 
@@ -150,8 +156,9 @@ export default function ProfilePage() {
         partner_name: '',
       })
       setShowAddProfile(false)
-      loadData()
-      checkBirthdayReminders()
+      await loadData()
+      await checkBirthdayReminders()
+      toast.success(existingProfile ? '个人资料已更新' : '个人资料已添加')
     } catch (error) {
       console.error('添加资料失败:', error)
       toast.error('添加失败')

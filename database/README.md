@@ -50,7 +50,7 @@
 | 每日签到 | `check_ins` | `migrations/check-in-table.sql` + `fixes/fix-check-ins-rls.sql` | 后者启用当前宽松 RLS，并固定共享函数的 `search_path` |
 | 共同账本 | `shared_expenses` | `migrations/expenses-table.sql` | 独立迁移 |
 | 音乐播放器 | `songs` | `migrations/music-player-schema.sql` | 独立迁移 |
-| 个人资料与提醒 | `user_profiles`、`reminders` | `migrations/profile-tables.sql` | 自定义头像再执行 `migrations/update-profile-avatar.sql` |
+| 个人资料与提醒 | `user_profiles`、`reminders` | `migrations/profile-tables.sql` | 自定义头像再执行 `migrations/update-profile-avatar.sql`；已有同名资料导致 `PGRST116` 时执行 `fixes/deduplicate-user-profiles.sql` |
 | 五子棋 | `gomoku_games` | 基础 setup + `migrations/gomoku-mahjong-schema.sql` | 添加当前 JSONB 状态字段、Realtime 和兼容约束 |
 | 麻将 | `mahjong_games`、`user_balances` | `migrations/gomoku-mahjong-schema.sql` | 同时插入两个默认用户余额，使用前应审查 |
 | 心情追踪 | `mood_records` | `migrations/mood-records-table.sql` | 兼容旧 `TEXT id`，新插入默认生成 UUID 字符串 |
@@ -102,7 +102,7 @@
 | `music-player-schema.sql` | 共享歌曲 |
 | `novels-table.sql` | 情侣书架 |
 | `outfit-records-table.sql` | 穿搭记录 |
-| `profile-tables.sql` | 个人资料和提醒 |
+| `profile-tables.sql` | 个人资料和提醒；新库会为规范化姓名建立唯一索引 |
 | `replace-food-options-seed.sql` | 破坏性清空并重建食物种子 |
 | `supabase-new-features.sql` | 尚未拆分完的互动功能、默认数据和遗留表 |
 | `tarot-table.sql` | 塔罗记录 |
@@ -112,6 +112,7 @@
 
 | 脚本 | 仅在何时使用 |
 | --- | --- |
+| `deduplicate-user-profiles.sql` | `user_profiles.name` 已有重复行导致单行查询失败；会先建立启用 RLS 且撤销客户端权限的备份表，再合并重复资料并添加规范化姓名唯一索引 |
 | `fix-check-ins-rls.sql` | `check_ins` 已存在但缺少 RLS，或需修复 `update_updated_at_column` 的 `search_path` |
 
 ### `diagnostics/`
@@ -183,6 +184,7 @@
 ## 风险与安全
 
 - `migrations/replace-food-options-seed.sql` 使用 `TRUNCATE ... CASCADE`，会替换全部食物数据。
+- `fixes/deduplicate-user-profiles.sql` 会删除重复个人资料行；执行前必须备份，并先审查脚本创建的恢复表名称与合并规则。
 - `migrations/gomoku-mahjong-schema.sql` 会放宽旧五子棋列约束、配置 Realtime，并为两个固定用户插入默认余额。
 - `migrations/supabase-new-features.sql` 和 `add-more-love-quotes.sql` 的种子不是完全幂等的。
 - 多个当前和历史脚本创建允许匿名公开读写的宽松 RLS；这不等同于适合公开生产环境。
