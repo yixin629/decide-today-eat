@@ -24,7 +24,13 @@ export interface HeroStats {
 
 export type SceneId = 'overworld' | 'crimson-cave'
 export type EquipmentSlot = 'weapon' | 'armor' | 'accessory'
-export type ItemId = 'traveler-sword' | 'cloud-robe' | 'crimson-charm'
+export type ItemId =
+  | 'traveler-sword'
+  | 'cloud-robe'
+  | 'crimson-charm'
+  | 'bamboo-shadow-blade'
+  | 'moonweave-robe'
+  | 'jade-guardian-charm'
 export type InventoryState = Record<ItemId, number>
 export type EquipmentState = Record<EquipmentSlot, ItemId | null>
 
@@ -101,6 +107,8 @@ export interface BattleResult {
   goldChange: number
   leveledUp: boolean
   message: string
+  lootChoices?: ItemId[]
+  lootClaimed?: ItemId
 }
 
 export type BattleAction = 'attack' | 'skill' | 'heal' | 'guard' | 'potion'

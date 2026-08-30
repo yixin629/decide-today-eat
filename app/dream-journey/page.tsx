@@ -15,7 +15,7 @@ import PetPanel from './components/PetPanel'
 import QuestGuide from './components/QuestGuide'
 import ShopPanel from './components/ShopPanel'
 import { createBattle, INITIAL_STATS, resolveRound } from './engine/combat'
-import { INITIAL_EQUIPMENT, INITIAL_INVENTORY, ITEMS, equipmentBonuses } from './engine/equipment'
+import { ELITE_REWARD_IDS, INITIAL_EQUIPMENT, INITIAL_INVENTORY, ITEMS, equipmentBonuses } from './engine/equipment'
 import { INITIAL_PET, starUpPet, trainPet, upgradePetSkill } from './engine/pet'
 import { getQuestTarget, getSceneName } from './engine/world'
 import {
@@ -111,7 +111,7 @@ export default function DreamJourneyPage() {
     }))
   }, [equipment, inventory, loaded, pet, position, questStage, scene, stats, worldFlags])
 
-  const bonuses = useMemo(() => equipmentBonuses(equipment), [equipment])
+  const bonuses = useMemo(() => equipmentBonuses(equipment, inventory), [equipment, inventory])
 
   const beginEncounter = useCallback(() => {
     if (questStage !== 'hunting' && questStage !== 'completed') return
@@ -200,6 +200,7 @@ export default function DreamJourneyPage() {
         goldChange: defeatedEnemy.gold,
         leveledUp: nextStats.level > previousLevel,
         message: resultMessage,
+        lootChoices: battle.elite ? ELITE_REWARD_IDS : undefined,
       })
     }
     if (outcome.result === 'defeat') {
@@ -219,6 +220,21 @@ export default function DreamJourneyPage() {
       })
     }
     setStats(nextStats)
+  }
+
+  const claimBattleLoot = (itemId: ItemId) => {
+    if (!battleResult?.lootChoices?.includes(itemId) || battleResult.lootClaimed) return
+    const item = ITEMS[itemId]
+    const nextRank = inventory[itemId] + 1
+    setInventory((current) => ({ ...current, [itemId]: current[itemId] + 1 }))
+    setEquipment((current) => ({ ...current, [item.slot]: itemId }))
+    setBattleResult((current) => current ? {
+      ...current,
+      lootChoices: undefined,
+      lootClaimed: itemId,
+      message: `${current.message} ${nextRank === 1 ? '首次解锁' : `精炼至 +${nextRank - 1}`}“${item.name}”，并已自动装备。`,
+    } : current)
+    setNotice(`${nextRank === 1 ? '获得' : '精炼'}${item.name}，已自动装备。可在装备背包中随时切换。`)
   }
 
   const interactWithNpc = (npc: NpcDefinition) => {
@@ -429,7 +445,7 @@ export default function DreamJourneyPage() {
             )}
             {pendingBattle && <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />}
             {battle && <CombatPanel battle={battle} stats={stats} onAction={handleAction} />}
-            {battleResult && <BattleResultPanel result={battleResult} onContinue={() => setBattleResult(null)} />}
+            {battleResult && <BattleResultPanel result={battleResult} inventory={inventory} onClaimLoot={claimBattleLoot} onContinue={() => setBattleResult(null)} />}
             {dialogue && (
               <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border-2 border-amber-200 bg-slate-950/95 p-4 shadow-2xl">
                 <div className="flex gap-3">

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export type AtlasQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type AtlasName = 'monsters' | 'monsters-v2' | 'items' | 'effects' | 'heroes'
+export type AtlasName = 'monsters' | 'monsters-v2' | 'items' | 'items-v2' | 'effects' | 'heroes'
 
 interface AtlasSpriteProps {
   atlas: AtlasName
@@ -15,6 +15,7 @@ const ATLAS_PATHS: Record<AtlasName, string> = {
   monsters: '/games/dream-journey/battle/monsters-atlas-v1.png',
   'monsters-v2': '/games/dream-journey/battle/monsters-atlas-v2.png',
   items: '/games/dream-journey/battle/items-atlas-v1.png',
+  'items-v2': '/games/dream-journey/battle/items-atlas-v2.png',
   effects: '/games/dream-journey/battle/effects-atlas-v1.png',
   heroes: '/games/dream-journey/battle/hero-combat-atlas-v1.png',
 }
@@ -68,7 +69,14 @@ export function itemQuadrant(itemId: string): AtlasQuadrant {
   if (itemId === 'traveler-sword') return 'top-left'
   if (itemId === 'cloud-robe') return 'top-right'
   if (itemId === 'crimson-charm') return 'bottom-left'
+  if (itemId === 'bamboo-shadow-blade') return 'top-left'
+  if (itemId === 'moonweave-robe') return 'top-right'
+  if (itemId === 'jade-guardian-charm') return 'bottom-left'
   return 'bottom-right'
+}
+
+export function itemAtlas(itemId: string): AtlasName {
+  return ['bamboo-shadow-blade', 'moonweave-robe', 'jade-guardian-charm'].includes(itemId) ? 'items-v2' : 'items'
 }
 
 export function heroQuadrant(phase: 'idle' | 'attack' | 'cast' | 'hurt'): AtlasQuadrant {
