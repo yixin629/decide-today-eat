@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { INTENT_LABELS } from '../engine/combat'
 import type { BattleAction, BattleState, EnemyIntent, HeroStats } from '../types'
-import AtlasSprite, { monsterQuadrant } from './AtlasSprite'
+import AtlasSprite, { heroQuadrant, monsterQuadrant } from './AtlasSprite'
 
 interface CombatPanelProps {
   battle: BattleState
@@ -138,7 +138,6 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
     return () => window.clearTimeout(timer)
   }, [autoBattle, battle.enemy, battle.intent, battle.reinforcements, battleSpeed, busy, runAction, stats.hp, stats.maxHp, stats.mp, stats.potions])
 
-  const heroFrame = '/games/dream-journey/jxk/stand/02000.png'
   const displayIntent = phase === 'enemy-counter' && enemyActionIntent ? enemyActionIntent : battle.intent
   const intent = INTENT_LABELS[displayIntent]
   const actionName = activeAction === 'attack'
@@ -156,6 +155,13 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
   const selectedEnemy = enemies[selectedTargetIndex] ?? battle.enemy
   const counterLabel = battle.enemy.hp > 0 ? `${battle.enemy.name} · ${intent.name}` : '残余护卫 · 联手反击'
   const heroOffensive = phase === 'hero-action' && activeAction !== 'guard' && activeAction !== 'potion' && activeAction !== 'heal'
+  const heroPose = phase === 'enemy-counter'
+    ? heroQuadrant('hurt')
+    : phase === 'hero-action' && activeAction === 'attack'
+      ? heroQuadrant('attack')
+      : phase === 'hero-action' && (activeAction === 'skill' || activeAction === 'heal')
+        ? heroQuadrant('cast')
+        : heroQuadrant('idle')
   const phaseLabel = phase === 'idle'
     ? `当前目标 · ${selectedEnemy.name}`
     : phase === 'hero-action'
@@ -199,8 +205,8 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
             <div className="absolute -top-3 left-1/2 z-20 w-28 -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/85 p-1 shadow-lg">
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-rose-500 transition-all duration-500" style={{ width: `${stats.hp / stats.maxHp * 100}%` }} /></div>
             </div>
-            <div className="relative h-44 w-32 md:h-52 md:w-40">
-              <Image src={heroFrame} alt="逍遥少侠战斗动画" fill sizes="160px" className="object-contain drop-shadow-[0_14px_10px_rgba(0,0,0,0.65)]" unoptimized />
+            <div className="relative h-44 w-40 md:h-52 md:w-48">
+              <AtlasSprite atlas="heroes" quadrant={heroPose} alt="逍遥少侠战斗动作" className="h-full w-full drop-shadow-[0_14px_10px_rgba(0,0,0,0.65)]" />
               {activeAction === 'guard' && phase === 'hero-action' && <span className="absolute inset-0 grid place-items-center text-7xl opacity-80 animate-pulse">🛡️</span>}
               {phase === 'enemy-counter' && <span className="absolute -right-2 top-12 text-5xl animate-ping">💥</span>}
             </div>

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export type AtlasQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type AtlasName = 'monsters' | 'items' | 'effects'
+export type AtlasName = 'monsters' | 'items' | 'effects' | 'heroes'
 
 interface AtlasSpriteProps {
   atlas: AtlasName
@@ -15,6 +15,7 @@ const ATLAS_PATHS: Record<AtlasName, string> = {
   monsters: '/games/dream-journey/battle/monsters-atlas-v1.png',
   items: '/games/dream-journey/battle/items-atlas-v1.png',
   effects: '/games/dream-journey/battle/effects-atlas-v1.png',
+  heroes: '/games/dream-journey/battle/hero-combat-atlas-v1.png',
 }
 
 const POSITIONS: Record<AtlasQuadrant, string> = {
@@ -59,4 +60,11 @@ export function itemQuadrant(itemId: string): AtlasQuadrant {
   if (itemId === 'cloud-robe') return 'top-right'
   if (itemId === 'crimson-charm') return 'bottom-left'
   return 'bottom-right'
+}
+
+export function heroQuadrant(phase: 'idle' | 'attack' | 'cast' | 'hurt'): AtlasQuadrant {
+  if (phase === 'attack') return 'top-right'
+  if (phase === 'cast') return 'bottom-left'
+  if (phase === 'hurt') return 'bottom-right'
+  return 'top-left'
 }
