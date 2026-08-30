@@ -7,6 +7,7 @@ import BattleResultPanel from './components/BattleResultPanel'
 import CaveCanvas from './components/CaveCanvas'
 import CaveGuide from './components/CaveGuide'
 import CaveMiniMap from './components/CaveMiniMap'
+import EncounterPreviewPanel from './components/EncounterPreviewPanel'
 import GameCanvas from './components/GameCanvas'
 import InventoryPanel from './components/InventoryPanel'
 import MiniMap from './components/MiniMap'
@@ -64,6 +65,7 @@ export default function DreamJourneyPage() {
   const [worldFlags, setWorldFlags] = useState<WorldFlags>({ caveChestOpened: false })
   const [pet, setPet] = useState<PetState>(INITIAL_PET)
   const [battle, setBattle] = useState<BattleState | null>(null)
+  const [pendingBattle, setPendingBattle] = useState<BattleState | null>(null)
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null)
   const [nearbyNpc, setNearbyNpc] = useState<NpcDefinition | null>(null)
   const [dialogue, setDialogue] = useState<DialogueState | null>(null)
@@ -114,15 +116,27 @@ export default function DreamJourneyPage() {
   const beginEncounter = useCallback(() => {
     if (questStage !== 'hunting' && questStage !== 'completed') return
     setBattleResult(null)
-    setBattle((current) => current ?? createBattle(stats.level, 'mob', pet))
+    setPendingBattle((current) => current ?? createBattle(stats.level, 'mob', pet))
   }, [pet, questStage, stats.level])
 
   const beginBossEncounter = () => {
     if (questStage !== 'boss-ready') return
     setDialogue(null)
     setBattleResult(null)
-    setBattle(createBattle(stats.level, 'boss', pet))
-    setNotice('赤焰妖王现身，小心它的重击！')
+    setPendingBattle(createBattle(stats.level, 'boss', pet))
+    setNotice('赤焰妖王现身！先观察敌方阵容和战术提示，再决定迎战。')
+  }
+
+  const startPendingBattle = () => {
+    if (!pendingBattle) return
+    setBattle(pendingBattle)
+    setPendingBattle(null)
+    setNotice(`战斗开始：优先锁定${pendingBattle.enemy.name}，根据敌方数量选择单体或群体技能。`)
+  }
+
+  const retreatFromEncounter = () => {
+    setPendingBattle(null)
+    setNotice('已安全撤离遭遇。补给、培养宠物或调整装备后可以再次挑战。')
   }
 
   const handleNpcChange = useCallback((npc: NpcDefinition | null) => setNearbyNpc(npc), [])
@@ -364,7 +378,7 @@ export default function DreamJourneyPage() {
             {loaded ? (
               scene === 'overworld' ? (
                 <GameCanvas
-                  paused={Boolean(battle || battleResult || dialogue || shopOpen || inventoryOpen || petOpen)}
+                  paused={Boolean(pendingBattle || battle || battleResult || dialogue || shopOpen || inventoryOpen || petOpen)}
                   initialPosition={position}
                   questStage={questStage}
                   onEncounter={beginEncounter}
@@ -378,7 +392,7 @@ export default function DreamJourneyPage() {
                 />
               ) : (
                 <CaveCanvas
-                  paused={Boolean(battle || battleResult || inventoryOpen || petOpen)}
+                  paused={Boolean(pendingBattle || battle || battleResult || inventoryOpen || petOpen)}
                   bossActive={questStage === 'boss-ready'}
                   chestOpened={worldFlags.caveChestOpened}
                   initialPosition={position}
@@ -394,6 +408,7 @@ export default function DreamJourneyPage() {
             ) : (
               <div className="grid aspect-[9/5.6] place-items-center rounded-2xl border-4 border-amber-200/80 bg-slate-950 text-amber-100">正在读取游戏存档…</div>
             )}
+            {pendingBattle && <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />}
             {battle && <CombatPanel battle={battle} stats={stats} onAction={handleAction} />}
             {battleResult && <BattleResultPanel result={battleResult} onContinue={() => setBattleResult(null)} />}
             {dialogue && (

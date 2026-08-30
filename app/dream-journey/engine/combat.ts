@@ -5,6 +5,10 @@ const ENEMIES: Omit<Enemy, 'hp' | 'maxHp'>[] = [
   { kind: 'mob', name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
   { kind: 'mob', name: '花妖', icon: '🌺', attack: 10, exp: 22, gold: 15 },
   { kind: 'mob', name: '巡山小妖', icon: '👹', attack: 12, exp: 28, gold: 20 },
+  { kind: 'mob', name: '青竹灵', icon: '🎋', attack: 11, exp: 25, gold: 18 },
+  { kind: 'mob', name: '月影狐', icon: '🌙', attack: 13, exp: 31, gold: 22 },
+  { kind: 'mob', name: '石甲卫', icon: '🪨', attack: 14, exp: 34, gold: 25 },
+  { kind: 'mob', name: '沧澜羽蛇', icon: '🐉', attack: 15, exp: 38, gold: 28 },
 ]
 
 const BOSS: Omit<Enemy, 'hp' | 'maxHp'> = {
@@ -33,6 +37,26 @@ export const INITIAL_STATS: HeroStats = {
 
 export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET): BattleState {
   const template = kind === 'boss' ? BOSS : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
+  const reinforcementCount = kind === 'boss' ? 2 : level >= 4 && Math.random() < 0.3 ? 2 : level >= 2 && Math.random() < 0.55 ? 1 : 0
+  const reinforcementTemplates = kind === 'boss'
+    ? [ENEMIES[2], ENEMIES[1]]
+    : [...ENEMIES]
+        .filter((enemy) => enemy.name !== template.name)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, reinforcementCount)
+  const reinforcements = reinforcementTemplates.map((unit, index) => {
+    const unitHp = (kind === 'boss' ? 32 : 25) + level * (kind === 'boss' ? 7 : 6) + index * 4
+    return {
+      ...unit,
+      hp: unitHp,
+      maxHp: unitHp,
+      attack: Math.max(4, unit.attack - 5 + level),
+      exp: 0,
+      gold: 0,
+    }
+  })
+  const groupExp = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.exp * 0.45), 0)
+  const groupGold = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.gold * 0.45), 0)
   const maxHp = kind === 'boss'
     ? 145 + level * 24
     : 42 + level * 11 + Math.floor(Math.random() * 12)
@@ -43,13 +67,11 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
       hp: maxHp,
       maxHp,
       attack: template.attack + level * (kind === 'boss' ? 3 : 2),
+      exp: template.exp + groupExp,
+      gold: template.gold + groupGold,
     },
-    reinforcements: kind === 'boss'
-      ? [
-          { ...ENEMIES[2], name: '巡山小妖', hp: 36 + level * 7, maxHp: 36 + level * 7, attack: 4 + level, exp: 0, gold: 0 },
-          { ...ENEMIES[1], name: '花妖', hp: 30 + level * 6, maxHp: 30 + level * 6, attack: 3 + level, exp: 0, gold: 0 },
-        ]
-      : [],
+    reinforcements,
+    arena: kind === 'boss' ? 'city' : 'bamboo',
     companion: { name: '泡泡灵宠', model: '泡泡精', attack: petAttack(pet) },
     lastCompanionAttack: null,
     log: [kind === 'boss' ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。` : `野外突然跳出一只${template.name}！`],
@@ -215,6 +237,7 @@ export function resolveRound(
     battle: {
       enemy,
       reinforcements,
+      arena: battle.arena,
       companion,
       lastCompanionAttack,
       guarding: false,

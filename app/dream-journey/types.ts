@@ -76,6 +76,7 @@ export interface CompanionAttack {
 export interface BattleState {
   enemy: Enemy
   reinforcements: Enemy[]
+  arena: 'bamboo' | 'city'
   companion: BattleCompanion
   lastCompanionAttack: CompanionAttack | null
   log: string[]

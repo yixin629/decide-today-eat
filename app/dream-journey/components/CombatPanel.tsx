@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { INTENT_LABELS } from '../engine/combat'
 import type { BattleAction, BattleState, EnemyIntent, HeroStats } from '../types'
-import AtlasSprite, { heroQuadrant, monsterQuadrant } from './AtlasSprite'
+import AtlasSprite, { heroQuadrant, monsterAtlas, monsterQuadrant } from './AtlasSprite'
 
 interface CombatPanelProps {
   battle: BattleState
@@ -152,6 +152,10 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
             ? '使用金创药'
             : null
   const enemies = [battle.enemy, ...battle.reinforcements]
+  const arenaPath = battle.arena === 'bamboo'
+    ? '/games/dream-journey/battle/arena-bamboo-v1.png'
+    : '/games/dream-journey/battle/arena-night-v1.png'
+  const arenaName = battle.arena === 'bamboo' ? '月下竹林' : '长安城楼'
   const selectedEnemy = enemies[selectedTargetIndex] ?? battle.enemy
   const counterLabel = battle.enemy.hp > 0 ? `${battle.enemy.name} · ${intent.name}` : '残余护卫 · 联手反击'
   const heroOffensive = phase === 'hero-action' && activeAction !== 'guard' && activeAction !== 'potion' && activeAction !== 'heal'
@@ -182,15 +186,16 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
           className={`relative h-72 overflow-hidden transition-colors duration-500 md:h-[300px] ${phase === 'enemy-counter' ? 'battle-arena-impact' : ''}`}
           style={phase === 'enemy-counter' ? { animationDuration: `${720 / battleSpeed}ms` } : undefined}
         >
-          <Image src="/games/dream-journey/battle/arena-night-v1.png" alt="月下长安斜向战斗场景" fill sizes="896px" className={`object-cover transition-all duration-500 ${battle.enraged ? 'scale-105 saturate-150 contrast-125' : ''}`} priority unoptimized />
+          <Image src={arenaPath} alt={`${arenaName}斜向战斗场景`} fill sizes="896px" className={`object-cover transition-all duration-500 ${battle.enraged ? 'scale-105 saturate-150 contrast-125' : ''}`} priority unoptimized />
           <div className={`absolute inset-0 bg-gradient-to-tr transition-colors duration-500 ${battle.enraged ? 'from-red-950/55 via-transparent to-orange-600/20' : 'from-indigo-950/20 via-transparent to-sky-500/10'}`} />
           {phase === 'enemy-counter' && <div className={`absolute inset-0 ${displayIntent === 'inferno' ? 'bg-orange-500/20' : 'bg-fuchsia-500/10'} motion-safe:animate-pulse`} />}
           {heroOffensive && <div aria-hidden="true" className="battle-speed-lines absolute inset-0 z-[5] bg-[linear-gradient(155deg,transparent_33%,rgba(255,255,255,0.28)_34%,transparent_35%,transparent_47%,rgba(251,191,36,0.32)_48%,transparent_49%,transparent_61%,rgba(255,255,255,0.22)_62%,transparent_63%)]" style={{ animationDuration: `${820 / battleSpeed}ms` }} />}
           <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full border border-white/20 bg-slate-950/60 px-4 py-1 text-xs font-bold tracking-widest text-amber-100">
             {phaseLabel}
           </div>
+          <div className="absolute left-3 top-3 rounded-full border border-white/20 bg-slate-950/75 px-3 py-1 text-[11px] font-black text-sky-100">第 {battle.turn} 回合 · {arenaName}</div>
           {battle.enemy.kind === 'boss' && battle.enemy.hp > 0 && <div className={`absolute right-3 top-3 rounded-xl border px-3 py-2 text-right text-xs backdrop-blur ${displayIntent === 'inferno' ? 'animate-pulse border-orange-300 bg-red-950/85 text-orange-100' : 'border-white/20 bg-slate-950/65 text-white'}`}><b>{intent.icon} {phase === 'enemy-counter' ? '正在施放' : '妖王意图'}：{intent.name}</b><span className="block text-[11px] opacity-80">{intent.description}</span></div>}
-          {battle.enraged && <div className="absolute left-3 top-3 animate-pulse rounded-full bg-rose-600 px-3 py-1 text-xs font-black">🔥 狂暴阶段</div>}
+          {battle.enraged && <div className="absolute left-3 top-12 animate-pulse rounded-full bg-rose-600 px-3 py-1 text-xs font-black">🔥 狂暴阶段</div>}
 
           <div
             className={`absolute bottom-[6%] left-[14%] z-10 flex w-36 flex-col items-center transition-[filter] duration-300 md:left-[18%] ${phase === 'hero-action' ? 'brightness-125' : phase === 'enemy-counter' ? 'battle-hero-hit brightness-75' : ''} ${heroOffensive ? 'battle-hero-lunge' : ''}`}
@@ -252,7 +257,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-rose-500 transition-all duration-500" style={{ width: `${enemy.hp / enemy.maxHp * 100}%` }} /></div>
                 </div>
                 <div className={`relative ${mainEnemy && battle.enraged ? 'drop-shadow-[0_0_28px_rgba(251,80,30,0.95)]' : 'drop-shadow-[0_16px_12px_rgba(0,0,0,0.65)]'}`}>
-                  <AtlasSprite atlas="monsters" quadrant={monsterQuadrant(enemy.name)} alt={`${enemy.name}战斗模型`} className={mainEnemy ? 'h-44 w-44 md:h-56 md:w-56' : 'h-24 w-24 md:h-32 md:w-32'} />
+                  <AtlasSprite atlas={monsterAtlas(enemy.name)} quadrant={monsterQuadrant(enemy.name)} alt={`${enemy.name}战斗模型`} className={mainEnemy ? 'h-44 w-44 md:h-56 md:w-56' : 'h-24 w-24 md:h-32 md:w-32'} />
                   {phase === 'hero-action' && activeAction === 'attack' && selected && <AtlasSprite atlas="effects" quadrant="top-left" alt="金色剑气斩击" className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 animate-pulse ${mainEnemy ? 'h-52 w-52 md:h-64 md:w-64' : 'h-32 w-32 md:h-40 md:w-40'}`} />}
                   {companionTarget && <AtlasSprite atlas="effects" quadrant="bottom-left" alt="灵泡追击特效" className={`absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 animate-pulse hue-rotate-90 ${mainEnemy ? 'h-44 w-44 md:h-56 md:w-56' : 'h-28 w-28 md:h-36 md:w-36'}`} />}
                 </div>

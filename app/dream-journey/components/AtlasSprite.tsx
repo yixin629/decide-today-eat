@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export type AtlasQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type AtlasName = 'monsters' | 'items' | 'effects' | 'heroes'
+export type AtlasName = 'monsters' | 'monsters-v2' | 'items' | 'effects' | 'heroes'
 
 interface AtlasSpriteProps {
   atlas: AtlasName
@@ -13,6 +13,7 @@ interface AtlasSpriteProps {
 
 const ATLAS_PATHS: Record<AtlasName, string> = {
   monsters: '/games/dream-journey/battle/monsters-atlas-v1.png',
+  'monsters-v2': '/games/dream-journey/battle/monsters-atlas-v2.png',
   items: '/games/dream-journey/battle/items-atlas-v1.png',
   effects: '/games/dream-journey/battle/effects-atlas-v1.png',
   heroes: '/games/dream-journey/battle/hero-combat-atlas-v1.png',
@@ -52,7 +53,15 @@ export function monsterQuadrant(name: string): AtlasQuadrant {
   if (name === '泡泡精') return 'top-left'
   if (name === '花妖') return 'top-right'
   if (name === '巡山小妖') return 'bottom-left'
+  if (name === '青竹灵') return 'top-left'
+  if (name === '月影狐') return 'top-right'
+  if (name === '石甲卫') return 'bottom-left'
+  if (name === '沧澜羽蛇') return 'bottom-right'
   return 'bottom-right'
+}
+
+export function monsterAtlas(name: string): AtlasName {
+  return ['青竹灵', '月影狐', '石甲卫', '沧澜羽蛇'].includes(name) ? 'monsters-v2' : 'monsters'
 }
 
 export function itemQuadrant(itemId: string): AtlasQuadrant {
