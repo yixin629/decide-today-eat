@@ -15,6 +15,8 @@ export interface HeroStats {
   gold: number
   potions: number
   questProgress: number
+  patrolWins: number
+  eliteWins: number
   attack: number
   defense: number
   crit: number
@@ -77,6 +79,7 @@ export interface BattleState {
   enemy: Enemy
   reinforcements: Enemy[]
   arena: 'bamboo' | 'city'
+  elite: boolean
   companion: BattleCompanion
   lastCompanionAttack: CompanionAttack | null
   log: string[]
@@ -93,6 +96,7 @@ export interface BattleResult {
   enemyName: string
   enemyIcon: string
   enemyKind: Enemy['kind']
+  elite: boolean
   expGained: number
   goldChange: number
   leveledUp: boolean

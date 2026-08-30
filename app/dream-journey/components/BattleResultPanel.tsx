@@ -18,7 +18,7 @@ export default function BattleResultPanel({ result, onContinue }: BattleResultPa
           {victory ? '战斗胜利' : '战斗失败'}
         </p>
         <h2 className="mt-1 text-3xl font-black">{result.enemyName}</h2>
-        {result.enemyKind === 'boss' && <span className="mt-2 inline-flex rounded-full bg-rose-600/80 px-3 py-1 text-xs font-bold">首领战</span>}
+        {(result.enemyKind === 'boss' || result.elite) && <span className="mt-2 inline-flex rounded-full bg-rose-600/80 px-3 py-1 text-xs font-bold">{result.enemyKind === 'boss' ? '首领战' : '精英悬赏'}</span>}
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-slate-300">修为</span><b className="mt-1 block text-xl">{result.expGained > 0 ? `+${result.expGained}` : '—'}</b></div>

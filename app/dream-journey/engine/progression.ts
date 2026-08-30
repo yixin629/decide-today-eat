@@ -48,6 +48,8 @@ function parseStats(value: unknown): HeroStats {
       QUEST_TARGET,
       Math.max(0, Math.floor(finiteNumber(saved.questProgress, INITIAL_STATS.questProgress))),
     ),
+    patrolWins: Math.max(0, Math.floor(finiteNumber(saved.patrolWins, INITIAL_STATS.patrolWins))),
+    eliteWins: Math.max(0, Math.floor(finiteNumber(saved.eliteWins, INITIAL_STATS.eliteWins))),
     attack: Math.max(0, finiteNumber(saved.attack, INITIAL_STATS.attack)),
     defense: Math.max(0, finiteNumber(saved.defense, INITIAL_STATS.defense)),
     crit: Math.min(100, Math.max(0, finiteNumber(saved.crit, INITIAL_STATS.crit))),
@@ -133,12 +135,14 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
   return INITIAL_SAVE
 }
 
-export function questNotice(stage: QuestStage, progress: number) {
+export function questNotice(stage: QuestStage, progress: number, patrolWins = 0) {
   if (stage === 'not-started') return '去找云游师父领取城外试炼'
   if (stage === 'hunting') return `在野外击退小妖：${progress}/${QUEST_TARGET}`
   if (stage === 'boss-ready') return '东北方的赤焰洞窟已经开启，进入洞窟挑战妖王'
   if (stage === 'returning') return '妖王已败，回去找云游师父复命'
-  return '新手章节已完成，可继续在长安境内历练'
+  const bountyProgress = patrolWins % 3
+  if (bountyProgress === 2) return '精英悬赏已出现：下一场将遭遇精英妖物与两名护卫'
+  return `长安悬赏历练：${bountyProgress}/3，完成三场巡逻可触发精英遭遇`
 }
 
 export function buyPotion(stats: HeroStats) {

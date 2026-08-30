@@ -91,7 +91,7 @@ export default function DreamJourneyPage() {
     setEquipment(saved.equipment)
     setWorldFlags(saved.worldFlags)
     setPet(saved.pet)
-    setNotice(questNotice(saved.questStage, saved.stats.questProgress))
+    setNotice(questNotice(saved.questStage, saved.stats.questProgress, saved.stats.patrolWins))
     setSceneName(saved.scene === 'crimson-cave' ? '赤焰妖王洞窟' : getSceneName(saved.position))
     setLoaded(true)
   }, [])
@@ -116,8 +116,9 @@ export default function DreamJourneyPage() {
   const beginEncounter = useCallback(() => {
     if (questStage !== 'hunting' && questStage !== 'completed') return
     setBattleResult(null)
-    setPendingBattle((current) => current ?? createBattle(stats.level, 'mob', pet))
-  }, [pet, questStage, stats.level])
+    const elite = questStage === 'completed' && (stats.patrolWins + 1) % 3 === 0
+    setPendingBattle((current) => current ?? createBattle(stats.level, 'mob', pet, elite))
+  }, [pet, questStage, stats.level, stats.patrolWins])
 
   const beginBossEncounter = () => {
     if (questStage !== 'boss-ready') return
@@ -131,7 +132,7 @@ export default function DreamJourneyPage() {
     if (!pendingBattle) return
     setBattle(pendingBattle)
     setPendingBattle(null)
-    setNotice(`战斗开始：优先锁定${pendingBattle.enemy.name}，根据敌方数量选择单体或群体技能。`)
+    setNotice(`${pendingBattle.elite ? '精英悬赏开始' : '战斗开始'}：优先锁定${pendingBattle.enemy.name}，根据敌方数量选择单体或群体技能。`)
   }
 
   const retreatFromEncounter = () => {
@@ -170,6 +171,22 @@ export default function DreamJourneyPage() {
           resultMessage = `城外试炼进度 ${progress}/${QUEST_TARGET}，继续巡逻即可找到下一只小妖。`
           setNotice(`已击退 ${progress}/${QUEST_TARGET} 只小妖，获得 ${defeatedEnemy.exp} 修为和 ${defeatedEnemy.gold} 两银子。${levelMessage}`)
         }
+      } else if (defeatedEnemy.kind === 'mob' && questStage === 'completed') {
+        const patrolWins = nextStats.patrolWins + 1
+        const eliteWins = nextStats.eliteWins + (battle.elite ? 1 : 0)
+        nextStats = {
+          ...nextStats,
+          patrolWins,
+          eliteWins,
+          potions: nextStats.potions + (battle.elite ? 1 : 0),
+        }
+        const nextEliteReady = patrolWins % 3 === 2
+        resultMessage = battle.elite
+          ? `精英悬赏完成！额外获得 1 枚金创药。累计击败 ${eliteWins} 名精英妖物。`
+          : nextEliteReady
+            ? '悬赏进度已达到 2/3，下一次巡逻必定出现精英妖物与两名护卫。'
+            : `悬赏巡逻胜利，当前循环进度 ${patrolWins % 3}/3。`
+        setNotice(`${resultMessage}${levelMessage}`)
       } else {
         setNotice(`击败${defeatedEnemy.name}，获得 ${defeatedEnemy.exp} 修为和 ${defeatedEnemy.gold} 两银子。${levelMessage}`)
       }
@@ -178,6 +195,7 @@ export default function DreamJourneyPage() {
         enemyName: defeatedEnemy.name,
         enemyIcon: defeatedEnemy.icon,
         enemyKind: defeatedEnemy.kind,
+        elite: battle.elite,
         expGained: defeatedEnemy.exp,
         goldChange: defeatedEnemy.gold,
         leveledUp: nextStats.level > previousLevel,
@@ -193,6 +211,7 @@ export default function DreamJourneyPage() {
         enemyName: defeatedEnemy.name,
         enemyIcon: defeatedEnemy.icon,
         enemyKind: defeatedEnemy.kind,
+        elite: battle.elite,
         expGained: 0,
         goldChange: -goldLost,
         leveledUp: false,
@@ -335,8 +354,8 @@ export default function DreamJourneyPage() {
     setScene('overworld')
     setSceneName('长安郊野')
     setNearbyNpc(null)
-    setNotice(questStage === 'returning' ? '妖王已败，回去找云游师父复命。' : questNotice(questStage, stats.questProgress))
-  }, [questStage, stats.questProgress])
+    setNotice(questStage === 'returning' ? '妖王已败，回去找云游师父复命。' : questNotice(questStage, stats.questProgress, stats.patrolWins))
+  }, [questStage, stats.patrolWins, stats.questProgress])
 
   const handleCaveGuideArrival = () => {
     if (questStage === 'boss-ready') beginBossEncounter()
@@ -454,6 +473,8 @@ export default function DreamJourneyPage() {
                 <p className="flex justify-between"><span>⭐ 修为</span><b>{stats.exp}/{stats.level * 60}</b></p>
                 <p className="flex justify-between"><span>🪙 银两</span><b>{stats.gold}</b></p>
                 <p className="flex justify-between"><span>🧪 金创药</span><b>{stats.potions}</b></p>
+                <p className="flex justify-between"><span>🏅 悬赏胜场</span><b>{stats.patrolWins}</b></p>
+                <p className="flex justify-between"><span>👑 精英击破</span><b>{stats.eliteWins}</b></p>
                 <p className="flex justify-between"><span>⚔️ 攻击</span><b>{stats.attack + bonuses.attack}</b></p>
                 <p className="flex justify-between"><span>🛡️ 防御</span><b>{stats.defense + bonuses.defense}</b></p>
                 <p className="flex justify-between"><span>🎯 暴击</span><b>{stats.crit + bonuses.crit}%</b></p>
@@ -464,7 +485,7 @@ export default function DreamJourneyPage() {
 
             <div className="order-1">
               {scene === 'overworld' ? (
-                <QuestGuide position={position} progress={stats.questProgress} questStage={questStage} onNavigate={navigateToQuestTarget} onFreePatrol={beginEncounter} />
+                <QuestGuide position={position} progress={stats.questProgress} patrolWins={stats.patrolWins} eliteWins={stats.eliteWins} questStage={questStage} onNavigate={navigateToQuestTarget} onFreePatrol={beginEncounter} />
               ) : (
                 <CaveGuide position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
               )}

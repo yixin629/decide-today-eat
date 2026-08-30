@@ -20,6 +20,18 @@ const BOSS: Omit<Enemy, 'hp' | 'maxHp'> = {
   gold: 68,
 }
 
+export const ENEMY_TRAITS: Record<string, { name: string; description: string }> = {
+  青竹灵: { name: '竹影迅袭', description: '身法迅捷，反击伤害略高。' },
+  月影狐: { name: '噬月妖术', description: '反击时会额外削减法力。' },
+  石甲卫: { name: '玄岩重甲', description: '普通攻击伤害降低，法术伤害不受影响。' },
+  沧澜羽蛇: { name: '穿云毒息', description: '攻击会穿透一部分防御。' },
+  赤焰妖王: { name: '妖焰轮转', description: '每回合更换技能意图，半血后进入狂暴。' },
+}
+
+export function enemyTrait(name: string) {
+  return ENEMY_TRAITS[name] ?? { name: '寻常妖物', description: '没有额外战斗特性。' }
+}
+
 export const INITIAL_STATS: HeroStats = {
   level: 1,
   hp: 100,
@@ -30,14 +42,16 @@ export const INITIAL_STATS: HeroStats = {
   gold: 36,
   potions: 3,
   questProgress: 0,
+  patrolWins: 0,
+  eliteWins: 0,
   attack: 6,
   defense: 2,
   crit: 5,
 }
 
-export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET): BattleState {
+export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET, elite = false): BattleState {
   const template = kind === 'boss' ? BOSS : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
-  const reinforcementCount = kind === 'boss' ? 2 : level >= 4 && Math.random() < 0.3 ? 2 : level >= 2 && Math.random() < 0.55 ? 1 : 0
+  const reinforcementCount = kind === 'boss' || elite ? 2 : level >= 4 && Math.random() < 0.3 ? 2 : level >= 2 && Math.random() < 0.55 ? 1 : 0
   const reinforcementTemplates = kind === 'boss'
     ? [ENEMIES[2], ENEMIES[1]]
     : [...ENEMIES]
@@ -45,36 +59,43 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
         .sort(() => Math.random() - 0.5)
         .slice(0, reinforcementCount)
   const reinforcements = reinforcementTemplates.map((unit, index) => {
-    const unitHp = (kind === 'boss' ? 32 : 25) + level * (kind === 'boss' ? 7 : 6) + index * 4
+    const unitHp = (kind === 'boss' ? 32 : elite ? 36 : 25) + level * (kind === 'boss' ? 7 : elite ? 8 : 6) + index * 4
     return {
       ...unit,
       hp: unitHp,
       maxHp: unitHp,
-      attack: Math.max(4, unit.attack - 5 + level),
+      attack: Math.max(4, unit.attack - 5 + level + (elite ? 2 : 0)),
       exp: 0,
       gold: 0,
     }
   })
   const groupExp = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.exp * 0.45), 0)
   const groupGold = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.gold * 0.45), 0)
-  const maxHp = kind === 'boss'
+  const baseMaxHp = kind === 'boss'
     ? 145 + level * 24
     : 42 + level * 11 + Math.floor(Math.random() * 12)
+  const maxHp = elite ? Math.round(baseMaxHp * 1.55) : baseMaxHp
+  const rewardMultiplier = elite ? 1.75 : 1
 
   return {
     enemy: {
       ...template,
       hp: maxHp,
       maxHp,
-      attack: template.attack + level * (kind === 'boss' ? 3 : 2),
-      exp: template.exp + groupExp,
-      gold: template.gold + groupGold,
+      attack: template.attack + level * (kind === 'boss' ? 3 : 2) + (elite ? 4 : 0),
+      exp: Math.round((template.exp + groupExp) * rewardMultiplier),
+      gold: Math.round((template.gold + groupGold) * rewardMultiplier),
     },
     reinforcements,
     arena: kind === 'boss' ? 'city' : 'bamboo',
+    elite,
     companion: { name: '泡泡灵宠', model: '泡泡精', attack: petAttack(pet) },
     lastCompanionAttack: null,
-    log: [kind === 'boss' ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。` : `野外突然跳出一只${template.name}！`],
+    log: [kind === 'boss'
+      ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。`
+      : elite
+        ? `悬赏妖气爆发，精英${template.name}率领护卫现身！`
+        : `野外突然跳出一只${template.name}！`],
     guarding: false,
     turn: 1,
     intent: 'strike',
@@ -170,8 +191,9 @@ export function resolveRound(
       const fallbackIndex = enemies.findIndex((target) => target.hp > 0)
       const resolvedTargetIndex = enemies[targetIndex]?.hp > 0 ? targetIndex : fallbackIndex
       const target = enemies[resolvedTargetIndex]
-      target.hp = Math.max(0, target.hp - damage)
-      log.push(`普通攻击命中${target.name}，造成 ${damage} 点伤害${critical ? '（暴击）' : ''}。`)
+      const resolvedDamage = target.name === '石甲卫' ? Math.max(1, Math.round(damage * 0.65)) : damage
+      target.hp = Math.max(0, target.hp - resolvedDamage)
+      log.push(`普通攻击命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}。`)
     }
   }
 
@@ -213,6 +235,16 @@ export function resolveRound(
       nextStats.mp -= drained
       ignoresDefense = true
       log.push(`${enemy.name}发出摄魂咆哮，震散 ${drained} 点法力！`)
+    } else if (enemy.name === '青竹灵') {
+      rawDamage = Math.round(rawDamage * 1.2)
+      log.push('青竹灵踏影连刺，攻势变得更加迅猛！')
+    } else if (enemy.name === '月影狐') {
+      const drained = Math.min(5, nextStats.mp)
+      nextStats.mp -= drained
+      log.push(`月影狐施展噬月妖术，削减 ${drained} 点法力！`)
+    } else if (enemy.name === '沧澜羽蛇') {
+      ignoresDefense = true
+      log.push('沧澜羽蛇喷出穿云毒息，无视了防御！')
     }
     const reducedDamage = Math.max(1, rawDamage - (ignoresDefense ? 0 : nextStats.defense + bonuses.defense))
     totalIncomingDamage += guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
@@ -238,6 +270,7 @@ export function resolveRound(
       enemy,
       reinforcements,
       arena: battle.arena,
+      elite: battle.elite,
       companion,
       lastCompanionAttack,
       guarding: false,

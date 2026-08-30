@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { INTENT_LABELS } from '../engine/combat'
+import { INTENT_LABELS, enemyTrait } from '../engine/combat'
 import type { BattleAction, BattleState, EnemyIntent, HeroStats } from '../types'
 import AtlasSprite, { heroQuadrant, monsterAtlas, monsterQuadrant } from './AtlasSprite'
 
@@ -358,7 +358,7 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
           <div className="space-y-2">
             <div><div className="mb-1 flex justify-between text-xs"><span>气血</span><span>{stats.hp}/{stats.maxHp}</span></div><Bar value={stats.hp} max={stats.maxHp} color="bg-rose-500" /></div>
             <div><div className="mb-1 flex justify-between text-xs"><span>法力</span><span>{stats.mp}/{stats.maxMp}</span></div><Bar value={stats.mp} max={stats.maxMp} color="bg-sky-400" /></div>
-            <div><div className="mb-1 flex justify-between text-xs"><span>🎯 {selectedEnemy.name}</span><span>{selectedEnemy.hp}/{selectedEnemy.maxHp}</span></div><Bar value={selectedEnemy.hp} max={selectedEnemy.maxHp} color="bg-amber-400" /><p className="mt-1 text-[11px] text-slate-400">点击战场中的敌人切换目标 · 横扫千星攻击全体</p></div>
+            <div><div className="mb-1 flex justify-between text-xs"><span>🎯 {selectedEnemy.name}</span><span>{selectedEnemy.hp}/{selectedEnemy.maxHp}</span></div><Bar value={selectedEnemy.hp} max={selectedEnemy.maxHp} color="bg-amber-400" /><p className="mt-1 text-[11px] text-cyan-200">{enemyTrait(selectedEnemy.name).name} · {enemyTrait(selectedEnemy.name).description}</p><p className="text-[11px] text-slate-400">点击战场中的敌人切换目标 · 横扫千星攻击全体</p></div>
             {battle.enemy.kind === 'boss' && battle.enemy.hp > 0 && <div className={`rounded-xl border p-2 text-xs ${battle.intent === 'inferno' ? 'border-orange-300 bg-orange-500/20 text-orange-100' : 'border-white/10 bg-white/5 text-slate-200'}`}><b>第 {battle.turn} 回合 · {INTENT_LABELS[battle.intent].icon} {INTENT_LABELS[battle.intent].name}</b><span className="block mt-0.5">{INTENT_LABELS[battle.intent].description}</span></div>}
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button onClick={() => runAction('attack')} disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-xl bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-left" alt="" className="h-8 w-8" />攻击</button>

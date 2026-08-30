@@ -63,7 +63,7 @@ export function getQuestTarget(stage: QuestStage): NpcDefinition | null {
   return null
 }
 
-export function getQuestGuidance(stage: QuestStage, progress: number) {
+export function getQuestGuidance(stage: QuestStage, progress: number, patrolWins = 0, eliteWins = 0) {
   if (stage === 'not-started') return {
     step: 1,
     title: '拜访云游师父',
@@ -92,12 +92,16 @@ export function getQuestGuidance(stage: QuestStage, progress: number) {
     progress: '等待复命',
     actionLabel: '返回云游师父',
   }
+  const bountyProgress = patrolWins % 3
+  const eliteReady = bountyProgress === 2
   return {
-    step: 4,
-    title: '城外试炼完成',
-    description: '新手章节已经完成。你可以自由探索、巡逻历练或培养宠物。',
-    progress: '全部完成',
-    actionLabel: '自由巡逻历练',
+    step: eliteReady ? '!' : '∞',
+    title: eliteReady ? '精英悬赏已出现' : '长安悬赏历练',
+    description: eliteReady
+      ? '下一次巡逻必定遭遇精英妖物和两名护卫，胜利可获得更高奖励与额外丹药。'
+      : '完成三场悬赏巡逻即可触发精英遭遇。战斗难度和奖励会随等级成长。',
+    progress: `${bountyProgress}/3 场 · 已击败 ${eliteWins} 名精英`,
+    actionLabel: eliteReady ? '挑战精英悬赏' : '开始悬赏巡逻',
   }
 }
 
