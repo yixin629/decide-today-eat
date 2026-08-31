@@ -129,15 +129,16 @@ export default function CombatPanel({ battle, stats, skills, onAction }: CombatP
   useEffect(() => {
     if (!autoBattle || busy) return
     const livingEnemies = [battle.enemy, ...battle.reinforcements].filter((enemy) => enemy.hp > 0)
+    const armorBroken = battle.enemyEffects.some((effect, index) => effect.armorBreak > 0 && [battle.enemy, ...battle.reinforcements][index]?.hp > 0)
     let nextAction: BattleAction = 'attack'
     if (stats.hp <= stats.maxHp * 0.35 && stats.potions > 0) nextAction = 'potion'
-    else if (stats.hp <= stats.maxHp * 0.58 && stats.mp >= 10) nextAction = 'heal'
+    else if (stats.hp <= stats.maxHp * 0.58 && stats.mp >= 10 && battle.cooldowns.heal === 0) nextAction = 'heal'
     else if (battle.enemy.kind === 'boss' && battle.intent === 'inferno') nextAction = 'guard'
-    else if (livingEnemies.length > 1 && stats.mp >= 12) nextAction = 'skill'
+    else if (livingEnemies.length > 1 && armorBroken && stats.mp >= 12 && battle.cooldowns.sweep === 0) nextAction = 'skill'
 
     const timer = window.setTimeout(() => runAction(nextAction), 620 / battleSpeed)
     return () => window.clearTimeout(timer)
-  }, [autoBattle, battle.enemy, battle.intent, battle.reinforcements, battleSpeed, busy, runAction, stats.hp, stats.maxHp, stats.mp, stats.potions])
+  }, [autoBattle, battle.cooldowns.heal, battle.cooldowns.sweep, battle.enemy, battle.enemyEffects, battle.intent, battle.reinforcements, battleSpeed, busy, runAction, stats.hp, stats.maxHp, stats.mp, stats.potions])
 
   const displayIntent = phase === 'enemy-counter' && enemyActionIntent ? enemyActionIntent : battle.intent
   const intent = INTENT_LABELS[displayIntent]
@@ -213,6 +214,7 @@ export default function CombatPanel({ battle, stats, skills, onAction }: CombatP
             <div className="absolute -top-3 left-1/2 z-20 w-28 -translate-x-1/2 rounded-full border border-white/25 bg-slate-950/85 p-1 shadow-lg">
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full bg-rose-500 transition-all duration-500" style={{ width: `${stats.hp / stats.maxHp * 100}%` }} /></div>
             </div>
+            {battle.heroShield > 0 && <span className="absolute -top-10 z-20 rounded-full border border-cyan-200 bg-cyan-950/90 px-2 py-1 text-[11px] font-black text-cyan-100">◇ 护盾 {battle.heroShield}</span>}
             <div className="relative h-44 w-40 md:h-52 md:w-48">
               <AtlasSprite atlas="heroes" quadrant={heroPose} alt="逍遥少侠战斗动作" className="h-full w-full drop-shadow-[0_14px_10px_rgba(0,0,0,0.65)]" />
               {activeAction === 'guard' && phase === 'hero-action' && <span className="absolute inset-0 grid place-items-center text-7xl opacity-80 animate-pulse">🛡️</span>}
@@ -266,6 +268,7 @@ export default function CombatPanel({ battle, stats, skills, onAction }: CombatP
                 </div>
                 <FloatingNumbers items={enemyPopups.filter((popup) => popup.targetIndex === index)} speed={battleSpeed} />
                 <div className={`relative rounded-full border px-2 py-0.5 shadow ${mainEnemy ? '-mt-4 bg-slate-950/80 text-sm' : '-mt-2 bg-slate-950/85 text-xs'} ${selected ? 'border-amber-300 text-amber-100' : 'border-white/20'}`}><b>{enemy.name}</b>{mainEnemy && enemy.kind === 'boss' && <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs">首领</span>}</div>
+                {battle.enemyEffects[index]?.armorBreak > 0 && <span className="relative mt-1 rounded-full border border-orange-200/60 bg-orange-600/90 px-2 py-0.5 text-[10px] font-black text-white">破甲 {battle.enemyEffects[index].armorBreak} 回合</span>}
               </button>
             )
           })}
@@ -361,12 +364,13 @@ export default function CombatPanel({ battle, stats, skills, onAction }: CombatP
           <div className="space-y-2">
             <div><div className="mb-1 flex justify-between text-xs"><span>气血</span><span>{stats.hp}/{stats.maxHp}</span></div><Bar value={stats.hp} max={stats.maxHp} color="bg-rose-500" /></div>
             <div><div className="mb-1 flex justify-between text-xs"><span>法力</span><span>{stats.mp}/{stats.maxMp}</span></div><Bar value={stats.mp} max={stats.maxMp} color="bg-sky-400" /></div>
-            <div><div className="mb-1 flex justify-between text-xs"><span>🎯 {selectedEnemy.name}</span><span>{selectedEnemy.hp}/{selectedEnemy.maxHp}</span></div><Bar value={selectedEnemy.hp} max={selectedEnemy.maxHp} color="bg-amber-400" /><p className="mt-1 text-[11px] text-cyan-200">{enemyTrait(selectedEnemy.name).name} · {enemyTrait(selectedEnemy.name).description}</p><p className="text-[11px] text-slate-400">点击战场中的敌人切换目标 · 横扫千星攻击全体</p></div>
+            <div><div className="mb-1 flex justify-between text-xs"><span>🎯 {selectedEnemy.name}</span><span>{selectedEnemy.hp}/{selectedEnemy.maxHp}</span></div><Bar value={selectedEnemy.hp} max={selectedEnemy.maxHp} color="bg-amber-400" /><p className="mt-1 text-[11px] text-cyan-200">{enemyTrait(selectedEnemy.name).name} · {enemyTrait(selectedEnemy.name).description}</p><p className="text-[11px] text-slate-400">点击敌人切换目标 · 当前破甲 {battle.enemyEffects[selectedTargetIndex]?.armorBreak ?? 0} 回合</p></div>
             {battle.enemy.kind === 'boss' && battle.enemy.hp > 0 && <div className={`rounded-xl border p-2 text-xs ${battle.intent === 'inferno' ? 'border-orange-300 bg-orange-500/20 text-orange-100' : 'border-white/10 bg-white/5 text-slate-200'}`}><b>第 {battle.turn} 回合 · {INTENT_LABELS[battle.intent].icon} {INTENT_LABELS[battle.intent].name}</b><span className="block mt-0.5">{INTENT_LABELS[battle.intent].description}</span></div>}
+            <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-400/10 p-2 text-[11px] leading-5 text-fuchsia-100"><b>连携策略：</b>破军斩施加破甲 → 横扫千星引爆破甲造成 30% 额外伤害。防御与回春诀可以生成护盾。</div>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button onClick={() => runAction('attack')} disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-xl bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-left" alt="" className="h-8 w-8" />破军斩·{skills.attackLevel}重</button>
-              <button onClick={() => runAction('skill')} disabled={busy || stats.mp < 12} className="inline-flex items-center justify-center gap-1 rounded-xl bg-fuchsia-600 px-3 py-2 font-bold hover:bg-fuchsia-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-right" alt="" className="h-8 w-8" />横扫千星·{skills.sweepLevel}重</button>
-              <button onClick={() => runAction('heal')} disabled={busy || stats.mp < 10 || stats.hp >= stats.maxHp} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 font-bold hover:bg-emerald-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="bottom-left" alt="" className="h-8 w-8" />回春诀·{skills.healLevel}重</button>
+              <button onClick={() => runAction('skill')} disabled={busy || stats.mp < 12 || battle.cooldowns.sweep > 0} className="inline-flex items-center justify-center gap-1 rounded-xl bg-fuchsia-600 px-3 py-2 font-bold hover:bg-fuchsia-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-right" alt="" className="h-8 w-8" />{battle.cooldowns.sweep > 0 ? `横扫冷却 ${battle.cooldowns.sweep}` : `横扫千星·${skills.sweepLevel}重`}</button>
+              <button onClick={() => runAction('heal')} disabled={busy || stats.mp < 10 || (stats.hp >= stats.maxHp && battle.heroShield > 0) || battle.cooldowns.heal > 0} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 font-bold hover:bg-emerald-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="bottom-left" alt="" className="h-8 w-8" />{battle.cooldowns.heal > 0 ? `回春冷却 ${battle.cooldowns.heal}` : `回春诀·${skills.healLevel}重`}</button>
               <button onClick={() => runAction('guard')} disabled={busy} className={`rounded-xl px-3 py-2 font-bold hover:bg-sky-600 disabled:opacity-40 ${battle.intent === 'inferno' ? 'animate-pulse ring-2 ring-orange-300 bg-sky-600' : 'bg-sky-700'}`}>🛡️ 防御</button>
               <button onClick={() => runAction('potion')} disabled={busy || stats.potions === 0 || stats.hp >= stats.maxHp} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-700 px-3 py-2 font-bold hover:bg-emerald-600 disabled:opacity-40"><AtlasSprite atlas="items" quadrant="bottom-right" alt="" className="h-8 w-8" />丹药 ×{stats.potions}</button>
             </div>

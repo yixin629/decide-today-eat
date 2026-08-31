@@ -91,6 +91,15 @@ export interface CompanionAttack {
   damage: number
 }
 
+export interface BattleCooldowns {
+  sweep: number
+  heal: number
+}
+
+export interface EnemyBattleEffect {
+  armorBreak: number
+}
+
 export interface BattleState {
   enemy: Enemy
   reinforcements: Enemy[]
@@ -103,6 +112,9 @@ export interface BattleState {
   turn: number
   intent: EnemyIntent
   enraged: boolean
+  cooldowns: BattleCooldowns
+  heroShield: number
+  enemyEffects: EnemyBattleEffect[]
 }
 
 export type EnemyIntent = 'strike' | 'inferno' | 'roar'

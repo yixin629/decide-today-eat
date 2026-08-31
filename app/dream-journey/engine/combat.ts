@@ -78,7 +78,10 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
         .sort(() => Math.random() - 0.5)
         .slice(0, reinforcementCount)
   const reinforcements = reinforcementTemplates.map((unit, index) => {
-    const unitHp = (kind === 'boss' ? 32 : elite ? 36 : 25) + level * (kind === 'boss' ? 7 : elite ? 8 : 6) + index * 4
+    const unitHp = (kind === 'boss' ? 42 : elite ? 38 : 30)
+      + level * (kind === 'boss' ? 10 : elite ? 9 : 8)
+      + level * level
+      + index * 5
     return {
       ...unit,
       hp: unitHp,
@@ -92,7 +95,7 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
   const groupGold = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.gold * 0.45), 0)
   const baseMaxHp = kind === 'boss'
     ? (moonBoss ? 190 + level * 28 : 145 + level * 24)
-    : 42 + level * 11 + Math.floor(Math.random() * 12)
+    : 52 + level * 14 + Math.round(level * level * 1.5) + Math.floor(Math.random() * 12)
   const maxHp = elite ? Math.round(baseMaxHp * 1.55) : baseMaxHp
   const rewardMultiplier = elite ? 1.75 : 1
 
@@ -121,6 +124,9 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
     turn: 1,
     intent: 'strike',
     enraged: false,
+    cooldowns: { sweep: 0, heal: 0 },
+    heroShield: 0,
+    enemyEffects: Array.from({ length: 1 + reinforcements.length }, () => ({ armorBreak: 0 })),
   }
 }
 
@@ -173,6 +179,22 @@ export function resolveRound(
   let guarding = false
   const mastery = skillBonuses(skills)
 
+  if (action === 'skill' && battle.cooldowns.sweep > 0) {
+    return { stats, battle: { ...battle, log: [`横扫千星仍需等待 ${battle.cooldowns.sweep} 回合。`, ...battle.log] } }
+  }
+  if (action === 'heal' && battle.cooldowns.heal > 0) {
+    return { stats, battle: { ...battle, log: [`回春诀仍需等待 ${battle.cooldowns.heal} 回合。`, ...battle.log] } }
+  }
+
+  const cooldowns = {
+    sweep: Math.max(0, battle.cooldowns.sweep - 1),
+    heal: Math.max(0, battle.cooldowns.heal - 1),
+  }
+  const enemyEffects = enemies.map((_, index) => ({
+    armorBreak: Math.max(0, (battle.enemyEffects[index]?.armorBreak ?? 0) - 1),
+  }))
+  let heroShield = battle.heroShield
+
   if (action === 'potion') {
     if (nextStats.potions <= 0) return { stats, battle: { ...battle, log: ['包里已经没有金创药了。', ...battle.log] } }
     if (nextStats.hp >= nextStats.maxHp) return { stats, battle: { ...battle, log: ['气血已满，无需使用金创药。', ...battle.log] } }
@@ -181,13 +203,18 @@ export function resolveRound(
     log.push(`你服下金创药，恢复 ${healed} 点气血。`)
   } else if (action === 'heal') {
     if (nextStats.mp < 10) return { stats, battle: { ...battle, log: ['法力不足，无法施展回春诀。', ...battle.log] } }
-    if (nextStats.hp >= nextStats.maxHp) return { stats, battle: { ...battle, log: ['气血已满，无需施展回春诀。', ...battle.log] } }
+    if (nextStats.hp >= nextStats.maxHp && battle.heroShield > 0) return { stats, battle: { ...battle, log: ['气血已满且已有护盾，无需施展回春诀。', ...battle.log] } }
     const healed = Math.min(26 + nextStats.level * 5 + mastery.heal, nextStats.maxHp - nextStats.hp)
     nextStats = { ...nextStats, hp: nextStats.hp + healed, mp: nextStats.mp - 10 }
-    log.push(`回春诀·${skills.healLevel}重恢复 ${healed} 点气血。`)
+    const shieldGained = 10 + nextStats.level * 2 + skills.healLevel * 2
+    heroShield = Math.min(99, heroShield + shieldGained)
+    cooldowns.heal = 2
+    log.push(`回春诀·${skills.healLevel}重恢复 ${healed} 点气血，并获得 ${shieldGained} 点灵气护盾。`)
   } else if (action === 'guard') {
     guarding = true
-    log.push('你凝神架势，本回合受到的伤害减半。')
+    const shieldGained = 18 + nextStats.level * 4
+    heroShield = Math.min(99, heroShield + shieldGained)
+    log.push(`你凝神架势，本回合伤害减半并获得 ${shieldGained} 点护盾。`)
   } else {
     const skill = action === 'skill'
     if (skill && nextStats.mp < 12) {
@@ -200,23 +227,29 @@ export function resolveRound(
     const damage = Math.round((baseDamage + nextStats.attack + bonuses.attack) * (critical ? 1.6 : 1))
     nextStats.mp -= skill ? 12 : 0
     if (skill) {
+      cooldowns.sweep = 2
       let totalDamage = 0
       let targetsHit = 0
       enemies.forEach((target, index) => {
         if (target.hp <= 0) return
-        const targetDamage = index === targetIndex ? damage : Math.max(1, Math.round(damage * 0.7))
+        const formationDamage = index === targetIndex ? damage : Math.max(1, Math.round(damage * 0.7))
+        const targetDamage = (battle.enemyEffects[index]?.armorBreak ?? 0) > 0
+          ? Math.round(formationDamage * 1.3)
+          : formationDamage
         target.hp = Math.max(0, target.hp - targetDamage)
         totalDamage += targetDamage
         targetsHit += 1
       })
-      log.push(`横扫千星·${skills.sweepLevel}重席卷 ${targetsHit} 个目标，造成 ${totalDamage} 点伤害${critical ? '（暴击）' : ''}。`)
+      const linkedTargets = enemies.filter((_, index) => (battle.enemyEffects[index]?.armorBreak ?? 0) > 0).length
+      log.push(`横扫千星·${skills.sweepLevel}重席卷 ${targetsHit} 个目标，造成 ${totalDamage} 点伤害${linkedTargets > 0 ? `（引爆 ${linkedTargets} 个破甲目标）` : critical ? '（暴击）' : ''}。`)
     } else {
       const fallbackIndex = enemies.findIndex((target) => target.hp > 0)
       const resolvedTargetIndex = enemies[targetIndex]?.hp > 0 ? targetIndex : fallbackIndex
       const target = enemies[resolvedTargetIndex]
       const resolvedDamage = target.name === '石甲卫' ? Math.max(1, Math.round(damage * 0.65)) : damage
       target.hp = Math.max(0, target.hp - resolvedDamage)
-      log.push(`破军斩·${skills.attackLevel}重命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}。`)
+      enemyEffects[resolvedTargetIndex] = { armorBreak: 2 }
+      log.push(`破军斩·${skills.attackLevel}重命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}，并施加 2 回合破甲。`)
     }
   }
 
@@ -277,9 +310,13 @@ export function resolveRound(
     const reducedDamage = Math.max(1, unit.attack + Math.floor(Math.random() * 4) - nextStats.defense - bonuses.defense)
     totalIncomingDamage += guarding ? Math.ceil(reducedDamage / 2) : reducedDamage
   })
+  const absorbedDamage = Math.min(heroShield, totalIncomingDamage)
+  heroShield -= absorbedDamage
+  totalIncomingDamage -= absorbedDamage
   nextStats.hp = Math.max(0, nextStats.hp - totalIncomingDamage)
   const attackers = enemies.filter((target) => target.hp > 0).length
-  log.push(`${attackers} 名敌人联手反击，造成 ${totalIncomingDamage} 点伤害。`)
+  if (absorbedDamage > 0) log.push(`灵气护盾吸收 ${absorbedDamage} 点伤害，剩余护盾 ${heroShield}。`)
+  log.push(`${attackers} 名敌人联手反击，造成 ${totalIncomingDamage} 点气血伤害。`)
 
   if (nextStats.hp <= 0) {
     nextStats = { ...nextStats, hp: nextStats.maxHp, mp: nextStats.maxMp, gold: Math.max(0, nextStats.gold - 10) }
@@ -300,6 +337,9 @@ export function resolveRound(
       turn,
       intent: enemy.kind === 'boss' ? nextIntent(turn, enraged) : 'strike',
       enraged,
+      cooldowns,
+      heroShield,
+      enemyEffects,
       log: [...log, ...battle.log].slice(0, 7),
     },
   }
