@@ -29,6 +29,7 @@ export default function BattleResultPanel({ result, inventory, onClaimLoot, onCo
           <div className="rounded-2xl bg-white/10 p-3"><span className="text-xs text-slate-300">银两</span><b className={`mt-1 block text-xl ${result.goldChange < 0 ? 'text-rose-300' : 'text-amber-200'}`}>{result.goldChange > 0 ? `+${result.goldChange}` : result.goldChange}</b></div>
         </div>
         {result.leveledUp && <p className="mt-3 rounded-xl bg-fuchsia-500/20 px-3 py-2 font-bold text-fuchsia-200">⬆️ 等级提升，气血与法力已恢复</p>}
+        {Boolean(result.skillPointsGained) && <p className="mt-3 rounded-xl bg-indigo-400/20 px-3 py-2 font-bold text-indigo-100">✦ 获得 {result.skillPointsGained} 点技能点，可在技能修炼中分配</p>}
         <p className="mt-4 text-sm leading-6 text-slate-200">{result.message}</p>
         {awaitingLoot && (
           <div className="mt-5 rounded-2xl border border-amber-300/40 bg-amber-300/10 p-3 text-left">

@@ -1,5 +1,6 @@
-import type { BattleAction, BattleState, Enemy, EnemyIntent, HeroStats, PetState } from '../types'
+import type { BattleAction, BattleState, Enemy, EnemyIntent, HeroStats, PetState, SkillState } from '../types'
 import { INITIAL_PET, petAttack } from './pet'
+import { INITIAL_SKILLS, skillBonuses } from './skills'
 
 const ENEMIES: Omit<Enemy, 'hp' | 'maxHp'>[] = [
   { kind: 'mob', name: '泡泡精', icon: '🫧', attack: 8, exp: 18, gold: 12 },
@@ -141,6 +142,7 @@ export function resolveRound(
   action: BattleAction,
   bonuses = { attack: 0, defense: 0, crit: 0 },
   targetIndex = 0,
+  skills: SkillState = INITIAL_SKILLS,
 ): { stats: HeroStats; battle: BattleState | null; result?: 'victory' | 'defeat' } {
   let nextStats = { ...stats }
   const enemy = { ...battle.enemy }
@@ -149,6 +151,7 @@ export function resolveRound(
   const companion = { ...battle.companion }
   const log: string[] = []
   let guarding = false
+  const mastery = skillBonuses(skills)
 
   if (action === 'potion') {
     if (nextStats.potions <= 0) return { stats, battle: { ...battle, log: ['包里已经没有金创药了。', ...battle.log] } }
@@ -159,9 +162,9 @@ export function resolveRound(
   } else if (action === 'heal') {
     if (nextStats.mp < 10) return { stats, battle: { ...battle, log: ['法力不足，无法施展回春诀。', ...battle.log] } }
     if (nextStats.hp >= nextStats.maxHp) return { stats, battle: { ...battle, log: ['气血已满，无需施展回春诀。', ...battle.log] } }
-    const healed = Math.min(26 + nextStats.level * 5, nextStats.maxHp - nextStats.hp)
+    const healed = Math.min(26 + nextStats.level * 5 + mastery.heal, nextStats.maxHp - nextStats.hp)
     nextStats = { ...nextStats, hp: nextStats.hp + healed, mp: nextStats.mp - 10 }
-    log.push(`回春诀恢复 ${healed} 点气血。`)
+    log.push(`回春诀·${skills.healLevel}重恢复 ${healed} 点气血。`)
   } else if (action === 'guard') {
     guarding = true
     log.push('你凝神架势，本回合受到的伤害减半。')
@@ -172,8 +175,8 @@ export function resolveRound(
     }
     const critical = Math.random() * 100 < nextStats.crit + bonuses.crit
     const baseDamage = skill
-      ? 18 + nextStats.level * 7 + Math.floor(Math.random() * 9)
-      : 8 + nextStats.level * 4 + Math.floor(Math.random() * 7)
+      ? 18 + nextStats.level * 7 + mastery.sweep + Math.floor(Math.random() * 9)
+      : 8 + nextStats.level * 4 + mastery.attack + Math.floor(Math.random() * 7)
     const damage = Math.round((baseDamage + nextStats.attack + bonuses.attack) * (critical ? 1.6 : 1))
     nextStats.mp -= skill ? 12 : 0
     if (skill) {
@@ -186,14 +189,14 @@ export function resolveRound(
         totalDamage += targetDamage
         targetsHit += 1
       })
-      log.push(`横扫千星席卷 ${targetsHit} 个目标，造成 ${totalDamage} 点伤害${critical ? '（暴击）' : ''}。`)
+      log.push(`横扫千星·${skills.sweepLevel}重席卷 ${targetsHit} 个目标，造成 ${totalDamage} 点伤害${critical ? '（暴击）' : ''}。`)
     } else {
       const fallbackIndex = enemies.findIndex((target) => target.hp > 0)
       const resolvedTargetIndex = enemies[targetIndex]?.hp > 0 ? targetIndex : fallbackIndex
       const target = enemies[resolvedTargetIndex]
       const resolvedDamage = target.name === '石甲卫' ? Math.max(1, Math.round(damage * 0.65)) : damage
       target.hp = Math.max(0, target.hp - resolvedDamage)
-      log.push(`普通攻击命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}。`)
+      log.push(`破军斩·${skills.attackLevel}重命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}。`)
     }
   }
 

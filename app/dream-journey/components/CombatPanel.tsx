@@ -3,12 +3,13 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { INTENT_LABELS, enemyTrait } from '../engine/combat'
-import type { BattleAction, BattleState, EnemyIntent, HeroStats } from '../types'
+import type { BattleAction, BattleState, EnemyIntent, HeroStats, SkillState } from '../types'
 import AtlasSprite, { heroQuadrant, monsterAtlas, monsterQuadrant } from './AtlasSprite'
 
 interface CombatPanelProps {
   battle: BattleState
   stats: HeroStats
+  skills: SkillState
   onAction: (action: BattleAction, targetIndex: number) => void
 }
 
@@ -38,7 +39,7 @@ function FloatingNumbers({ items, speed }: { items: FloatingNumber[]; speed: num
   ))
 }
 
-export default function CombatPanel({ battle, stats, onAction }: CombatPanelProps) {
+export default function CombatPanel({ battle, stats, skills, onAction }: CombatPanelProps) {
   const [phase, setPhase] = useState<BattlePhase>('idle')
   const [activeAction, setActiveAction] = useState<BattleAction | null>(null)
   const [enemyActionIntent, setEnemyActionIntent] = useState<EnemyIntent | null>(null)
@@ -361,9 +362,9 @@ export default function CombatPanel({ battle, stats, onAction }: CombatPanelProp
             <div><div className="mb-1 flex justify-between text-xs"><span>🎯 {selectedEnemy.name}</span><span>{selectedEnemy.hp}/{selectedEnemy.maxHp}</span></div><Bar value={selectedEnemy.hp} max={selectedEnemy.maxHp} color="bg-amber-400" /><p className="mt-1 text-[11px] text-cyan-200">{enemyTrait(selectedEnemy.name).name} · {enemyTrait(selectedEnemy.name).description}</p><p className="text-[11px] text-slate-400">点击战场中的敌人切换目标 · 横扫千星攻击全体</p></div>
             {battle.enemy.kind === 'boss' && battle.enemy.hp > 0 && <div className={`rounded-xl border p-2 text-xs ${battle.intent === 'inferno' ? 'border-orange-300 bg-orange-500/20 text-orange-100' : 'border-white/10 bg-white/5 text-slate-200'}`}><b>第 {battle.turn} 回合 · {INTENT_LABELS[battle.intent].icon} {INTENT_LABELS[battle.intent].name}</b><span className="block mt-0.5">{INTENT_LABELS[battle.intent].description}</span></div>}
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <button onClick={() => runAction('attack')} disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-xl bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-left" alt="" className="h-8 w-8" />攻击</button>
-              <button onClick={() => runAction('skill')} disabled={busy || stats.mp < 12} className="inline-flex items-center justify-center gap-1 rounded-xl bg-fuchsia-600 px-3 py-2 font-bold hover:bg-fuchsia-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-right" alt="" className="h-8 w-8" />横扫千星·群攻</button>
-              <button onClick={() => runAction('heal')} disabled={busy || stats.mp < 10 || stats.hp >= stats.maxHp} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 font-bold hover:bg-emerald-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="bottom-left" alt="" className="h-8 w-8" />回春诀</button>
+              <button onClick={() => runAction('attack')} disabled={busy} className="inline-flex items-center justify-center gap-1 rounded-xl bg-amber-500 px-3 py-2 font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-left" alt="" className="h-8 w-8" />破军斩·{skills.attackLevel}重</button>
+              <button onClick={() => runAction('skill')} disabled={busy || stats.mp < 12} className="inline-flex items-center justify-center gap-1 rounded-xl bg-fuchsia-600 px-3 py-2 font-bold hover:bg-fuchsia-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="top-right" alt="" className="h-8 w-8" />横扫千星·{skills.sweepLevel}重</button>
+              <button onClick={() => runAction('heal')} disabled={busy || stats.mp < 10 || stats.hp >= stats.maxHp} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 font-bold hover:bg-emerald-500 disabled:opacity-40"><AtlasSprite atlas="effects" quadrant="bottom-left" alt="" className="h-8 w-8" />回春诀·{skills.healLevel}重</button>
               <button onClick={() => runAction('guard')} disabled={busy} className={`rounded-xl px-3 py-2 font-bold hover:bg-sky-600 disabled:opacity-40 ${battle.intent === 'inferno' ? 'animate-pulse ring-2 ring-orange-300 bg-sky-600' : 'bg-sky-700'}`}>🛡️ 防御</button>
               <button onClick={() => runAction('potion')} disabled={busy || stats.potions === 0 || stats.hp >= stats.maxHp} className="inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-700 px-3 py-2 font-bold hover:bg-emerald-600 disabled:opacity-40"><AtlasSprite atlas="items" quadrant="bottom-right" alt="" className="h-8 w-8" />丹药 ×{stats.potions}</button>
             </div>

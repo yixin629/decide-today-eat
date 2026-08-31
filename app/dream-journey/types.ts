@@ -33,6 +33,14 @@ export type ItemId =
   | 'jade-guardian-charm'
 export type InventoryState = Record<ItemId, number>
 export type EquipmentState = Record<EquipmentSlot, ItemId | null>
+export type SkillId = 'attack' | 'sweep' | 'heal'
+
+export interface SkillState {
+  attackLevel: number
+  sweepLevel: number
+  healLevel: number
+  points: number
+}
 
 export interface WorldFlags {
   caveChestOpened: boolean
@@ -41,7 +49,7 @@ export interface WorldFlags {
 export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
 
 export interface GameSave {
-  version: 5
+  version: 6
   stats: HeroStats
   position: Point
   questStage: QuestStage
@@ -50,6 +58,7 @@ export interface GameSave {
   equipment: EquipmentState
   worldFlags: WorldFlags
   pet: PetState
+  skills: SkillState
 }
 
 export interface PetState {
@@ -109,6 +118,7 @@ export interface BattleResult {
   message: string
   lootChoices?: ItemId[]
   lootClaimed?: ItemId
+  skillPointsGained?: number
 }
 
 export type BattleAction = 'attack' | 'skill' | 'heal' | 'guard' | 'potion'

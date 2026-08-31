@@ -1,7 +1,8 @@
-import type { EquipmentState, GameSave, HeroStats, InventoryState, PetState, Point, QuestStage, SceneId, WorldFlags } from '../types'
+import type { EquipmentState, GameSave, HeroStats, InventoryState, PetState, Point, QuestStage, SceneId, SkillState, WorldFlags } from '../types'
 import { INITIAL_STATS } from './combat'
 import { INITIAL_EQUIPMENT, INITIAL_INVENTORY } from './equipment'
 import { INITIAL_PET } from './pet'
+import { INITIAL_SKILLS, MAX_SKILL_LEVEL } from './skills'
 
 export const QUEST_TARGET = 3
 export const POTION_PRICE = 18
@@ -10,7 +11,7 @@ export const CHAPTER_REWARD = { gold: 120, potions: 3 } as const
 export const INITIAL_POSITION: Point = { x: 1205, y: 1240 }
 
 export const INITIAL_SAVE: GameSave = {
-  version: 5,
+  version: 6,
   stats: INITIAL_STATS,
   position: INITIAL_POSITION,
   questStage: 'not-started',
@@ -19,6 +20,7 @@ export const INITIAL_SAVE: GameSave = {
   equipment: INITIAL_EQUIPMENT,
   worldFlags: { caveChestOpened: false },
   pet: INITIAL_PET,
+  skills: INITIAL_SKILLS,
 }
 
 const QUEST_STAGES: readonly QuestStage[] = [
@@ -92,6 +94,22 @@ function parsePet(value: unknown): PetState {
   }
 }
 
+function parseSkills(value: unknown, stats: HeroStats): SkillState {
+  const saved = value && typeof value === 'object' ? value as Partial<SkillState> : null
+  if (!saved) {
+    return {
+      ...INITIAL_SKILLS,
+      points: INITIAL_SKILLS.points + Math.floor((stats.level - 1) / 2) + stats.eliteWins,
+    }
+  }
+  return {
+    attackLevel: Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.floor(finiteNumber(saved.attackLevel, 1)))),
+    sweepLevel: Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.floor(finiteNumber(saved.sweepLevel, 1)))),
+    healLevel: Math.min(MAX_SKILL_LEVEL, Math.max(1, Math.floor(finiteNumber(saved.healLevel, 1)))),
+    points: Math.max(0, Math.floor(finiteNumber(saved.points, 0))),
+  }
+}
+
 export function parseGameSave(raw: string | null, legacyRaw: string | null): GameSave {
   try {
     if (raw) {
@@ -103,9 +121,10 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
           }
         : INITIAL_POSITION
       const inventory = parseInventory(saved.inventory)
+      const stats = parseStats(saved.stats)
       return {
-        version: 5,
-        stats: parseStats(saved.stats),
+        version: 6,
+        stats,
         position,
         questStage: QUEST_STAGES.includes(saved.questStage as QuestStage)
           ? saved.questStage as QuestStage
@@ -115,6 +134,7 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
         equipment: parseEquipment(saved.equipment, inventory),
         worldFlags: parseWorldFlags(saved.worldFlags),
         pet: parsePet(saved.pet),
+        skills: parseSkills(saved.skills, stats),
       }
     }
     if (legacyRaw) {
