@@ -44,6 +44,7 @@ export interface SkillState {
 
 export interface WorldFlags {
   caveChestOpened: boolean
+  moonChapterCompleted: boolean
 }
 
 export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
@@ -93,7 +94,7 @@ export interface CompanionAttack {
 export interface BattleState {
   enemy: Enemy
   reinforcements: Enemy[]
-  arena: 'bamboo' | 'city'
+  arena: 'bamboo' | 'city' | 'moon'
   elite: boolean
   companion: BattleCompanion
   lastCompanionAttack: CompanionAttack | null

@@ -7,6 +7,7 @@ import BattleResultPanel from './components/BattleResultPanel'
 import CaveCanvas from './components/CaveCanvas'
 import CaveGuide from './components/CaveGuide'
 import CaveMiniMap from './components/CaveMiniMap'
+import ChapterPortalPanel from './components/ChapterPortalPanel'
 import EncounterPreviewPanel from './components/EncounterPreviewPanel'
 import GameCanvas from './components/GameCanvas'
 import InventoryPanel from './components/InventoryPanel'
@@ -67,7 +68,7 @@ export default function DreamJourneyPage() {
   const [scene, setScene] = useState<SceneId>('overworld')
   const [inventory, setInventory] = useState<InventoryState>(INITIAL_INVENTORY)
   const [equipment, setEquipment] = useState<EquipmentState>(INITIAL_EQUIPMENT)
-  const [worldFlags, setWorldFlags] = useState<WorldFlags>({ caveChestOpened: false })
+  const [worldFlags, setWorldFlags] = useState<WorldFlags>({ caveChestOpened: false, moonChapterCompleted: false })
   const [pet, setPet] = useState<PetState>(INITIAL_PET)
   const [skills, setSkills] = useState<SkillState>(INITIAL_SKILLS)
   const [battle, setBattle] = useState<BattleState | null>(null)
@@ -99,7 +100,9 @@ export default function DreamJourneyPage() {
     setWorldFlags(saved.worldFlags)
     setPet(saved.pet)
     setSkills(saved.skills)
-    setNotice(questNotice(saved.questStage, saved.stats.questProgress, saved.stats.patrolWins))
+    setNotice(saved.questStage === 'completed' && saved.stats.eliteWins >= 2 && !saved.worldFlags.moonChapterCompleted
+      ? '第二章已经开启：月影秘境正在等待挑战。'
+      : questNotice(saved.questStage, saved.stats.questProgress, saved.stats.patrolWins))
     setSceneName(saved.scene === 'crimson-cave' ? '赤焰妖王洞窟' : getSceneName(saved.position))
     setLoaded(true)
   }, [])
@@ -137,6 +140,13 @@ export default function DreamJourneyPage() {
     setNotice('赤焰妖王现身！先观察敌方阵容和战术提示，再决定迎战。')
   }
 
+  const beginMoonChapter = () => {
+    if (questStage !== 'completed' || stats.eliteWins < 2 || worldFlags.moonChapterCompleted) return
+    setBattleResult(null)
+    setPendingBattle(createBattle(stats.level, 'boss', pet, false, 'moon'))
+    setNotice('第二章开启：月蚀妖狐正在月影秘境中等待挑战。')
+  }
+
   const startPendingBattle = () => {
     if (!pendingBattle) return
     setBattle(pendingBattle)
@@ -163,9 +173,18 @@ export default function DreamJourneyPage() {
 
     if (outcome.result === 'victory') {
       const levelMessage = nextStats.level > previousLevel ? ` 升到 ${nextStats.level} 级！` : ''
-      const skillPointsGained = nextStats.level - previousLevel + (battle.elite ? 1 : 0)
+      const moonChapterVictory = defeatedEnemy.name === '月蚀妖狐' && questStage === 'completed' && !worldFlags.moonChapterCompleted
+      const skillPointsGained = nextStats.level - previousLevel + (moonChapterVictory ? 2 : battle.elite ? 1 : 0)
       let resultMessage = '这场战斗已经结束，可以继续在长安境内历练。'
-      if (defeatedEnemy.kind === 'boss' && questStage === 'boss-ready') {
+      if (moonChapterVictory) {
+        const nextRank = inventory['moonweave-robe'] + 1
+        nextStats = { ...nextStats, gold: nextStats.gold + 200, potions: nextStats.potions + 3 }
+        setWorldFlags((current) => ({ ...current, moonChapterCompleted: true }))
+        setInventory((current) => ({ ...current, 'moonweave-robe': current['moonweave-robe'] + 1 }))
+        setEquipment((current) => ({ ...current, armor: 'moonweave-robe' }))
+        resultMessage = `第二章通关！额外获得 200 两银子、3 枚金创药，并将月纹战袍${nextRank === 1 ? '首次解锁' : `精炼至 +${nextRank - 1}`}。`
+        setNotice(resultMessage)
+      } else if (defeatedEnemy.kind === 'boss' && questStage === 'boss-ready') {
         setQuestStage('returning')
         setInventory((current) => ({ ...current, 'crimson-charm': current['crimson-charm'] + 1 }))
         resultMessage = '赤焰妖王已被击败，并掉落赤焰护符。回到长安后找云游师父复命。'
@@ -197,6 +216,10 @@ export default function DreamJourneyPage() {
             ? '悬赏进度已达到 2/3，下一次巡逻必定出现精英妖物与两名护卫。'
             : `悬赏巡逻胜利，当前循环进度 ${patrolWins % 3}/3。`
         setNotice(`${resultMessage}${levelMessage}`)
+        if (battle.elite && eliteWins === 2 && !worldFlags.moonChapterCompleted) {
+          resultMessage = `${resultMessage} 月影秘境已经开启，第二章首领正在等待挑战。`
+          setNotice(`${resultMessage}${levelMessage}`)
+        }
       } else {
         setNotice(`击败${defeatedEnemy.name}，获得 ${defeatedEnemy.exp} 修为和 ${defeatedEnemy.gold} 两银子。${levelMessage}`)
       }
@@ -465,7 +488,9 @@ export default function DreamJourneyPage() {
             ) : (
               <div className="grid aspect-[9/5.6] place-items-center rounded-2xl border-4 border-amber-200/80 bg-slate-950 text-amber-100">正在读取游戏存档…</div>
             )}
-            {pendingBattle && <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />}
+            {pendingBattle && (pendingBattle.enemy.name === '月蚀妖狐'
+              ? <ChapterPortalPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />
+              : <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />)}
             {battle && <CombatPanel battle={battle} stats={stats} skills={skills} onAction={handleAction} />}
             {battleResult && <BattleResultPanel result={battleResult} inventory={inventory} onClaimLoot={claimBattleLoot} onContinue={() => setBattleResult(null)} />}
             {dialogue && (
@@ -525,7 +550,7 @@ export default function DreamJourneyPage() {
 
             <div className="order-1">
               {scene === 'overworld' ? (
-                <QuestGuide position={position} progress={stats.questProgress} patrolWins={stats.patrolWins} eliteWins={stats.eliteWins} questStage={questStage} onNavigate={navigateToQuestTarget} onFreePatrol={beginEncounter} />
+                <QuestGuide position={position} progress={stats.questProgress} patrolWins={stats.patrolWins} eliteWins={stats.eliteWins} moonChapterCompleted={worldFlags.moonChapterCompleted} questStage={questStage} onNavigate={navigateToQuestTarget} onFreePatrol={beginEncounter} onChapterChallenge={beginMoonChapter} />
               ) : (
                 <CaveGuide position={position} questStage={questStage} chestOpened={worldFlags.caveChestOpened} onNavigate={navigateInCave} />
               )}

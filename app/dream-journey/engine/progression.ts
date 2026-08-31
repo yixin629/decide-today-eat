@@ -18,7 +18,7 @@ export const INITIAL_SAVE: GameSave = {
   scene: 'overworld',
   inventory: INITIAL_INVENTORY,
   equipment: INITIAL_EQUIPMENT,
-  worldFlags: { caveChestOpened: false },
+  worldFlags: { caveChestOpened: false, moonChapterCompleted: false },
   pet: INITIAL_PET,
   skills: INITIAL_SKILLS,
 }
@@ -81,7 +81,10 @@ function parseEquipment(value: unknown, inventory: InventoryState): EquipmentSta
 
 function parseWorldFlags(value: unknown): WorldFlags {
   const saved = value && typeof value === 'object' ? value as Partial<WorldFlags> : {}
-  return { caveChestOpened: saved.caveChestOpened === true }
+  return {
+    caveChestOpened: saved.caveChestOpened === true,
+    moonChapterCompleted: saved.moonChapterCompleted === true,
+  }
 }
 
 function parsePet(value: unknown): PetState {

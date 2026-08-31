@@ -6,22 +6,25 @@ interface QuestGuideProps {
   progress: number
   patrolWins: number
   eliteWins: number
+  moonChapterCompleted: boolean
   questStage: QuestStage
   onNavigate: (target: Point) => void
   onFreePatrol: () => void
+  onChapterChallenge: () => void
 }
 
-export default function QuestGuide({ position, progress, patrolWins, eliteWins, questStage, onNavigate, onFreePatrol }: QuestGuideProps) {
-  const guide = getQuestGuidance(questStage, progress, patrolWins, eliteWins)
+export default function QuestGuide({ position, progress, patrolWins, eliteWins, moonChapterCompleted, questStage, onNavigate, onFreePatrol, onChapterChallenge }: QuestGuideProps) {
+  const guide = getQuestGuidance(questStage, progress, patrolWins, eliteWins, moonChapterCompleted)
   const target = getQuestTarget(questStage)
   const distance = target ? Math.round(Math.hypot(target.x - position.x, target.y - position.y) / 10) : 0
+  const chapterAvailable = questStage === 'completed' && eliteWins >= 2 && !moonChapterCompleted
 
   return (
     <section className="overflow-hidden rounded-2xl border border-amber-300/40 bg-[linear-gradient(145deg,rgba(67,56,202,.72),rgba(15,23,42,.94))] shadow-xl">
       <div className="flex items-center justify-between border-b border-white/10 bg-slate-950/35 px-4 py-3">
         <div>
-          <p className="text-[10px] font-black tracking-[0.24em] text-amber-300">{questStage === 'completed' ? '循环悬赏 · 长安历练' : '主线任务 · 第一章'}</p>
-          <p className="mt-0.5 text-xs text-sky-100">{questStage === 'completed' ? '三战一精英 · 奖励递进' : '初入长安 · 城外试炼'}</p>
+          <p className="text-[10px] font-black tracking-[0.24em] text-amber-300">{chapterAvailable ? '主线任务 · 第二章' : questStage === 'completed' ? '循环悬赏 · 长安历练' : '主线任务 · 第一章'}</p>
+          <p className="mt-0.5 text-xs text-sky-100">{chapterAvailable ? '月轮异变 · 秘境降临' : questStage === 'completed' ? '三战一精英 · 奖励递进' : '初入长安 · 城外试炼'}</p>
         </div>
         <span className="grid h-9 w-9 place-items-center rounded-full border border-amber-200/50 bg-amber-300 font-black text-slate-950">{guide.step}</span>
       </div>
@@ -39,7 +42,7 @@ export default function QuestGuide({ position, progress, patrolWins, eliteWins, 
         </div>
         <button
           type="button"
-          onClick={() => target ? onNavigate(target) : onFreePatrol()}
+          onClick={() => target ? onNavigate(target) : chapterAvailable ? onChapterChallenge() : onFreePatrol()}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-amber-300 to-orange-500 px-4 py-3 font-black text-slate-950 shadow-[0_4px_0_#9a3412] transition active:translate-y-1 active:shadow-none"
         >
           <span aria-hidden>➤</span>

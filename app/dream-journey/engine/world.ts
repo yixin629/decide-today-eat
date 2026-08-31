@@ -63,7 +63,7 @@ export function getQuestTarget(stage: QuestStage): NpcDefinition | null {
   return null
 }
 
-export function getQuestGuidance(stage: QuestStage, progress: number, patrolWins = 0, eliteWins = 0) {
+export function getQuestGuidance(stage: QuestStage, progress: number, patrolWins = 0, eliteWins = 0, moonChapterCompleted = false) {
   if (stage === 'not-started') return {
     step: 1,
     title: '拜访云游师父',
@@ -92,6 +92,13 @@ export function getQuestGuidance(stage: QuestStage, progress: number, patrolWins
     progress: '等待复命',
     actionLabel: '返回云游师父',
   }
+  if (eliteWins >= 2 && !moonChapterCompleted) return {
+    step: 2,
+    title: '月影秘境已经开启',
+    description: '两次精英悬赏引动了失落月轮。进入秘境，挑战月蚀妖狐与两名月影侍从。',
+    progress: '第二章首领等待挑战',
+    actionLabel: '进入月影秘境',
+  }
   const bountyProgress = patrolWins % 3
   const eliteReady = bountyProgress === 2
   return {
@@ -99,7 +106,9 @@ export function getQuestGuidance(stage: QuestStage, progress: number, patrolWins
     title: eliteReady ? '精英悬赏已出现' : '长安悬赏历练',
     description: eliteReady
       ? '下一次巡逻必定遭遇精英妖物和两名护卫，胜利可获得更高奖励与额外丹药。'
-      : '完成三场悬赏巡逻即可触发精英遭遇。战斗难度和奖励会随等级成长。',
+      : moonChapterCompleted
+        ? '第二章已经通关。继续完成悬赏循环，精炼装备并修炼技能。'
+        : '完成三场悬赏巡逻即可触发精英遭遇。战斗难度和奖励会随等级成长。',
     progress: `${bountyProgress}/3 场 · 已击败 ${eliteWins} 名精英`,
     actionLabel: eliteReady ? '挑战精英悬赏' : '开始悬赏巡逻',
   }

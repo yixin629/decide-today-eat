@@ -155,8 +155,10 @@ export default function CombatPanel({ battle, stats, skills, onAction }: CombatP
   const enemies = [battle.enemy, ...battle.reinforcements]
   const arenaPath = battle.arena === 'bamboo'
     ? '/games/dream-journey/battle/arena-bamboo-v1.png'
-    : '/games/dream-journey/battle/arena-night-v1.png'
-  const arenaName = battle.arena === 'bamboo' ? '月下竹林' : '长安城楼'
+    : battle.arena === 'moon'
+      ? '/games/dream-journey/battle/arena-moon-sanctuary-v1.png'
+      : '/games/dream-journey/battle/arena-night-v1.png'
+  const arenaName = battle.arena === 'bamboo' ? '月下竹林' : battle.arena === 'moon' ? '月影秘境' : '长安城楼'
   const selectedEnemy = enemies[selectedTargetIndex] ?? battle.enemy
   const counterLabel = battle.enemy.hp > 0 ? `${battle.enemy.name} · ${intent.name}` : '残余护卫 · 联手反击'
   const heroOffensive = phase === 'hero-action' && activeAction !== 'guard' && activeAction !== 'potion' && activeAction !== 'heal'

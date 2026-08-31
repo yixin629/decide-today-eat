@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export type AtlasQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type AtlasName = 'monsters' | 'monsters-v2' | 'items' | 'items-v2' | 'effects' | 'heroes'
+export type AtlasName = 'monsters' | 'monsters-v2' | 'moon-bosses' | 'items' | 'items-v2' | 'effects' | 'heroes'
 
 interface AtlasSpriteProps {
   atlas: AtlasName
@@ -14,6 +14,7 @@ interface AtlasSpriteProps {
 const ATLAS_PATHS: Record<AtlasName, string> = {
   monsters: '/games/dream-journey/battle/monsters-atlas-v1.png',
   'monsters-v2': '/games/dream-journey/battle/monsters-atlas-v2.png',
+  'moon-bosses': '/games/dream-journey/battle/moon-bosses-atlas-v1.png',
   items: '/games/dream-journey/battle/items-atlas-v1.png',
   'items-v2': '/games/dream-journey/battle/items-atlas-v2.png',
   effects: '/games/dream-journey/battle/effects-atlas-v1.png',
@@ -58,10 +59,14 @@ export function monsterQuadrant(name: string): AtlasQuadrant {
   if (name === '月影狐') return 'top-right'
   if (name === '石甲卫') return 'bottom-left'
   if (name === '沧澜羽蛇') return 'bottom-right'
+  if (name === '月蚀妖狐') return 'top-left'
+  if (name === '星灯侍灵') return 'top-right'
+  if (name === '镜魇') return 'bottom-left'
   return 'bottom-right'
 }
 
 export function monsterAtlas(name: string): AtlasName {
+  if (['月蚀妖狐', '星灯侍灵', '镜魇'].includes(name)) return 'moon-bosses'
   return ['青竹灵', '月影狐', '石甲卫', '沧澜羽蛇'].includes(name) ? 'monsters-v2' : 'monsters'
 }
 

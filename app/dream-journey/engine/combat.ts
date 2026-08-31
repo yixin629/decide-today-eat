@@ -21,12 +21,29 @@ const BOSS: Omit<Enemy, 'hp' | 'maxHp'> = {
   gold: 68,
 }
 
+const MOON_BOSS: Omit<Enemy, 'hp' | 'maxHp'> = {
+  kind: 'boss',
+  name: '月蚀妖狐',
+  icon: '🌘',
+  attack: 19,
+  exp: 145,
+  gold: 108,
+}
+
+const MOON_GUARDS: Omit<Enemy, 'hp' | 'maxHp'>[] = [
+  { kind: 'mob', name: '星灯侍灵', icon: '🏮', attack: 13, exp: 0, gold: 0 },
+  { kind: 'mob', name: '镜魇', icon: '🪞', attack: 15, exp: 0, gold: 0 },
+]
+
 export const ENEMY_TRAITS: Record<string, { name: string; description: string }> = {
   青竹灵: { name: '竹影迅袭', description: '身法迅捷，反击伤害略高。' },
   月影狐: { name: '噬月妖术', description: '反击时会额外削减法力。' },
   石甲卫: { name: '玄岩重甲', description: '普通攻击伤害降低，法术伤害不受影响。' },
   沧澜羽蛇: { name: '穿云毒息', description: '攻击会穿透一部分防御。' },
   赤焰妖王: { name: '妖焰轮转', description: '每回合更换技能意图，半血后进入狂暴。' },
+  月蚀妖狐: { name: '月蚀轮转', description: '会交替施放摄魂与月焰重击，半血后进入月蚀狂暴。' },
+  星灯侍灵: { name: '星灯护月', description: '与首领共同反击，应优先削减敌方数量。' },
+  镜魇: { name: '镜影噬心', description: '攻击较高，建议尽早集中击破。' },
 }
 
 export function enemyTrait(name: string) {
@@ -50,11 +67,12 @@ export const INITIAL_STATS: HeroStats = {
   crit: 5,
 }
 
-export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET, elite = false): BattleState {
-  const template = kind === 'boss' ? BOSS : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
+export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: PetState = INITIAL_PET, elite = false, bossVariant: 'crimson' | 'moon' = 'crimson'): BattleState {
+  const moonBoss = kind === 'boss' && bossVariant === 'moon'
+  const template = kind === 'boss' ? (moonBoss ? MOON_BOSS : BOSS) : ENEMIES[Math.floor(Math.random() * ENEMIES.length)]
   const reinforcementCount = kind === 'boss' || elite ? 2 : level >= 4 && Math.random() < 0.3 ? 2 : level >= 2 && Math.random() < 0.55 ? 1 : 0
   const reinforcementTemplates = kind === 'boss'
-    ? [ENEMIES[2], ENEMIES[1]]
+    ? moonBoss ? MOON_GUARDS : [ENEMIES[2], ENEMIES[1]]
     : [...ENEMIES]
         .filter((enemy) => enemy.name !== template.name)
         .sort(() => Math.random() - 0.5)
@@ -73,7 +91,7 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
   const groupExp = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.exp * 0.45), 0)
   const groupGold = reinforcementTemplates.reduce((total, unit) => total + Math.round(unit.gold * 0.45), 0)
   const baseMaxHp = kind === 'boss'
-    ? 145 + level * 24
+    ? (moonBoss ? 190 + level * 28 : 145 + level * 24)
     : 42 + level * 11 + Math.floor(Math.random() * 12)
   const maxHp = elite ? Math.round(baseMaxHp * 1.55) : baseMaxHp
   const rewardMultiplier = elite ? 1.75 : 1
@@ -88,12 +106,14 @@ export function createBattle(level: number, kind: Enemy['kind'] = 'mob', pet: Pe
       gold: Math.round((template.gold + groupGold) * rewardMultiplier),
     },
     reinforcements,
-    arena: kind === 'boss' ? 'city' : 'bamboo',
+    arena: moonBoss ? 'moon' : kind === 'boss' ? 'city' : 'bamboo',
     elite,
     companion: { name: '泡泡灵宠', model: '泡泡精', attack: petAttack(pet) },
     lastCompanionAttack: null,
     log: [kind === 'boss'
-      ? `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。`
+      ? moonBoss
+        ? '月轮被阴影吞没，月蚀妖狐与两名侍从降临秘境！'
+        : `妖气冲天，${template.name}率领两名护卫降临！点击敌人可切换目标。`
       : elite
         ? `悬赏妖气爆发，精英${template.name}率领护卫现身！`
         : `野外突然跳出一只${template.name}！`],
