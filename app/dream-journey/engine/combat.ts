@@ -136,10 +136,34 @@ export const INTENT_LABELS: Record<EnemyIntent, { name: string; description: str
   roar: { name: '摄魂咆哮', description: '造成伤害并削减法力', icon: '🌋' },
 }
 
-function nextIntent(turn: number, enraged: boolean): EnemyIntent {
-  if (enraged && turn % 2 === 0) return 'inferno'
-  if (turn % 3 === 0) return 'inferno'
-  if (turn % 2 === 0) return 'roar'
+const ENEMY_INTENT_LABELS: Partial<Record<string, Partial<Record<EnemyIntent, { name: string; description: string; icon: string }>>>> = {
+  泡泡精: { roar: { name: '灵泡震荡', description: '震散法力，技能施放会受到影响', icon: '🫧' } },
+  花妖: { roar: { name: '迷魂花粉', description: '造成伤害并削减法力', icon: '🌺' } },
+  巡山小妖: { inferno: { name: '开山重斩', description: '高额伤害，防御可以显著减伤', icon: '🪓' } },
+  青竹灵: { inferno: { name: '竹影连刺', description: '迅捷重击，建议提前防御', icon: '🎋' } },
+  月影狐: { roar: { name: '噬月妖术', description: '造成伤害并大量削减法力', icon: '🌙' } },
+  石甲卫: { inferno: { name: '玄岩震地', description: '蓄力砸击，建议提前防御', icon: '🪨' } },
+  沧澜羽蛇: { roar: { name: '穿云毒息', description: '无视防御并削减法力', icon: '🐉' } },
+  月蚀妖狐: {
+    inferno: { name: '月焰坠落', description: '高额月焰伤害，建议防御', icon: '🌘' },
+    roar: { name: '月蚀摄魂', description: '造成伤害并削减法力', icon: '🌑' },
+  },
+}
+
+export function enemyIntentLabel(enemyName: string, intent: EnemyIntent) {
+  return ENEMY_INTENT_LABELS[enemyName]?.[intent] ?? INTENT_LABELS[intent]
+}
+
+function nextIntent(enemy: Enemy, turn: number, enraged: boolean): EnemyIntent {
+  if (enemy.kind === 'boss') {
+    if (enraged && turn % 2 === 0) return 'inferno'
+    if (turn % 3 === 0) return 'inferno'
+    if (turn % 2 === 0) return 'roar'
+    return 'strike'
+  }
+  if (['巡山小妖', '青竹灵', '石甲卫'].includes(enemy.name) && turn % 3 === 0) return 'inferno'
+  if (['泡泡精', '花妖'].includes(enemy.name) && turn % 3 === 0) return 'roar'
+  if (['月影狐', '沧澜羽蛇'].includes(enemy.name) && turn % 2 === 0) return 'roar'
   return 'strike'
 }
 
@@ -160,6 +184,18 @@ function levelUp(stats: HeroStats) {
     }
   }
   return next
+}
+
+export function settleBattleStats(stats: HeroStats, battle: BattleState, result: 'victory' | 'defeat', heroHp: number) {
+  if (result === 'victory') {
+    return levelUp({
+      ...stats,
+      hp: Math.max(1, Math.min(stats.maxHp, heroHp)),
+      exp: stats.exp + battle.enemy.exp,
+      gold: stats.gold + battle.enemy.gold,
+    })
+  }
+  return { ...stats, hp: stats.maxHp, mp: stats.maxMp, gold: Math.max(0, stats.gold - 10) }
 }
 
 export function resolveRound(
@@ -281,16 +317,18 @@ export function resolveRound(
   let totalIncomingDamage = 0
   if (enemy.hp > 0) {
     let rawDamage = enemy.attack + Math.floor(Math.random() * 7)
-    let ignoresDefense = false
-    if (enemy.kind === 'boss' && battle.intent === 'inferno') {
-      rawDamage = Math.round(enemy.attack * (enraged ? 1.85 : 1.6)) + Math.floor(Math.random() * 6)
-      log.push(`${enemy.name}释放焚天重击！`)
-    } else if (enemy.kind === 'boss' && battle.intent === 'roar') {
+    let ignoresDefense = enemy.name === '沧澜羽蛇'
+    const enemyMove = enemyIntentLabel(enemy.name, battle.intent)
+    if (battle.intent === 'inferno') {
+      const multiplier = enemy.kind === 'boss' ? (enraged ? 1.85 : 1.6) : 1.45
+      rawDamage = Math.round(enemy.attack * multiplier) + Math.floor(Math.random() * 6)
+      log.push(`${enemy.name}释放${enemyMove.name}！`)
+    } else if (battle.intent === 'roar') {
       rawDamage = Math.round(enemy.attack * 0.8) + Math.floor(Math.random() * 5)
       const drained = Math.min(8, nextStats.mp)
       nextStats.mp -= drained
-      ignoresDefense = true
-      log.push(`${enemy.name}发出摄魂咆哮，震散 ${drained} 点法力！`)
+      ignoresDefense = ignoresDefense || enemy.kind === 'boss'
+      log.push(`${enemy.name}施展${enemyMove.name}，震散 ${drained} 点法力！`)
     } else if (enemy.name === '青竹灵') {
       rawDamage = Math.round(rawDamage * 1.2)
       log.push('青竹灵踏影连刺，攻势变得更加迅猛！')
@@ -335,7 +373,7 @@ export function resolveRound(
       lastCompanionAttack,
       guarding: false,
       turn,
-      intent: enemy.kind === 'boss' ? nextIntent(turn, enraged) : 'strike',
+      intent: nextIntent(enemy, turn, enraged),
       enraged,
       cooldowns,
       heroShield,

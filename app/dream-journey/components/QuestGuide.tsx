@@ -49,6 +49,9 @@ export default function QuestGuide({ position, progress, patrolWins, eliteWins, 
           {guide.actionLabel}
           {target && <span className="rounded-full bg-slate-950/15 px-2 py-0.5 text-[10px]">{distance} 步</span>}
         </button>
+        {questStage === 'completed' && moonChapterCompleted && (
+          <button type="button" onClick={onChapterChallenge} className="mt-2 w-full rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/15 px-4 py-2 text-sm font-black text-fuchsia-100 hover:bg-fuchsia-500/25">🌘 重返月影秘境 · 阵容演练</button>
+        )}
       </div>
     </section>
   )

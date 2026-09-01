@@ -16,8 +16,9 @@ import PetPanel from './components/PetPanel'
 import QuestGuide from './components/QuestGuide'
 import ShopPanel from './components/ShopPanel'
 import SkillPanel from './components/SkillPanel'
-import { createBattle, INITIAL_STATS, resolveRound } from './engine/combat'
+import { createBattle, INITIAL_STATS, settleBattleStats } from './engine/combat'
 import { ELITE_REWARD_IDS, INITIAL_EQUIPMENT, INITIAL_INVENTORY, ITEMS, equipmentBonuses } from './engine/equipment'
+import type { FormationBattleResult } from './engine/formation-battle'
 import { INITIAL_PET, starUpPet, trainPet, upgradePetSkill } from './engine/pet'
 import { INITIAL_SKILLS, upgradeSkill as upgradeHeroSkill } from './engine/skills'
 import { getQuestTarget, getSceneName } from './engine/world'
@@ -31,7 +32,6 @@ import {
   rest,
 } from './engine/progression'
 import type {
-  BattleAction,
   BattleResult,
   BattleState,
   EquipmentState,
@@ -141,10 +141,10 @@ export default function DreamJourneyPage() {
   }
 
   const beginMoonChapter = () => {
-    if (questStage !== 'completed' || stats.eliteWins < 2 || worldFlags.moonChapterCompleted) return
+    if (questStage !== 'completed' || stats.eliteWins < 2) return
     setBattleResult(null)
     setPendingBattle(createBattle(stats.level, 'boss', pet, false, 'moon'))
-    setNotice('第二章开启：月蚀妖狐正在月影秘境中等待挑战。')
+    setNotice(worldFlags.moonChapterCompleted ? '月影秘境演练开启：章节奖励不会重复发放。' : '第二章开启：月蚀妖狐正在月影秘境中等待挑战。')
   }
 
   const startPendingBattle = () => {
@@ -163,15 +163,14 @@ export default function DreamJourneyPage() {
   const handlePositionChange = useCallback((nextPosition: Point) => setPosition(nextPosition), [])
   const handleSceneChange = useCallback((nextScene: string) => setSceneName(nextScene), [])
 
-  const handleAction = (action: BattleAction, targetIndex = 0) => {
+  const handleBattleComplete = (formationBattleResult: FormationBattleResult) => {
     if (!battle) return
     const defeatedEnemy = battle.enemy
     const previousLevel = stats.level
-    const outcome = resolveRound(stats, battle, action, bonuses, targetIndex, skills)
-    let nextStats = outcome.stats
-    setBattle(outcome.battle)
+    let nextStats = settleBattleStats(stats, battle, formationBattleResult.outcome, formationBattleResult.heroHp)
+    setBattle(null)
 
-    if (outcome.result === 'victory') {
+    if (formationBattleResult.outcome === 'victory') {
       const levelMessage = nextStats.level > previousLevel ? ` 升到 ${nextStats.level} 级！` : ''
       const moonChapterVictory = defeatedEnemy.name === '月蚀妖狐' && questStage === 'completed' && !worldFlags.moonChapterCompleted
       const skillPointsGained = nextStats.level - previousLevel + (moonChapterVictory ? 2 : battle.elite ? 1 : 0)
@@ -242,7 +241,7 @@ export default function DreamJourneyPage() {
         skillPointsGained,
       })
     }
-    if (outcome.result === 'defeat') {
+    if (formationBattleResult.outcome === 'defeat') {
       const goldLost = stats.gold - nextStats.gold
       const resultMessage = `你被送回城中休养，损失了 ${goldLost} 两银子。可以去药铺补给后再次出发。`
       setNotice(resultMessage)
@@ -491,7 +490,7 @@ export default function DreamJourneyPage() {
             {pendingBattle && (pendingBattle.enemy.name === '月蚀妖狐'
               ? <ChapterPortalPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />
               : <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />)}
-            {battle && <CombatPanel battle={battle} stats={stats} skills={skills} onAction={handleAction} />}
+            {battle && <CombatPanel battle={battle} stats={stats} skills={skills} onComplete={handleBattleComplete} />}
             {battleResult && <BattleResultPanel result={battleResult} inventory={inventory} onClaimLoot={claimBattleLoot} onContinue={() => setBattleResult(null)} />}
             {dialogue && (
               <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border-2 border-amber-200 bg-slate-950/95 p-4 shadow-2xl">
