@@ -1,4 +1,4 @@
-import type { EquipmentState, GameSave, HeroStats, InventoryState, PetState, Point, QuestStage, SceneId, SkillState, WorldFlags } from '../types'
+import type { EquipmentState, GameSave, HeroStats, InventoryState, PartnerId, PartnerRosterState, PetState, Point, QuestStage, SceneId, SkillState, WorldFlags } from '../types'
 import { INITIAL_STATS } from './combat'
 import { INITIAL_EQUIPMENT, INITIAL_INVENTORY } from './equipment'
 import { INITIAL_PET } from './pet'
@@ -9,9 +9,16 @@ export const POTION_PRICE = 18
 export const REST_PRICE = 12
 export const CHAPTER_REWARD = { gold: 120, potions: 3 } as const
 export const INITIAL_POSITION: Point = { x: 1205, y: 1240 }
+export const DEFAULT_LINEUP: PartnerId[] = ['jade-sword', 'moon-lotus', 'thunder-seal']
+export const INITIAL_PARTNERS: PartnerRosterState = {
+  'jade-sword': { level: 1, exp: 0, stars: 0, shards: 0 },
+  'moon-lotus': { level: 1, exp: 0, stars: 0, shards: 0 },
+  'thunder-seal': { level: 1, exp: 0, stars: 0, shards: 0 },
+  'azure-dragon': { level: 1, exp: 0, stars: 0, shards: 0 },
+}
 
 export const INITIAL_SAVE: GameSave = {
-  version: 6,
+  version: 7,
   stats: INITIAL_STATS,
   position: INITIAL_POSITION,
   questStage: 'not-started',
@@ -21,6 +28,8 @@ export const INITIAL_SAVE: GameSave = {
   worldFlags: { caveChestOpened: false, moonChapterCompleted: false },
   pet: INITIAL_PET,
   skills: INITIAL_SKILLS,
+  lineup: DEFAULT_LINEUP,
+  partners: INITIAL_PARTNERS,
 }
 
 const QUEST_STAGES: readonly QuestStage[] = [
@@ -113,6 +122,50 @@ function parseSkills(value: unknown, stats: HeroStats): SkillState {
   }
 }
 
+function parseLineup(value: unknown): PartnerId[] {
+  if (!Array.isArray(value)) return DEFAULT_LINEUP
+  const validIds = Object.keys(INITIAL_PARTNERS) as PartnerId[]
+  const lineup = value.filter((id): id is PartnerId => validIds.includes(id as PartnerId))
+  return [...new Set(lineup)].slice(0, 3).length === 3 ? [...new Set(lineup)].slice(0, 3) : DEFAULT_LINEUP
+}
+
+function parsePartners(value: unknown): PartnerRosterState {
+  const saved = value && typeof value === 'object' ? value as Partial<PartnerRosterState> : {}
+  return Object.fromEntries((Object.keys(INITIAL_PARTNERS) as PartnerId[]).map((id) => {
+    const partner = saved[id]
+    return [id, {
+      level: Math.min(30, Math.max(1, Math.floor(finiteNumber(partner?.level, 1)))),
+      exp: Math.max(0, Math.floor(finiteNumber(partner?.exp, 0))),
+      stars: Math.min(5, Math.max(0, Math.floor(finiteNumber(partner?.stars, 0)))),
+      shards: Math.max(0, Math.floor(finiteNumber(partner?.shards, 0))),
+    }]
+  })) as PartnerRosterState
+}
+
+export function grantPartnerExperience(roster: PartnerRosterState, lineup: PartnerId[], exp: number, shards: number) {
+  const next = { ...roster }
+  for (const id of lineup) {
+    let partner = { ...next[id], exp: next[id].exp + exp, shards: next[id].shards + shards }
+    while (partner.level < 30 && partner.exp >= partner.level * 24) {
+      partner = { ...partner, exp: partner.exp - partner.level * 24, level: partner.level + 1 }
+    }
+    next[id] = partner
+  }
+  return next
+}
+
+export function starUpPartner(roster: PartnerRosterState, id: PartnerId) {
+  const partner = roster[id]
+  const cost = (partner.stars + 1) * 4
+  if (partner.stars >= 5) return { roster, success: false, message: '该伙伴已经达到五星。' }
+  if (partner.shards < cost) return { roster, success: false, message: `升星需要 ${cost} 枚伙伴灵契，当前只有 ${partner.shards} 枚。` }
+  return {
+    roster: { ...roster, [id]: { ...partner, stars: partner.stars + 1, shards: partner.shards - cost } },
+    success: true,
+    message: '伙伴升星成功，基础属性与专属技能效果均已提升。',
+  }
+}
+
 export function parseGameSave(raw: string | null, legacyRaw: string | null): GameSave {
   try {
     if (raw) {
@@ -126,7 +179,7 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
       const inventory = parseInventory(saved.inventory)
       const stats = parseStats(saved.stats)
       return {
-        version: 6,
+        version: 7,
         stats,
         position,
         questStage: QUEST_STAGES.includes(saved.questStage as QuestStage)
@@ -138,6 +191,8 @@ export function parseGameSave(raw: string | null, legacyRaw: string | null): Gam
         worldFlags: parseWorldFlags(saved.worldFlags),
         pet: parsePet(saved.pet),
         skills: parseSkills(saved.skills, stats),
+        lineup: parseLineup(saved.lineup),
+        partners: parsePartners(saved.partners),
       }
     }
     if (legacyRaw) {

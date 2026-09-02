@@ -11,6 +11,8 @@ commercial game:
 
 - battle/arena-formation-v1.png
 - battle/partners-atlas-v1.png
+- battle/moon-lotus-actions-v1.webp
+- battle/moon-fox-actions-v1.webp
 
 Generation direction: original 2.5D Chinese-fantasy art, with no copied named
 characters, logos, UI, or source-game assets.

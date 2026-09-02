@@ -24,12 +24,16 @@ import { INITIAL_SKILLS, upgradeSkill as upgradeHeroSkill } from './engine/skill
 import { getQuestTarget, getSceneName } from './engine/world'
 import {
   CHAPTER_REWARD,
+  DEFAULT_LINEUP,
+  INITIAL_PARTNERS,
   INITIAL_POSITION,
   QUEST_TARGET,
   buyPotion,
+  grantPartnerExperience,
   parseGameSave,
   questNotice,
   rest,
+  starUpPartner,
 } from './engine/progression'
 import type {
   BattleResult,
@@ -39,6 +43,8 @@ import type {
   InventoryState,
   ItemId,
   NpcDefinition,
+  PartnerId,
+  PartnerRosterState,
   Point,
   PetState,
   QuestStage,
@@ -48,11 +54,12 @@ import type {
   WorldFlags,
 } from './types'
 
-const SAVE_KEY = 'dream-journey-save-v6'
-const PREVIOUS_SAVE_KEY = 'dream-journey-save-v5'
-const OLDER_SAVE_KEY = 'dream-journey-save-v4'
-const EARLIER_SAVE_KEY = 'dream-journey-save-v3'
-const EVEN_EARLIER_SAVE_KEY = 'dream-journey-save-v2'
+const SAVE_KEY = 'dream-journey-save-v7'
+const PREVIOUS_SAVE_KEY = 'dream-journey-save-v6'
+const OLDER_SAVE_KEY = 'dream-journey-save-v5'
+const EARLIER_SAVE_KEY = 'dream-journey-save-v4'
+const EVEN_EARLIER_SAVE_KEY = 'dream-journey-save-v3'
+const ANCIENT_SAVE_KEY = 'dream-journey-save-v2'
 const LEGACY_SAVE_KEY = 'dream-journey-save-v1'
 
 interface DialogueState {
@@ -71,6 +78,8 @@ export default function DreamJourneyPage() {
   const [worldFlags, setWorldFlags] = useState<WorldFlags>({ caveChestOpened: false, moonChapterCompleted: false })
   const [pet, setPet] = useState<PetState>(INITIAL_PET)
   const [skills, setSkills] = useState<SkillState>(INITIAL_SKILLS)
+  const [lineup, setLineup] = useState<PartnerId[]>(DEFAULT_LINEUP)
+  const [partners, setPartners] = useState<PartnerRosterState>(INITIAL_PARTNERS)
   const [battle, setBattle] = useState<BattleState | null>(null)
   const [pendingBattle, setPendingBattle] = useState<BattleState | null>(null)
   const [battleResult, setBattleResult] = useState<BattleResult | null>(null)
@@ -88,7 +97,7 @@ export default function DreamJourneyPage() {
 
   useEffect(() => {
     const saved = parseGameSave(
-      window.localStorage.getItem(SAVE_KEY) ?? window.localStorage.getItem(PREVIOUS_SAVE_KEY) ?? window.localStorage.getItem(OLDER_SAVE_KEY) ?? window.localStorage.getItem(EARLIER_SAVE_KEY) ?? window.localStorage.getItem(EVEN_EARLIER_SAVE_KEY),
+      window.localStorage.getItem(SAVE_KEY) ?? window.localStorage.getItem(PREVIOUS_SAVE_KEY) ?? window.localStorage.getItem(OLDER_SAVE_KEY) ?? window.localStorage.getItem(EARLIER_SAVE_KEY) ?? window.localStorage.getItem(EVEN_EARLIER_SAVE_KEY) ?? window.localStorage.getItem(ANCIENT_SAVE_KEY),
       window.localStorage.getItem(LEGACY_SAVE_KEY),
     )
     setStats(saved.stats)
@@ -100,6 +109,8 @@ export default function DreamJourneyPage() {
     setWorldFlags(saved.worldFlags)
     setPet(saved.pet)
     setSkills(saved.skills)
+    setLineup(saved.lineup)
+    setPartners(saved.partners)
     setNotice(saved.questStage === 'completed' && saved.stats.eliteWins >= 2 && !saved.worldFlags.moonChapterCompleted
       ? '第二章已经开启：月影秘境正在等待挑战。'
       : questNotice(saved.questStage, saved.stats.questProgress, saved.stats.patrolWins))
@@ -110,7 +121,7 @@ export default function DreamJourneyPage() {
   useEffect(() => {
     if (!loaded) return
     window.localStorage.setItem(SAVE_KEY, JSON.stringify({
-      version: 6,
+      version: 7,
       stats,
       position,
       questStage,
@@ -120,8 +131,10 @@ export default function DreamJourneyPage() {
       worldFlags,
       pet,
       skills,
+      lineup,
+      partners,
     }))
-  }, [equipment, inventory, loaded, pet, position, questStage, scene, skills, stats, worldFlags])
+  }, [equipment, inventory, lineup, loaded, partners, pet, position, questStage, scene, skills, stats, worldFlags])
 
   const bonuses = useMemo(() => equipmentBonuses(equipment, inventory), [equipment, inventory])
 
@@ -171,6 +184,9 @@ export default function DreamJourneyPage() {
     setBattle(null)
 
     if (formationBattleResult.outcome === 'victory') {
+      const partnerExp = defeatedEnemy.kind === 'boss' ? 32 : battle.elite ? 20 : 12
+      const partnerShards = defeatedEnemy.kind === 'boss' ? 2 : battle.elite ? 1 : 0
+      setPartners((current) => grantPartnerExperience(current, formationBattleResult.lineup, partnerExp, partnerShards))
       const levelMessage = nextStats.level > previousLevel ? ` 升到 ${nextStats.level} 级！` : ''
       const moonChapterVictory = defeatedEnemy.name === '月蚀妖狐' && questStage === 'completed' && !worldFlags.moonChapterCompleted
       const skillPointsGained = nextStats.level - previousLevel + (moonChapterVictory ? 2 : battle.elite ? 1 : 0)
@@ -440,6 +456,12 @@ export default function DreamJourneyPage() {
     setNotice(result.message)
   }
 
+  const handleStarUpPartner = (partnerId: PartnerId) => {
+    const result = starUpPartner(partners, partnerId)
+    if (result.success) setPartners(result.roster)
+    setNotice(result.message)
+  }
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#4338ca_0,_#172554_36%,_#071120_100%)] px-3 py-5 pb-24 text-white md:px-6 md:pb-6">
       <div className="mx-auto max-w-7xl">
@@ -490,7 +512,7 @@ export default function DreamJourneyPage() {
             {pendingBattle && (pendingBattle.enemy.name === '月蚀妖狐'
               ? <ChapterPortalPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />
               : <EncounterPreviewPanel battle={pendingBattle} onStart={startPendingBattle} onRetreat={retreatFromEncounter} />)}
-            {battle && <CombatPanel battle={battle} stats={stats} skills={skills} onComplete={handleBattleComplete} />}
+            {battle && <CombatPanel battle={battle} stats={stats} skills={skills} lineup={lineup} partners={partners} onLineupChange={setLineup} onStarUpPartner={handleStarUpPartner} onComplete={handleBattleComplete} />}
             {battleResult && <BattleResultPanel result={battleResult} inventory={inventory} onClaimLoot={claimBattleLoot} onContinue={() => setBattleResult(null)} />}
             {dialogue && (
               <div className="absolute inset-x-3 bottom-3 z-20 rounded-2xl border-2 border-amber-200 bg-slate-950/95 p-4 shadow-2xl">

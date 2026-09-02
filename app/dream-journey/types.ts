@@ -42,6 +42,17 @@ export interface SkillState {
   points: number
 }
 
+export type PartnerId = 'jade-sword' | 'moon-lotus' | 'thunder-seal' | 'azure-dragon'
+
+export interface PartnerProgress {
+  level: number
+  exp: number
+  stars: number
+  shards: number
+}
+
+export type PartnerRosterState = Record<PartnerId, PartnerProgress>
+
 export interface WorldFlags {
   caveChestOpened: boolean
   moonChapterCompleted: boolean
@@ -50,7 +61,7 @@ export interface WorldFlags {
 export type QuestStage = 'not-started' | 'hunting' | 'boss-ready' | 'returning' | 'completed'
 
 export interface GameSave {
-  version: 6
+  version: 7
   stats: HeroStats
   position: Point
   questStage: QuestStage
@@ -60,6 +71,8 @@ export interface GameSave {
   worldFlags: WorldFlags
   pet: PetState
   skills: SkillState
+  lineup: PartnerId[]
+  partners: PartnerRosterState
 }
 
 export interface PetState {

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 
 export type AtlasQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-export type AtlasName = 'monsters' | 'monsters-v2' | 'moon-bosses' | 'items' | 'items-v2' | 'effects' | 'heroes' | 'partners'
+export type AtlasName = 'monsters' | 'monsters-v2' | 'moon-bosses' | 'items' | 'items-v2' | 'effects' | 'heroes' | 'partners' | 'moon-lotus-actions' | 'moon-fox-actions'
 
 interface AtlasSpriteProps {
   atlas: AtlasName
@@ -20,6 +20,8 @@ const ATLAS_PATHS: Record<AtlasName, string> = {
   effects: '/games/dream-journey/battle/effects-atlas-v1.png',
   heroes: '/games/dream-journey/battle/hero-combat-atlas-v1.png',
   partners: '/games/dream-journey/battle/partners-atlas-v1.png',
+  'moon-lotus-actions': '/games/dream-journey/battle/moon-lotus-actions-v1.webp',
+  'moon-fox-actions': '/games/dream-journey/battle/moon-fox-actions-v1.webp',
 }
 
 const POSITIONS: Record<AtlasQuadrant, string> = {
