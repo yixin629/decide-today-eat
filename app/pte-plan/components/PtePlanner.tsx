@@ -2,9 +2,11 @@
 
 import { addDays, format, parseISO } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useToast } from '@/app/components/feedback/ToastProvider'
-import { generateStudyPlan } from '../engine/generate-plan'
+import { readSessionUser } from '@/lib/auth-session'
+import { ensureAllTaskCoverage, generateStudyPlan } from '../engine/generate-plan'
+import { deleteCloudPlan, loadCloudPlans, saveCloudPlans } from '../lib/plan-repository'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
 import { templatesForTask } from '../lib/templates'
 import {
@@ -44,7 +46,15 @@ function scoreText(scores: Record<Skill, number>) {
 
 function createPlanId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
-  return `pte-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16)
+    const value = character === 'x' ? random : (random & 0x3) | 0x8
+    return value.toString(16)
+  })
+}
+
+function userStorageKey(userId: string) {
+  return `${PTE_STORAGE_KEY}:${userId}`
 }
 
 function defaultPlanName(config: PlannerConfig) {
@@ -90,59 +100,149 @@ function migrateLegacyPlan(value: unknown): SavedPtePlan | null {
 
 export default function PtePlanner() {
   const toast = useToast()
+  const syncedVersionsRef = useRef(new Map<string, string>())
+  const syncErrorShownRef = useRef(false)
   const [config, setConfig] = useState<PlannerConfig>(defaultConfig)
   const [plans, setPlans] = useState<SavedPtePlan[]>([])
   const [activePlanId, setActivePlanId] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState(0)
   const [hydrated, setHydrated] = useState(false)
+  const [currentUser, setCurrentUser] = useState<string | null>(null)
+  const [cloudReady, setCloudReady] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<
+    'loading' | 'saving' | 'saved' | 'offline' | 'error'
+  >('loading')
+  const [taskPickerOpen, setTaskPickerOpen] = useState(false)
   const [templateTask, setTemplateTask] = useState<string | null>(null)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(PTE_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<PtePlanWorkspace>
-        const validPlans = Array.isArray(parsed.plans) ? parsed.plans.filter(isSavedPlan) : []
-        if (parsed.version === 2) {
-          if (validPlans.length > 0) {
-            const active =
-              validPlans.find((plan) => plan.id === parsed.activePlanId) ?? validPlans[0]
-            setPlans(validPlans)
-            setActivePlanId(active.id)
-            setConfig(active.config)
-            setActiveDay(nextActiveDay(active))
+    let cancelled = false
+
+    const loadPlans = async () => {
+      let localPlans: SavedPtePlan[] = []
+      let localActivePlanId: string | null = null
+      const user = readSessionUser()
+      const scopedStorageKey = user ? userStorageKey(user) : PTE_STORAGE_KEY
+
+      try {
+        const scopedRaw = window.localStorage.getItem(scopedStorageKey)
+        const unscopedRaw = user ? window.localStorage.getItem(PTE_STORAGE_KEY) : null
+        const raw = scopedRaw ?? unscopedRaw
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<PtePlanWorkspace>
+          if (parsed.version === 2) {
+            localPlans = Array.isArray(parsed.plans) ? parsed.plans.filter(isSavedPlan) : []
+            localActivePlanId = parsed.activePlanId ?? null
           }
-          return
         }
+
+        if (!scopedRaw && unscopedRaw) {
+          window.localStorage.removeItem(PTE_STORAGE_KEY)
+        }
+
+        if (localPlans.length === 0 && !raw) {
+          const legacyRaw = window.localStorage.getItem(PTE_LEGACY_STORAGE_KEY)
+          if (legacyRaw) {
+            const migrated = migrateLegacyPlan(JSON.parse(legacyRaw))
+            if (migrated) {
+              localPlans = [migrated]
+              localActivePlanId = migrated.id
+              window.localStorage.removeItem(PTE_LEGACY_STORAGE_KEY)
+            }
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(scopedStorageKey)
       }
 
-      const legacyRaw = window.localStorage.getItem(PTE_LEGACY_STORAGE_KEY)
-      if (legacyRaw) {
-        const migrated = migrateLegacyPlan(JSON.parse(legacyRaw))
-        if (migrated) {
-          setPlans([migrated])
-          setActivePlanId(migrated.id)
-          setConfig(migrated.config)
-          setActiveDay(nextActiveDay(migrated))
+      if (cancelled) return
+      setCurrentUser(user)
+
+      let resolvedPlans = localPlans
+      if (user) {
+        try {
+          const cloudPlans = await loadCloudPlans(user)
+          if (cancelled) return
+
+          syncedVersionsRef.current = new Map(cloudPlans.map((plan) => [plan.id, plan.updatedAt]))
+          const merged = new Map(cloudPlans.map((plan) => [plan.id, plan]))
+          localPlans.forEach((localPlan) => {
+            const cloudPlan = merged.get(localPlan.id)
+            if (!cloudPlan || localPlan.updatedAt > cloudPlan.updatedAt) {
+              merged.set(localPlan.id, localPlan)
+            }
+          })
+          resolvedPlans = [...merged.values()]
+          setCloudReady(true)
+          setSyncStatus('saved')
+        } catch (error) {
+          console.error('加载 PTE 云端计划失败:', error)
+          setSyncStatus('error')
+          toast.warning('暂时无法连接 PTE 计划数据库，已加载本地缓存')
         }
+      } else {
+        setSyncStatus('offline')
       }
-    } catch {
-      window.localStorage.removeItem(PTE_STORAGE_KEY)
-    } finally {
+
+      if (cancelled) return
+      resolvedPlans = resolvedPlans
+        .map(ensureAllTaskCoverage)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      const active =
+        resolvedPlans.find((plan) => plan.id === localActivePlanId) ?? resolvedPlans[0] ?? null
+      setPlans(resolvedPlans)
+      setActivePlanId(active?.id ?? null)
+      if (active) {
+        setConfig(active.config)
+        setActiveDay(nextActiveDay(active))
+      }
       setHydrated(true)
     }
-  }, [])
+
+    void loadPlans()
+    return () => {
+      cancelled = true
+    }
+  }, [toast])
 
   useEffect(() => {
     if (!hydrated) return
     const workspace: PtePlanWorkspace = { version: 2, activePlanId, plans }
     try {
-      window.localStorage.setItem(PTE_STORAGE_KEY, JSON.stringify(workspace))
+      const storageKey = currentUser ? userStorageKey(currentUser) : PTE_STORAGE_KEY
+      window.localStorage.setItem(storageKey, JSON.stringify(workspace))
     } catch {
       toast.error('浏览器存储空间不足，最新修改可能没有保存')
     }
-  }, [activePlanId, hydrated, plans, toast])
+  }, [activePlanId, currentUser, hydrated, plans, toast])
+
+  useEffect(() => {
+    if (!hydrated || !cloudReady || !currentUser) return
+    const changedPlans = plans.filter(
+      (plan) => syncedVersionsRef.current.get(plan.id) !== plan.updatedAt
+    )
+    if (changedPlans.length === 0) return
+
+    setSyncStatus('saving')
+    const timer = window.setTimeout(async () => {
+      try {
+        await saveCloudPlans(currentUser, changedPlans)
+        changedPlans.forEach((plan) => syncedVersionsRef.current.set(plan.id, plan.updatedAt))
+        syncErrorShownRef.current = false
+        setSyncStatus('saved')
+      } catch (error) {
+        console.error('保存 PTE 云端计划失败:', error)
+        setSyncStatus('error')
+        if (!syncErrorShownRef.current) {
+          syncErrorShownRef.current = true
+          toast.error('云端保存失败，本地缓存仍然保留')
+        }
+      }
+    }, 800)
+
+    return () => window.clearTimeout(timer)
+  }, [cloudReady, currentUser, hydrated, plans, toast])
 
   const savedPlan = plans.find((plan) => plan.id === activePlanId) ?? null
   const preset = getPreset(config.presetId)
@@ -152,6 +252,7 @@ export default function PtePlanner() {
     return savedPlan.days.reduce(
       (summary, day) => {
         day.tasks.forEach((task) => {
+          if (day.hiddenTaskIds.includes(task.id)) return
           task.rows.forEach((row) => {
             if (row.category === 'planned') summary.planned += 1
             if (row.questionId.trim()) summary.done += 1
@@ -246,6 +347,7 @@ export default function PtePlanner() {
       },
       days: savedPlan.days.map((day) => ({
         ...day,
+        hiddenTaskIds: [...day.hiddenTaskIds],
         tasks: day.tasks.map((task) => ({
           ...task,
           rows: task.rows.map((row) => ({ ...row })),
@@ -258,10 +360,21 @@ export default function PtePlanner() {
     toast.success('已复制为新的独立计划')
   }
 
-  const deletePlan = () => {
+  const deletePlan = async () => {
     if (!savedPlan || !window.confirm(`确定删除“${savedPlan.name || '未命名计划'}”吗？`)) return
+    if (currentUser && cloudReady) {
+      try {
+        await deleteCloudPlan(currentUser, savedPlan.id)
+      } catch (error) {
+        console.error('删除 PTE 云端计划失败:', error)
+        toast.error('云端删除失败，请稍后重试')
+        return
+      }
+    }
+
     const remaining = plans.filter((plan) => plan.id !== savedPlan.id)
     const next = remaining[0]
+    syncedVersionsRef.current.delete(savedPlan.id)
     setPlans(remaining)
     setActivePlanId(next?.id ?? null)
     setConfig(next?.config ?? defaultConfig())
@@ -340,9 +453,48 @@ export default function PtePlanner() {
     )
   }
 
+  const setTaskHidden = (taskId: string, hidden: boolean) => {
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id !== activePlanId
+          ? plan
+          : {
+              ...plan,
+              updatedAt: new Date().toISOString(),
+              days: plan.days.map((day, dayIndex) => {
+                if (dayIndex !== activeDay) return day
+                const hiddenTaskIds = hidden
+                  ? [...new Set([...day.hiddenTaskIds, taskId])]
+                  : day.hiddenTaskIds.filter((id) => id !== taskId)
+                return { ...day, hiddenTaskIds }
+              }),
+            }
+      )
+    )
+  }
+
+  const showAllTasks = () => {
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id !== activePlanId
+          ? plan
+          : {
+              ...plan,
+              updatedAt: new Date().toISOString(),
+              days: plan.days.map((day, dayIndex) =>
+                dayIndex === activeDay ? { ...day, hiddenTaskIds: [] } : day
+              ),
+            }
+      )
+    )
+  }
+
   const dayStats = currentDay
     ? currentDay.tasks.reduce(
         (summary, task) => {
+          if (currentDay.hiddenTaskIds.includes(task.id)) return summary
           task.rows.forEach((row) => {
             if (row.category === 'planned') summary.planned += 1
             if (row.questionId.trim()) summary.done += 1
@@ -365,9 +517,31 @@ export default function PtePlanner() {
                 MY PTE PLANS
               </p>
               <h2 className="mt-1 text-xl font-black text-slate-900">我的备考方案</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                每个方案的逐题记录都会自动保存，可以随时切换回来继续填写。
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                <span>每个方案的逐题记录都会自动保存，可以随时切换回来继续填写。</span>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    syncStatus === 'saved'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : syncStatus === 'saving'
+                        ? 'bg-cyan-100 text-cyan-700'
+                        : syncStatus === 'loading'
+                          ? 'bg-slate-100 text-slate-600'
+                          : 'bg-amber-100 text-amber-700'
+                  }`}
+                  role="status"
+                >
+                  {syncStatus === 'saved'
+                    ? '云端已保存'
+                    : syncStatus === 'saving'
+                      ? '正在同步…'
+                      : syncStatus === 'loading'
+                        ? '正在读取云端…'
+                        : syncStatus === 'offline'
+                          ? '仅本地保存'
+                          : '云端同步异常'}
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -446,7 +620,7 @@ export default function PtePlanner() {
               </p>
               <h1 className="mt-2 text-2xl font-black sm:text-3xl">智能备考计划生成器</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-200">
-                按申请标准、分数差距、剩余天数和每日时间自动分配题型。多个计划和逐题记录会自动保存在当前浏览器。
+                按申请标准、分数差距、剩余天数和每日时间自动分配题型。多个计划和逐题记录会自动同步到数据库，并保留浏览器缓存。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -658,7 +832,10 @@ export default function PtePlanner() {
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300 transition-all"
                   style={{
-                    width: `${Math.min(100, Math.round((dayStats.done / dayStats.planned) * 100))}%`,
+                    width: `${Math.min(
+                      100,
+                      Math.round((dayStats.done / Math.max(1, dayStats.planned)) * 100)
+                    )}%`,
                   }}
                 />
               </div>
@@ -667,16 +844,22 @@ export default function PtePlanner() {
             <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 sm:px-5">
               <div className="flex snap-x gap-2 overflow-x-auto pb-1">
                 {savedPlan.days.map((day, index) => {
-                  const completed = day.tasks.reduce(
+                  const visibleTasks = day.tasks.filter(
+                    (task) => !day.hiddenTaskIds.includes(task.id)
+                  )
+                  const completed = visibleTasks.reduce(
                     (sum, task) => sum + task.rows.filter((row) => row.questionId.trim()).length,
                     0
                   )
-                  const planned = day.tasks.reduce((sum, task) => sum + task.plannedCount, 0)
+                  const planned = visibleTasks.reduce((sum, task) => sum + task.plannedCount, 0)
                   return (
                     <button
                       key={day.date}
                       type="button"
-                      onClick={() => setActiveDay(index)}
+                      onClick={() => {
+                        setActiveDay(index)
+                        setTaskPickerOpen(false)
+                      }}
                       className={`min-w-[5.2rem] snap-start rounded-xl border px-3 py-2 text-left transition ${
                         index === activeDay
                           ? 'border-pink-500 bg-pink-600 text-white shadow-md'
@@ -696,9 +879,81 @@ export default function PtePlanner() {
               </div>
             </div>
 
+            <div className="border-b border-slate-200 bg-white px-3 py-3 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-slate-800">今日题型</p>
+                  <p className="text-xs text-slate-500">
+                    显示 {currentDay.tasks.length - currentDay.hiddenTaskIds.length}/
+                    {currentDay.tasks.length} 种
+                    {currentDay.hiddenTaskIds.length > 0 &&
+                      ` · 已隐藏 ${currentDay.hiddenTaskIds.length} 种`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {currentDay.hiddenTaskIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={showAllTasks}
+                      className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                    >
+                      全部恢复
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setTaskPickerOpen((open) => !open)}
+                    className="min-h-11 rounded-xl bg-[#16324f] px-4 py-2 text-sm font-black text-white transition hover:bg-[#204b72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                    aria-expanded={taskPickerOpen}
+                  >
+                    {taskPickerOpen ? '收起选择' : '选择今日题型'}
+                  </button>
+                </div>
+              </div>
+
+              {taskPickerOpen && (
+                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                  <p className="mb-3 text-xs font-bold text-amber-900">
+                    勾选今天不练的题型，勾选后对应表格会隐藏
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {DISPLAY_SKILLS.flatMap((skill) =>
+                      currentDay.tasks
+                        .filter((task) => task.primarySkill === skill)
+                        .map((task) => {
+                          const hidden = currentDay.hiddenTaskIds.includes(task.id)
+                          return (
+                            <label
+                              key={task.id}
+                              className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition ${
+                                hidden
+                                  ? 'border-amber-400 bg-amber-100 text-amber-950'
+                                  : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={hidden}
+                                onChange={(event) => setTaskHidden(task.id, event.target.checked)}
+                                className="h-5 w-5 rounded border-slate-300 accent-amber-600"
+                              />
+                              <span className="font-black">{task.shortLabel}</span>
+                              <span className="truncate text-xs opacity-70">{task.label}</span>
+                            </label>
+                          )
+                        })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-5 p-3 sm:p-5">
               {DISPLAY_SKILLS.map((skill) => {
-                const skillTasks = currentDay.tasks.filter((task) => task.primarySkill === skill)
+                const skillTasks = currentDay.tasks.filter(
+                  (task) =>
+                    task.primarySkill === skill && !currentDay.hiddenTaskIds.includes(task.id)
+                )
                 if (skillTasks.length === 0) return null
                 const meta = SKILL_META[skill]
                 return (

@@ -54,11 +54,7 @@ export async function saveCloudPlans(userId: string, plans: SavedPtePlan[]) {
 }
 
 export async function deleteCloudPlan(userId: string, planId: string) {
-  const { error } = await supabase
-    .from('pte_plans')
-    .delete()
-    .eq('id', planId)
-    .eq('user_id', userId)
+  const { error } = await supabase.from('pte_plans').delete().eq('id', planId).eq('user_id', userId)
 
   if (error) throw error
 }

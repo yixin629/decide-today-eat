@@ -69,6 +69,7 @@ export interface StudyDay {
   phase: string
   focus: string
   plannedMinutes: number
+  hiddenTaskIds: string[]
   tasks: PlannedTask[]
 }
 

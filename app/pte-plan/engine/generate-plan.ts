@@ -1,6 +1,13 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { getTasks, SKILL_META } from '../lib/standards'
-import { SKILLS, type PlannerConfig, type PracticeRow, type Skill, type StudyDay } from '../types'
+import {
+  SKILLS,
+  type PlannerConfig,
+  type PracticeRow,
+  type SavedPtePlan,
+  type Skill,
+  type StudyDay,
+} from '../types'
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
@@ -47,7 +54,6 @@ export function generateStudyPlan(config: PlannerConfig): StudyDay[] {
       25,
       Math.round(config.dailyMinutes * phase.factor * weekdayFactor)
     )
-    const taskKinds = plannedMinutes <= 60 ? 5 : plannedMinutes <= 120 ? 7 : 9
     const ranked = tasks
       .map((task, index) => {
         const gapScore = Object.entries(task.skillWeights).reduce(
@@ -64,7 +70,6 @@ export function generateStudyPlan(config: PlannerConfig): StudyDay[] {
         return { task, score: gapScore * task.basePriority + rotation + phaseBoost }
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, taskKinds)
 
     const totalScore = ranked.reduce((sum, item) => sum + item.score, 0)
     const plannedTasks = ranked
@@ -90,7 +95,46 @@ export function generateStudyPlan(config: PlannerConfig): StudyDay[] {
       phase: phase.label,
       focus: `${SKILL_META[focusSkill].label}优先${reviewHint}`,
       plannedMinutes,
+      hiddenTaskIds: [],
       tasks: plannedTasks,
     }
   })
+}
+
+export function ensureAllTaskCoverage(plan: SavedPtePlan): SavedPtePlan {
+  const requiredTasks = getTasks(plan.config.testType)
+  const validTaskIds = new Set(requiredTasks.map((task) => task.id))
+  let changed = false
+  const days = plan.days.map((day) => {
+    const hiddenTaskIds = Array.isArray(day.hiddenTaskIds)
+      ? day.hiddenTaskIds.filter((id) => validTaskIds.has(id))
+      : []
+    let dayChanged =
+      !Array.isArray(day.hiddenTaskIds) || hiddenTaskIds.length !== day.hiddenTaskIds.length
+    const normalizedTasks = day.tasks.map((task) => {
+      const currentProfile = requiredTasks.find((profile) => profile.id === task.id)
+      if (!currentProfile || currentProfile.primarySkill === task.primarySkill) return task
+      dayChanged = true
+      return { ...task, primarySkill: currentProfile.primarySkill }
+    })
+    const existingIds = new Set(normalizedTasks.map((task) => task.id))
+    const missingTasks = requiredTasks.filter((task) => !existingIds.has(task.id))
+    if (missingTasks.length === 0 && !dayChanged) return day
+
+    changed = true
+    return {
+      ...day,
+      hiddenTaskIds,
+      tasks: [
+        ...normalizedTasks,
+        ...missingTasks.map((task) => ({
+          ...task,
+          plannedCount: 1,
+          rows: makeRows(day.dayNumber, task.id, 1),
+        })),
+      ],
+    }
+  })
+
+  return changed ? { ...plan, days, updatedAt: new Date().toISOString() } : plan
 }

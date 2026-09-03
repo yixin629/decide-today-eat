@@ -335,7 +335,7 @@ export const ACADEMIC_TASKS: readonly TaskProfile[] = [
     id: 'asq',
     label: 'Answer Short Question',
     shortLabel: 'ASQ',
-    primarySkill: 'listening',
+    primarySkill: 'speaking',
     skillWeights: { listening: 4 },
     minutesPerItem: 1,
     basePriority: 4,

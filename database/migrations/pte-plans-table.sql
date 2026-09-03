@@ -17,29 +17,53 @@ CREATE INDEX IF NOT EXISTS pte_plans_user_updated_at_idx
 
 ALTER TABLE pte_plans ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "PTE plans can be read by the private app" ON pte_plans;
-CREATE POLICY "PTE plans can be read by the private app"
-  ON pte_plans
-  FOR SELECT
-  USING (user_id IN ('zyx', 'zly'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'pte_plans'
+      AND policyname = 'PTE plans can be read by the private app'
+  ) THEN
+    CREATE POLICY "PTE plans can be read by the private app"
+      ON pte_plans FOR SELECT
+      USING (user_id IN ('zyx', 'zly'));
+  END IF;
 
-DROP POLICY IF EXISTS "PTE plans can be inserted by the private app" ON pte_plans;
-CREATE POLICY "PTE plans can be inserted by the private app"
-  ON pte_plans
-  FOR INSERT
-  WITH CHECK (user_id IN ('zyx', 'zly'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'pte_plans'
+      AND policyname = 'PTE plans can be inserted by the private app'
+  ) THEN
+    CREATE POLICY "PTE plans can be inserted by the private app"
+      ON pte_plans FOR INSERT
+      WITH CHECK (user_id IN ('zyx', 'zly'));
+  END IF;
 
-DROP POLICY IF EXISTS "PTE plans can be updated by the private app" ON pte_plans;
-CREATE POLICY "PTE plans can be updated by the private app"
-  ON pte_plans
-  FOR UPDATE
-  USING (user_id IN ('zyx', 'zly'))
-  WITH CHECK (user_id IN ('zyx', 'zly'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'pte_plans'
+      AND policyname = 'PTE plans can be updated by the private app'
+  ) THEN
+    CREATE POLICY "PTE plans can be updated by the private app"
+      ON pte_plans FOR UPDATE
+      USING (user_id IN ('zyx', 'zly'))
+      WITH CHECK (user_id IN ('zyx', 'zly'));
+  END IF;
 
-DROP POLICY IF EXISTS "PTE plans can be deleted by the private app" ON pte_plans;
-CREATE POLICY "PTE plans can be deleted by the private app"
-  ON pte_plans
-  FOR DELETE
-  USING (user_id IN ('zyx', 'zly'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'pte_plans'
+      AND policyname = 'PTE plans can be deleted by the private app'
+  ) THEN
+    CREATE POLICY "PTE plans can be deleted by the private app"
+      ON pte_plans FOR DELETE
+      USING (user_id IN ('zyx', 'zly'));
+  END IF;
+END
+$$;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON pte_plans TO anon, authenticated;
