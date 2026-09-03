@@ -298,6 +298,16 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['默契', '问题'],
   },
   {
+    name: '答案之书',
+    path: '/answer-book',
+    icon: '📖',
+    description: '问出心里的问题，翻开一页寻找答案',
+    category: 'sweet',
+    showOnHome: true,
+    showInNavigation: true,
+    keywords: ['答案', '提问', '决定', '灵感'],
+  },
+  {
     name: '默契度测试',
     path: '/compatibility-test',
     icon: '💗',
