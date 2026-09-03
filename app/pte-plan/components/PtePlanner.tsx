@@ -5,6 +5,7 @@ import { zhCN } from 'date-fns/locale'
 import { useEffect, useMemo, useState } from 'react'
 import { generateStudyPlan } from '../engine/generate-plan'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
+import { templatesForTask } from '../lib/templates'
 import {
   PTE_STORAGE_KEY,
   SKILLS,
@@ -13,6 +14,7 @@ import {
   type SavedPtePlan,
   type Skill,
 } from '../types'
+import TemplateLibrary from './TemplateLibrary'
 
 const DISPLAY_SKILLS: Skill[] = ['speaking', 'writing', 'reading', 'listening']
 
@@ -42,6 +44,8 @@ export default function PtePlanner() {
   const [savedPlan, setSavedPlan] = useState<SavedPtePlan | null>(null)
   const [activeDay, setActiveDay] = useState(0)
   const [hydrated, setHydrated] = useState(false)
+  const [templateTask, setTemplateTask] = useState<string | null>(null)
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
 
   useEffect(() => {
     try {
@@ -210,9 +214,21 @@ export default function PtePlanner() {
                 按申请标准、分数差距、剩余天数和每日时间自动分配题型。计划和逐题记录只保存在当前浏览器。
               </p>
             </div>
-            <span className="w-fit rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-cyan-50">
-              标准核对：2026-09-03
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTemplateTask(null)
+                  setTemplateLibraryOpen(true)
+                }}
+                className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#16324f] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+              >
+                📚 口语/写作模板库
+              </button>
+              <span className="w-fit rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-cyan-50">
+                标准核对：2026-09-03
+              </span>
+            </div>
           </div>
         </div>
 
@@ -487,9 +503,23 @@ export default function PtePlanner() {
                               </div>
                               <p className="mt-1 text-xs text-gray-500">{task.standard}</p>
                             </div>
-                            <span className="text-xs font-bold text-gray-500">
-                              计划 {task.plannedCount} 题
-                            </span>
+                            <div className="flex items-center gap-2">
+                              {templatesForTask(task.shortLabel).length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTemplateTask(task.shortLabel)
+                                    setTemplateLibraryOpen(true)
+                                  }}
+                                  className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-800 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                                >
+                                  查看模板
+                                </button>
+                              )}
+                              <span className="text-xs font-bold text-gray-500">
+                                计划 {task.plannedCount} 题
+                              </span>
+                            </div>
                           </div>
                           <div className="overflow-x-auto">
                             <table className="w-full min-w-[860px] border-collapse text-sm">
@@ -612,6 +642,11 @@ export default function PtePlanner() {
           </section>
         </>
       )}
+      <TemplateLibrary
+        open={templateLibraryOpen}
+        initialTask={templateTask ?? undefined}
+        onClose={() => setTemplateLibraryOpen(false)}
+      />
     </div>
   )
 }
