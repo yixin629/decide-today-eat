@@ -74,9 +74,19 @@ export interface StudyDay {
 
 export interface SavedPtePlan {
   version: 1
+  id: string
+  name: string
   createdAt: string
+  updatedAt: string
   config: PlannerConfig
   days: StudyDay[]
 }
 
-export const PTE_STORAGE_KEY = 'our-little-world-pte-plan-v1'
+export interface PtePlanWorkspace {
+  version: 2
+  activePlanId: string | null
+  plans: SavedPtePlan[]
+}
+
+export const PTE_STORAGE_KEY = 'our-little-world-pte-plans-v2'
+export const PTE_LEGACY_STORAGE_KEY = 'our-little-world-pte-plan-v1'

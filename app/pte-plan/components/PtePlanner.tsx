@@ -2,15 +2,18 @@
 
 import { addDays, format, parseISO } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useToast } from '@/app/components/feedback/ToastProvider'
 import { generateStudyPlan } from '../engine/generate-plan'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
 import { templatesForTask } from '../lib/templates'
 import {
   PTE_STORAGE_KEY,
+  PTE_LEGACY_STORAGE_KEY,
   SKILLS,
   type PlannerConfig,
   type PracticeRow,
+  type PtePlanWorkspace,
   type SavedPtePlan,
   type Skill,
 } from '../types'
@@ -39,9 +42,57 @@ function scoreText(scores: Record<Skill, number>) {
   return SKILLS.map((skill) => `${SKILL_META[skill].shortLabel}${scores[skill]}`).join('｜')
 }
 
+function createPlanId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `pte-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function defaultPlanName(config: PlannerConfig) {
+  return `${getPreset(config.presetId).label} · ${config.testDate}`
+}
+
+function nextActiveDay(plan: SavedPtePlan) {
+  const today = dateValue(new Date())
+  const nextIndex = plan.days.findIndex((day) => day.date >= today)
+  return nextIndex >= 0 ? nextIndex : Math.max(0, plan.days.length - 1)
+}
+
+function isSavedPlan(value: unknown): value is SavedPtePlan {
+  if (!value || typeof value !== 'object') return false
+  const plan = value as Partial<SavedPtePlan>
+  return (
+    plan.version === 1 &&
+    typeof plan.id === 'string' &&
+    typeof plan.name === 'string' &&
+    typeof plan.createdAt === 'string' &&
+    typeof plan.updatedAt === 'string' &&
+    Boolean(plan.config) &&
+    Array.isArray(plan.days) &&
+    plan.days.length > 0
+  )
+}
+
+function migrateLegacyPlan(value: unknown): SavedPtePlan | null {
+  if (!value || typeof value !== 'object') return null
+  const legacy = value as Partial<SavedPtePlan>
+  if (legacy.version !== 1 || !legacy.config || !Array.isArray(legacy.days)) return null
+  const now = new Date().toISOString()
+  return {
+    version: 1,
+    id: createPlanId(),
+    name: defaultPlanName(legacy.config),
+    createdAt: legacy.createdAt ?? now,
+    updatedAt: now,
+    config: legacy.config,
+    days: legacy.days,
+  }
+}
+
 export default function PtePlanner() {
+  const toast = useToast()
   const [config, setConfig] = useState<PlannerConfig>(defaultConfig)
-  const [savedPlan, setSavedPlan] = useState<SavedPtePlan | null>(null)
+  const [plans, setPlans] = useState<SavedPtePlan[]>([])
+  const [activePlanId, setActivePlanId] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState(0)
   const [hydrated, setHydrated] = useState(false)
   const [templateTask, setTemplateTask] = useState<string | null>(null)
@@ -51,13 +102,29 @@ export default function PtePlanner() {
     try {
       const raw = window.localStorage.getItem(PTE_STORAGE_KEY)
       if (raw) {
-        const parsed = JSON.parse(raw) as SavedPtePlan
-        if (parsed.version === 1 && parsed.days.length > 0) {
-          setSavedPlan(parsed)
-          setConfig(parsed.config)
-          const today = dateValue(new Date())
-          const nextIndex = parsed.days.findIndex((day) => day.date >= today)
-          setActiveDay(nextIndex >= 0 ? nextIndex : parsed.days.length - 1)
+        const parsed = JSON.parse(raw) as Partial<PtePlanWorkspace>
+        const validPlans = Array.isArray(parsed.plans) ? parsed.plans.filter(isSavedPlan) : []
+        if (parsed.version === 2) {
+          if (validPlans.length > 0) {
+            const active =
+              validPlans.find((plan) => plan.id === parsed.activePlanId) ?? validPlans[0]
+            setPlans(validPlans)
+            setActivePlanId(active.id)
+            setConfig(active.config)
+            setActiveDay(nextActiveDay(active))
+          }
+          return
+        }
+      }
+
+      const legacyRaw = window.localStorage.getItem(PTE_LEGACY_STORAGE_KEY)
+      if (legacyRaw) {
+        const migrated = migrateLegacyPlan(JSON.parse(legacyRaw))
+        if (migrated) {
+          setPlans([migrated])
+          setActivePlanId(migrated.id)
+          setConfig(migrated.config)
+          setActiveDay(nextActiveDay(migrated))
         }
       }
     } catch {
@@ -68,13 +135,19 @@ export default function PtePlanner() {
   }, [])
 
   useEffect(() => {
-    if (!hydrated || !savedPlan) return
-    window.localStorage.setItem(PTE_STORAGE_KEY, JSON.stringify(savedPlan))
-  }, [hydrated, savedPlan])
+    if (!hydrated) return
+    const workspace: PtePlanWorkspace = { version: 2, activePlanId, plans }
+    try {
+      window.localStorage.setItem(PTE_STORAGE_KEY, JSON.stringify(workspace))
+    } catch {
+      toast.error('浏览器存储空间不足，最新修改可能没有保存')
+    }
+  }, [activePlanId, hydrated, plans, toast])
 
+  const savedPlan = plans.find((plan) => plan.id === activePlanId) ?? null
   const preset = getPreset(config.presetId)
   const currentDay = savedPlan?.days[activeDay]
-  const totals = useMemo(() => {
+  const totals = (() => {
     if (!savedPlan) return { planned: 0, done: 0, starred: 0 }
     return savedPlan.days.reduce(
       (summary, day) => {
@@ -89,7 +162,7 @@ export default function PtePlanner() {
       },
       { planned: 0, done: 0, starred: 0 }
     )
-  }, [savedPlan])
+  })()
 
   const selectPreset = (presetId: string) => {
     const next = getPreset(presetId)
@@ -112,77 +185,159 @@ export default function PtePlanner() {
   const createPlan = () => {
     const start = parseISO(config.startDate)
     const test = parseISO(config.testDate)
-    if (Number.isNaN(start.getTime()) || Number.isNaN(test.getTime()) || test <= start) return
+    if (Number.isNaN(start.getTime()) || Number.isNaN(test.getTime()) || test <= start) {
+      toast.error('考试日期必须晚于开始日期')
+      return
+    }
 
     const days = generateStudyPlan(config)
-    setSavedPlan({
+    const now = new Date().toISOString()
+    const nextPlan: SavedPtePlan = {
       version: 1,
-      createdAt: new Date().toISOString(),
+      id: createPlanId(),
+      name: defaultPlanName(config),
+      createdAt: now,
+      updatedAt: now,
       config,
       days,
-    })
+    }
+    setPlans((current) => [nextPlan, ...current])
+    setActivePlanId(nextPlan.id)
+    setActiveDay(0)
+    toast.success('新计划已生成并自动保存')
+  }
+
+  const selectPlan = (planId: string) => {
+    const selected = plans.find((plan) => plan.id === planId)
+    if (!selected) return
+    setActivePlanId(selected.id)
+    setConfig(selected.config)
+    setActiveDay(nextActiveDay(selected))
+  }
+
+  const startNewPlan = () => {
+    setActivePlanId(null)
+    setConfig(defaultConfig())
     setActiveDay(0)
   }
 
+  const renamePlan = (name: string) => {
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id === activePlanId ? { ...plan, name, updatedAt: new Date().toISOString() } : plan
+      )
+    )
+  }
+
+  const duplicatePlan = () => {
+    if (!savedPlan) return
+    const now = new Date().toISOString()
+    const copy: SavedPtePlan = {
+      ...savedPlan,
+      id: createPlanId(),
+      name: `${savedPlan.name || '未命名计划'}（副本）`,
+      createdAt: now,
+      updatedAt: now,
+      config: {
+        ...savedPlan.config,
+        currentScores: { ...savedPlan.config.currentScores },
+        targetScores: { ...savedPlan.config.targetScores },
+      },
+      days: savedPlan.days.map((day) => ({
+        ...day,
+        tasks: day.tasks.map((task) => ({
+          ...task,
+          rows: task.rows.map((row) => ({ ...row })),
+        })),
+      })),
+    }
+    setPlans((current) => [copy, ...current])
+    setActivePlanId(copy.id)
+    setConfig(copy.config)
+    toast.success('已复制为新的独立计划')
+  }
+
+  const deletePlan = () => {
+    if (!savedPlan || !window.confirm(`确定删除“${savedPlan.name || '未命名计划'}”吗？`)) return
+    const remaining = plans.filter((plan) => plan.id !== savedPlan.id)
+    const next = remaining[0]
+    setPlans(remaining)
+    setActivePlanId(next?.id ?? null)
+    setConfig(next?.config ?? defaultConfig())
+    setActiveDay(next ? nextActiveDay(next) : 0)
+    toast.success('计划已删除')
+  }
+
   const updateRow = (taskId: string, rowId: string, patch: Partial<PracticeRow>) => {
-    setSavedPlan((previous) => {
-      if (!previous) return previous
-      return {
-        ...previous,
-        days: previous.days.map((day, dayIndex) =>
-          dayIndex !== activeDay
-            ? day
-            : {
-                ...day,
-                tasks: day.tasks.map((task) =>
-                  task.id !== taskId
-                    ? task
-                    : {
-                        ...task,
-                        rows: task.rows.map((row) =>
-                          row.id === rowId ? { ...row, ...patch } : row
-                        ),
-                      }
-                ),
-              }
-        ),
-      }
-    })
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id !== activePlanId
+          ? plan
+          : {
+              ...plan,
+              updatedAt: new Date().toISOString(),
+              days: plan.days.map((day, dayIndex) =>
+                dayIndex !== activeDay
+                  ? day
+                  : {
+                      ...day,
+                      tasks: day.tasks.map((task) =>
+                        task.id !== taskId
+                          ? task
+                          : {
+                              ...task,
+                              rows: task.rows.map((row) =>
+                                row.id === rowId ? { ...row, ...patch } : row
+                              ),
+                            }
+                      ),
+                    }
+              ),
+            }
+      )
+    )
   }
 
   const addExtraRow = (taskId: string) => {
-    setSavedPlan((previous) => {
-      if (!previous) return previous
-      return {
-        ...previous,
-        days: previous.days.map((day, dayIndex) =>
-          dayIndex !== activeDay
-            ? day
-            : {
-                ...day,
-                tasks: day.tasks.map((task) =>
-                  task.id !== taskId
-                    ? task
-                    : {
-                        ...task,
-                        rows: [
-                          ...task.rows,
-                          {
-                            id: `${day.dayNumber}-${task.id}-extra-${Date.now()}`,
-                            category: 'extra',
-                            questionId: '',
-                            starred: false,
-                            score: '',
-                            attempts: '',
-                            note: '',
-                          },
-                        ],
-                      }
-                ),
-              }
-        ),
-      }
-    })
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id !== activePlanId
+          ? plan
+          : {
+              ...plan,
+              updatedAt: new Date().toISOString(),
+              days: plan.days.map((day, dayIndex) =>
+                dayIndex !== activeDay
+                  ? day
+                  : {
+                      ...day,
+                      tasks: day.tasks.map((task) =>
+                        task.id !== taskId
+                          ? task
+                          : {
+                              ...task,
+                              rows: [
+                                ...task.rows,
+                                {
+                                  id: `${day.dayNumber}-${task.id}-extra-${Date.now()}`,
+                                  category: 'extra',
+                                  questionId: '',
+                                  starred: false,
+                                  score: '',
+                                  attempts: '',
+                                  note: '',
+                                },
+                              ],
+                            }
+                      ),
+                    }
+              ),
+            }
+      )
+    )
   }
 
   const dayStats = currentDay
@@ -202,6 +357,86 @@ export default function PtePlanner() {
 
   return (
     <div className="space-y-6">
+      {hydrated && (
+        <section className="rounded-3xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-lg sm:p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
+                MY PTE PLANS
+              </p>
+              <h2 className="mt-1 text-xl font-black text-slate-900">我的备考方案</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                每个方案的逐题记录都会自动保存，可以随时切换回来继续填写。
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={startNewPlan}
+                className="min-h-11 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                ＋新建方案
+              </button>
+              {savedPlan && (
+                <>
+                  <button
+                    type="button"
+                    onClick={duplicatePlan}
+                    className="min-h-11 rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-700 transition hover:border-indigo-400 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                  >
+                    复制方案
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deletePlan}
+                    className="min-h-11 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-bold text-rose-600 transition hover:border-rose-400 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                  >
+                    删除
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {plans.length > 0 ? (
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              <label>
+                <span className="label-primary">切换计划</span>
+                <select
+                  className="input-primary min-h-12 w-full bg-white"
+                  value={activePlanId ?? ''}
+                  onChange={(event) => selectPlan(event.target.value)}
+                >
+                  {!activePlanId && <option value="">正在创建新方案</option>}
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name || '未命名计划'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="label-primary">当前计划名称</span>
+                <input
+                  type="text"
+                  maxLength={50}
+                  value={savedPlan?.name ?? ''}
+                  disabled={!savedPlan}
+                  onChange={(event) => renamePlan(event.target.value)}
+                  placeholder={savedPlan ? '输入计划名称' : '生成计划后可以改名'}
+                  className="input-primary min-h-12 w-full bg-white disabled:cursor-not-allowed disabled:bg-slate-100"
+                />
+              </label>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-dashed border-indigo-300 bg-white/70 px-4 py-5 text-sm text-slate-600">
+              还没有保存的计划。设置日期、目标分数和每天学习时间后，生成第一个方案即可。
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur-sm">
         <div className="bg-[#16324f] px-5 py-6 text-white sm:px-7">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
@@ -211,7 +446,7 @@ export default function PtePlanner() {
               </p>
               <h1 className="mt-2 text-2xl font-black sm:text-3xl">智能备考计划生成器</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-200">
-                按申请标准、分数差距、剩余天数和每日时间自动分配题型。计划和逐题记录只保存在当前浏览器。
+                按申请标准、分数差距、剩余天数和每日时间自动分配题型。多个计划和逐题记录会自动保存在当前浏览器。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -371,7 +606,7 @@ export default function PtePlanner() {
             onClick={createPlan}
             className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 px-6 py-3 font-black text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-pink-300 sm:w-auto"
           >
-            {savedPlan ? '按新设置重新生成计划' : '生成我的逐日计划'}
+            {savedPlan ? '按当前设置另存为新计划' : '生成并保存逐日计划'}
           </button>
         </div>
       </section>

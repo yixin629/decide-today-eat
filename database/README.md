@@ -58,6 +58,7 @@
 | 塔罗 | `tarot_readings` | `migrations/tarot-table.sql` | 独立迁移 |
 | 星座 | `horoscope_readings` | `migrations/horoscope-table.sql` | 独立迁移 |
 | 穿搭记录 | `outfit_records` | `migrations/outfit-records-table.sql` | 独立迁移 |
+| PTE 备考计划 | `pte_plans` | `migrations/pte-plans-table.sql` | 按网站登录身份保存多个计划与逐题记录 |
 | 互动功能包 | 见下表 | `migrations/supabase-new-features.sql` | 包含默认数据和遗留表，不能默认重复执行 |
 
 `migrations/supabase-new-features.sql` 当前提供这些页面需要的表：
@@ -103,6 +104,7 @@
 | `novels-table.sql` | 情侣书架 |
 | `outfit-records-table.sql` | 穿搭记录 |
 | `profile-tables.sql` | 个人资料和提醒；新库会为规范化姓名建立唯一索引 |
+| `pte-plans-table.sql` | PTE 多计划、配置和逐题记录的 JSONB 云端存储 |
 | `replace-food-options-seed.sql` | 破坏性清空并重建食物种子 |
 | `supabase-new-features.sql` | 尚未拆分完的互动功能、默认数据和遗留表 |
 | `tarot-table.sql` | 塔罗记录 |
