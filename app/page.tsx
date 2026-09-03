@@ -14,6 +14,7 @@ import {
 import FeatureCard from '@/app/components/home/FeatureCard'
 import RandomMemory from '@/app/components/home/RandomMemory'
 import ThisDayMemories from '@/app/components/home/ThisDayMemories'
+import PtePlannerSpotlight from '@/app/components/home/PtePlannerSpotlight'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Stats {
@@ -240,6 +241,8 @@ export default function Home() {
             今天也一起，把平凡生活过得闪闪发光
           </p>
         </header>
+
+        <PtePlannerSpotlight />
 
         <section className="mb-8" aria-labelledby="quick-access-title">
           <div className="mb-3 flex items-end justify-between gap-4">

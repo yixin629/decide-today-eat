@@ -175,6 +175,16 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['日历', '约会', '计划'],
   },
   {
+    name: 'PTE 备考计划',
+    path: '/pte-plan',
+    icon: '🎓',
+    description: '按目标分数和考试日期生成逐日练习计划',
+    category: 'plans',
+    showOnHome: false,
+    showInNavigation: true,
+    keywords: ['PTE', '英语', '考试', '移民', '留学', '备考'],
+  },
+  {
     name: '时光计时器',
     path: '/countdown',
     icon: '⏰',
