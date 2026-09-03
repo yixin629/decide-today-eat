@@ -63,6 +63,16 @@ export interface PlannedTask extends TaskProfile {
   rows: PracticeRow[]
 }
 
+export type DailyStudyMood = '' | 'great' | 'good' | 'normal' | 'tired' | 'stuck'
+
+export interface DailySummary {
+  actualMinutes: number | null
+  mood: DailyStudyMood
+  achievement: string
+  difficulty: string
+  nextFocus: string
+}
+
 export interface StudyDay {
   date: string
   dayNumber: number
@@ -70,6 +80,7 @@ export interface StudyDay {
   focus: string
   plannedMinutes: number
   hiddenTaskIds: string[]
+  summary: DailySummary
   tasks: PlannedTask[]
 }
 
@@ -82,12 +93,3 @@ export interface SavedPtePlan {
   config: PlannerConfig
   days: StudyDay[]
 }
-
-export interface PtePlanWorkspace {
-  version: 2
-  activePlanId: string | null
-  plans: SavedPtePlan[]
-}
-
-export const PTE_STORAGE_KEY = 'our-little-world-pte-plans-v2'
-export const PTE_LEGACY_STORAGE_KEY = 'our-little-world-pte-plan-v1'

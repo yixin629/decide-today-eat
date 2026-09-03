@@ -2,6 +2,8 @@ import { addDays, differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { getTasks, SKILL_META } from '../lib/standards'
 import {
   SKILLS,
+  type DailyStudyMood,
+  type DailySummary,
   type PlannerConfig,
   type PracticeRow,
   type SavedPtePlan,
@@ -32,6 +34,32 @@ function makeRows(dayNumber: number, taskId: string, count: number): PracticeRow
     attempts: '',
     note: '',
   }))
+}
+
+function emptyDailySummary(): DailySummary {
+  return {
+    actualMinutes: null,
+    mood: '',
+    achievement: '',
+    difficulty: '',
+    nextFocus: '',
+  }
+}
+
+function normalizeDailySummary(value: unknown): DailySummary {
+  if (!value || typeof value !== 'object') return emptyDailySummary()
+  const summary = value as Partial<DailySummary>
+  const moods: DailyStudyMood[] = ['', 'great', 'good', 'normal', 'tired', 'stuck']
+  return {
+    actualMinutes:
+      typeof summary.actualMinutes === 'number' && Number.isFinite(summary.actualMinutes)
+        ? summary.actualMinutes
+        : null,
+    mood: moods.includes(summary.mood ?? '') ? (summary.mood ?? '') : '',
+    achievement: typeof summary.achievement === 'string' ? summary.achievement : '',
+    difficulty: typeof summary.difficulty === 'string' ? summary.difficulty : '',
+    nextFocus: typeof summary.nextFocus === 'string' ? summary.nextFocus : '',
+  }
 }
 
 export function generateStudyPlan(config: PlannerConfig): StudyDay[] {
@@ -96,6 +124,7 @@ export function generateStudyPlan(config: PlannerConfig): StudyDay[] {
       focus: `${SKILL_META[focusSkill].label}优先${reviewHint}`,
       plannedMinutes,
       hiddenTaskIds: [],
+      summary: emptyDailySummary(),
       tasks: plannedTasks,
     }
   })
@@ -109,8 +138,11 @@ export function ensureAllTaskCoverage(plan: SavedPtePlan): SavedPtePlan {
     const hiddenTaskIds = Array.isArray(day.hiddenTaskIds)
       ? day.hiddenTaskIds.filter((id) => validTaskIds.has(id))
       : []
+    const summary = normalizeDailySummary(day.summary)
     let dayChanged =
-      !Array.isArray(day.hiddenTaskIds) || hiddenTaskIds.length !== day.hiddenTaskIds.length
+      !Array.isArray(day.hiddenTaskIds) ||
+      hiddenTaskIds.length !== day.hiddenTaskIds.length ||
+      JSON.stringify(summary) !== JSON.stringify(day.summary)
     const normalizedTasks = day.tasks.map((task) => {
       const currentProfile = requiredTasks.find((profile) => profile.id === task.id)
       if (!currentProfile || currentProfile.primarySkill === task.primarySkill) return task
@@ -125,6 +157,7 @@ export function ensureAllTaskCoverage(plan: SavedPtePlan): SavedPtePlan {
     return {
       ...day,
       hiddenTaskIds,
+      summary,
       tasks: [
         ...normalizedTasks,
         ...missingTasks.map((task) => ({

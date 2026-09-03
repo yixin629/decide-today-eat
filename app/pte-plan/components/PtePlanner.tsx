@@ -10,18 +10,24 @@ import { deleteCloudPlan, loadCloudPlans, saveCloudPlans } from '../lib/plan-rep
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
 import { templatesForTask } from '../lib/templates'
 import {
-  PTE_STORAGE_KEY,
-  PTE_LEGACY_STORAGE_KEY,
   SKILLS,
+  type DailyStudyMood,
+  type DailySummary,
   type PlannerConfig,
   type PracticeRow,
-  type PtePlanWorkspace,
   type SavedPtePlan,
   type Skill,
 } from '../types'
 import TemplateLibrary from './TemplateLibrary'
 
 const DISPLAY_SKILLS: Skill[] = ['speaking', 'writing', 'reading', 'listening']
+const DAILY_MOODS: { value: Exclude<DailyStudyMood, ''>; label: string; emoji: string }[] = [
+  { value: 'great', label: '状态很好', emoji: '🔥' },
+  { value: 'good', label: '比较顺利', emoji: '😊' },
+  { value: 'normal', label: '正常完成', emoji: '🙂' },
+  { value: 'tired', label: '有点疲惫', emoji: '😮‍💨' },
+  { value: 'stuck', label: '需要调整', emoji: '🧩' },
+]
 
 function dateValue(date: Date) {
   return format(date, 'yyyy-MM-dd')
@@ -53,10 +59,6 @@ function createPlanId() {
   })
 }
 
-function userStorageKey(userId: string) {
-  return `${PTE_STORAGE_KEY}:${userId}`
-}
-
 function defaultPlanName(config: PlannerConfig) {
   return `${getPreset(config.presetId).label} · ${config.testDate}`
 }
@@ -65,37 +67,6 @@ function nextActiveDay(plan: SavedPtePlan) {
   const today = dateValue(new Date())
   const nextIndex = plan.days.findIndex((day) => day.date >= today)
   return nextIndex >= 0 ? nextIndex : Math.max(0, plan.days.length - 1)
-}
-
-function isSavedPlan(value: unknown): value is SavedPtePlan {
-  if (!value || typeof value !== 'object') return false
-  const plan = value as Partial<SavedPtePlan>
-  return (
-    plan.version === 1 &&
-    typeof plan.id === 'string' &&
-    typeof plan.name === 'string' &&
-    typeof plan.createdAt === 'string' &&
-    typeof plan.updatedAt === 'string' &&
-    Boolean(plan.config) &&
-    Array.isArray(plan.days) &&
-    plan.days.length > 0
-  )
-}
-
-function migrateLegacyPlan(value: unknown): SavedPtePlan | null {
-  if (!value || typeof value !== 'object') return null
-  const legacy = value as Partial<SavedPtePlan>
-  if (legacy.version !== 1 || !legacy.config || !Array.isArray(legacy.days)) return null
-  const now = new Date().toISOString()
-  return {
-    version: 1,
-    id: createPlanId(),
-    name: defaultPlanName(legacy.config),
-    createdAt: legacy.createdAt ?? now,
-    updatedAt: now,
-    config: legacy.config,
-    days: legacy.days,
-  }
 }
 
 export default function PtePlanner() {
@@ -120,82 +91,37 @@ export default function PtePlanner() {
     let cancelled = false
 
     const loadPlans = async () => {
-      let localPlans: SavedPtePlan[] = []
-      let localActivePlanId: string | null = null
       const user = readSessionUser()
-      const scopedStorageKey = user ? userStorageKey(user) : PTE_STORAGE_KEY
-
-      try {
-        const scopedRaw = window.localStorage.getItem(scopedStorageKey)
-        const unscopedRaw = user ? window.localStorage.getItem(PTE_STORAGE_KEY) : null
-        const raw = scopedRaw ?? unscopedRaw
-        if (raw) {
-          const parsed = JSON.parse(raw) as Partial<PtePlanWorkspace>
-          if (parsed.version === 2) {
-            localPlans = Array.isArray(parsed.plans) ? parsed.plans.filter(isSavedPlan) : []
-            localActivePlanId = parsed.activePlanId ?? null
-          }
-        }
-
-        if (!scopedRaw && unscopedRaw) {
-          window.localStorage.removeItem(PTE_STORAGE_KEY)
-        }
-
-        if (localPlans.length === 0 && !raw) {
-          const legacyRaw = window.localStorage.getItem(PTE_LEGACY_STORAGE_KEY)
-          if (legacyRaw) {
-            const migrated = migrateLegacyPlan(JSON.parse(legacyRaw))
-            if (migrated) {
-              localPlans = [migrated]
-              localActivePlanId = migrated.id
-              window.localStorage.removeItem(PTE_LEGACY_STORAGE_KEY)
-            }
-          }
-        }
-      } catch {
-        window.localStorage.removeItem(scopedStorageKey)
-      }
-
       if (cancelled) return
       setCurrentUser(user)
 
-      let resolvedPlans = localPlans
-      if (user) {
-        try {
-          const cloudPlans = await loadCloudPlans(user)
-          if (cancelled) return
-
-          syncedVersionsRef.current = new Map(cloudPlans.map((plan) => [plan.id, plan.updatedAt]))
-          const merged = new Map(cloudPlans.map((plan) => [plan.id, plan]))
-          localPlans.forEach((localPlan) => {
-            const cloudPlan = merged.get(localPlan.id)
-            if (!cloudPlan || localPlan.updatedAt > cloudPlan.updatedAt) {
-              merged.set(localPlan.id, localPlan)
-            }
-          })
-          resolvedPlans = [...merged.values()]
-          setCloudReady(true)
-          setSyncStatus('saved')
-        } catch (error) {
-          console.error('加载 PTE 云端计划失败:', error)
-          setSyncStatus('error')
-          toast.warning('暂时无法连接 PTE 计划数据库，已加载本地缓存')
-        }
-      } else {
+      if (!user) {
         setSyncStatus('offline')
+        setHydrated(true)
+        return
       }
 
-      if (cancelled) return
-      resolvedPlans = resolvedPlans
-        .map(ensureAllTaskCoverage)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      const active =
-        resolvedPlans.find((plan) => plan.id === localActivePlanId) ?? resolvedPlans[0] ?? null
-      setPlans(resolvedPlans)
-      setActivePlanId(active?.id ?? null)
-      if (active) {
-        setConfig(active.config)
-        setActiveDay(nextActiveDay(active))
+      try {
+        const cloudPlans = await loadCloudPlans(user)
+        if (cancelled) return
+
+        syncedVersionsRef.current = new Map(cloudPlans.map((plan) => [plan.id, plan.updatedAt]))
+        const resolvedPlans = cloudPlans
+          .map(ensureAllTaskCoverage)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        const active = resolvedPlans[0] ?? null
+        setPlans(resolvedPlans)
+        setActivePlanId(active?.id ?? null)
+        if (active) {
+          setConfig(active.config)
+          setActiveDay(nextActiveDay(active))
+        }
+        setCloudReady(true)
+        setSyncStatus('saved')
+      } catch (error) {
+        console.error('加载 PTE 云端计划失败:', error)
+        setSyncStatus('error')
+        toast.error('无法读取 PTE 计划数据库，请检查网络后刷新')
       }
       setHydrated(true)
     }
@@ -205,17 +131,6 @@ export default function PtePlanner() {
       cancelled = true
     }
   }, [toast])
-
-  useEffect(() => {
-    if (!hydrated) return
-    const workspace: PtePlanWorkspace = { version: 2, activePlanId, plans }
-    try {
-      const storageKey = currentUser ? userStorageKey(currentUser) : PTE_STORAGE_KEY
-      window.localStorage.setItem(storageKey, JSON.stringify(workspace))
-    } catch {
-      toast.error('浏览器存储空间不足，最新修改可能没有保存')
-    }
-  }, [activePlanId, currentUser, hydrated, plans, toast])
 
   useEffect(() => {
     if (!hydrated || !cloudReady || !currentUser) return
@@ -236,7 +151,7 @@ export default function PtePlanner() {
         setSyncStatus('error')
         if (!syncErrorShownRef.current) {
           syncErrorShownRef.current = true
-          toast.error('云端保存失败，本地缓存仍然保留')
+          toast.error('云端保存失败，请保留页面并重试修改')
         }
       }
     }, 800)
@@ -284,6 +199,10 @@ export default function PtePlanner() {
   }
 
   const createPlan = () => {
+    if (!currentUser || !cloudReady) {
+      toast.error('数据库尚未连接，暂时不能创建计划')
+      return
+    }
     const start = parseISO(config.startDate)
     const test = parseISO(config.testDate)
     if (Number.isNaN(start.getTime()) || Number.isNaN(test.getTime()) || test <= start) {
@@ -348,6 +267,7 @@ export default function PtePlanner() {
       days: savedPlan.days.map((day) => ({
         ...day,
         hiddenTaskIds: [...day.hiddenTaskIds],
+        summary: { ...day.summary },
         tasks: day.tasks.map((task) => ({
           ...task,
           rows: task.rows.map((row) => ({ ...row })),
@@ -362,14 +282,16 @@ export default function PtePlanner() {
 
   const deletePlan = async () => {
     if (!savedPlan || !window.confirm(`确定删除“${savedPlan.name || '未命名计划'}”吗？`)) return
-    if (currentUser && cloudReady) {
-      try {
-        await deleteCloudPlan(currentUser, savedPlan.id)
-      } catch (error) {
-        console.error('删除 PTE 云端计划失败:', error)
-        toast.error('云端删除失败，请稍后重试')
-        return
-      }
+    if (!currentUser || !cloudReady) {
+      toast.error('数据库尚未连接，暂时不能删除计划')
+      return
+    }
+    try {
+      await deleteCloudPlan(currentUser, savedPlan.id)
+    } catch (error) {
+      console.error('删除 PTE 云端计划失败:', error)
+      toast.error('云端删除失败，请稍后重试')
+      return
     }
 
     const remaining = plans.filter((plan) => plan.id !== savedPlan.id)
@@ -491,6 +413,23 @@ export default function PtePlanner() {
     )
   }
 
+  const updateDailySummary = (patch: Partial<DailySummary>) => {
+    if (!activePlanId) return
+    setPlans((current) =>
+      current.map((plan) =>
+        plan.id !== activePlanId
+          ? plan
+          : {
+              ...plan,
+              updatedAt: new Date().toISOString(),
+              days: plan.days.map((day, dayIndex) =>
+                dayIndex === activeDay ? { ...day, summary: { ...day.summary, ...patch } } : day
+              ),
+            }
+      )
+    )
+  }
+
   const dayStats = currentDay
     ? currentDay.tasks.reduce(
         (summary, task) => {
@@ -538,7 +477,7 @@ export default function PtePlanner() {
                       : syncStatus === 'loading'
                         ? '正在读取云端…'
                         : syncStatus === 'offline'
-                          ? '仅本地保存'
+                          ? '未登录数据库'
                           : '云端同步异常'}
                 </span>
               </div>
@@ -620,7 +559,7 @@ export default function PtePlanner() {
               </p>
               <h1 className="mt-2 text-2xl font-black sm:text-3xl">智能备考计划生成器</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-200">
-                按申请标准、分数差距、剩余天数和每日时间自动分配题型。多个计划和逐题记录会自动同步到数据库，并保留浏览器缓存。
+                按申请标准、分数差距、剩余天数和每日时间自动分配题型。多个计划、逐题记录和每日总结全部保存到数据库。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1129,6 +1068,109 @@ export default function PtePlanner() {
                 )
               })}
             </div>
+
+            <section className="border-t border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-6">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">
+                    DAILY REVIEW
+                  </p>
+                  <h3 className="mt-1 text-xl font-black text-slate-900">今日学习总结</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    所有内容选填，修改后自动保存到数据库
+                  </p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 shadow-sm">
+                  已填 {dayStats.done}/{dayStats.planned} 题
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 lg:grid-cols-[0.35fr_0.65fr]">
+                <label>
+                  <span className="label-primary">实际学习时长</span>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="1440"
+                      value={currentDay.summary.actualMinutes ?? ''}
+                      onChange={(event) =>
+                        updateDailySummary({
+                          actualMinutes: event.target.value
+                            ? Math.min(1440, Math.max(0, Number(event.target.value)))
+                            : null,
+                        })
+                      }
+                      placeholder="例如 120"
+                      className="input-primary min-h-12 w-full bg-white pr-14"
+                    />
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                      分钟
+                    </span>
+                  </div>
+                </label>
+
+                <fieldset>
+                  <legend className="label-primary">今日状态</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {DAILY_MOODS.map((mood) => {
+                      const selected = currentDay.summary.mood === mood.value
+                      return (
+                        <button
+                          key={mood.value}
+                          type="button"
+                          onClick={() => updateDailySummary({ mood: selected ? '' : mood.value })}
+                          className={`min-h-12 rounded-xl border px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
+                            selected
+                              ? 'border-indigo-500 bg-indigo-600 text-white shadow-md'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
+                          }`}
+                          aria-pressed={selected}
+                        >
+                          <span aria-hidden="true">{mood.emoji}</span> {mood.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                <label>
+                  <span className="label-primary">今天最大的收获</span>
+                  <textarea
+                    rows={4}
+                    maxLength={500}
+                    value={currentDay.summary.achievement}
+                    onChange={(event) => updateDailySummary({ achievement: event.target.value })}
+                    placeholder="掌握了什么？哪种方法有效？"
+                    className="input-primary w-full resize-y bg-white"
+                  />
+                </label>
+                <label>
+                  <span className="label-primary">问题与薄弱点</span>
+                  <textarea
+                    rows={4}
+                    maxLength={500}
+                    value={currentDay.summary.difficulty}
+                    onChange={(event) => updateDailySummary({ difficulty: event.target.value })}
+                    placeholder="今天卡在哪里？哪些题需要回练？"
+                    className="input-primary w-full resize-y bg-white"
+                  />
+                </label>
+                <label>
+                  <span className="label-primary">明天优先处理</span>
+                  <textarea
+                    rows={4}
+                    maxLength={500}
+                    value={currentDay.summary.nextFocus}
+                    onChange={(event) => updateDailySummary({ nextFocus: event.target.value })}
+                    placeholder="写下明天最重要的训练目标"
+                    className="input-primary w-full resize-y bg-white"
+                  />
+                </label>
+              </div>
+            </section>
           </section>
         </>
       )}
