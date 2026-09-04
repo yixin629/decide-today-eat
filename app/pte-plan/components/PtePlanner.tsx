@@ -71,10 +71,11 @@ function nextActiveDay(plan: SavedPtePlan) {
 
 export default function PtePlanner() {
   const toast = useToast()
-  const syncedVersionsRef = useRef(new Map<string, string>())
   const syncErrorShownRef = useRef(false)
+  const autoSaveTimerRef = useRef<number | null>(null)
   const [config, setConfig] = useState<PlannerConfig>(defaultConfig)
   const [plans, setPlans] = useState<SavedPtePlan[]>([])
+  const [syncedVersions, setSyncedVersions] = useState<Record<string, string>>({})
   const [activePlanId, setActivePlanId] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState(0)
   const [hydrated, setHydrated] = useState(false)
@@ -84,6 +85,7 @@ export default function PtePlanner() {
     'loading' | 'saving' | 'saved' | 'offline' | 'error'
   >('loading')
   const [taskPickerOpen, setTaskPickerOpen] = useState(false)
+  const [manualSaving, setManualSaving] = useState(false)
   const [templateTask, setTemplateTask] = useState<string | null>(null)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
 
@@ -105,7 +107,7 @@ export default function PtePlanner() {
         const cloudPlans = await loadCloudPlans(user)
         if (cancelled) return
 
-        syncedVersionsRef.current = new Map(cloudPlans.map((plan) => [plan.id, plan.updatedAt]))
+        setSyncedVersions(Object.fromEntries(cloudPlans.map((plan) => [plan.id, plan.updatedAt])))
         const resolvedPlans = cloudPlans
           .map(ensureAllTaskCoverage)
           .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -134,16 +136,18 @@ export default function PtePlanner() {
 
   useEffect(() => {
     if (!hydrated || !cloudReady || !currentUser) return
-    const changedPlans = plans.filter(
-      (plan) => syncedVersionsRef.current.get(plan.id) !== plan.updatedAt
-    )
+    const changedPlans = plans.filter((plan) => syncedVersions[plan.id] !== plan.updatedAt)
     if (changedPlans.length === 0) return
 
-    setSyncStatus('saving')
     const timer = window.setTimeout(async () => {
+      autoSaveTimerRef.current = null
+      setSyncStatus('saving')
       try {
         await saveCloudPlans(currentUser, changedPlans)
-        changedPlans.forEach((plan) => syncedVersionsRef.current.set(plan.id, plan.updatedAt))
+        setSyncedVersions((current) => ({
+          ...current,
+          ...Object.fromEntries(changedPlans.map((plan) => [plan.id, plan.updatedAt])),
+        }))
         syncErrorShownRef.current = false
         setSyncStatus('saved')
       } catch (error) {
@@ -155,11 +159,18 @@ export default function PtePlanner() {
         }
       }
     }, 800)
+    autoSaveTimerRef.current = timer
 
-    return () => window.clearTimeout(timer)
-  }, [cloudReady, currentUser, hydrated, plans, toast])
+    return () => {
+      window.clearTimeout(timer)
+      if (autoSaveTimerRef.current === timer) autoSaveTimerRef.current = null
+    }
+  }, [cloudReady, currentUser, hydrated, plans, syncedVersions, toast])
 
   const savedPlan = plans.find((plan) => plan.id === activePlanId) ?? null
+  const hasUnsavedChanges = Boolean(
+    savedPlan && syncedVersions[savedPlan.id] !== savedPlan.updatedAt
+  )
   const preset = getPreset(config.presetId)
   const currentDay = savedPlan?.days[activeDay]
   const totals = (() => {
@@ -296,7 +307,11 @@ export default function PtePlanner() {
 
     const remaining = plans.filter((plan) => plan.id !== savedPlan.id)
     const next = remaining[0]
-    syncedVersionsRef.current.delete(savedPlan.id)
+    setSyncedVersions((current) => {
+      const next = { ...current }
+      delete next[savedPlan.id]
+      return next
+    })
     setPlans(remaining)
     setActivePlanId(next?.id ?? null)
     setConfig(next?.config ?? defaultConfig())
@@ -430,6 +445,36 @@ export default function PtePlanner() {
     )
   }
 
+  const saveNow = async () => {
+    if (!savedPlan || !currentUser || !cloudReady) {
+      toast.error('数据库尚未连接，当前计划无法保存')
+      return
+    }
+
+    if (autoSaveTimerRef.current !== null) {
+      window.clearTimeout(autoSaveTimerRef.current)
+      autoSaveTimerRef.current = null
+    }
+    setManualSaving(true)
+    setSyncStatus('saving')
+    try {
+      await saveCloudPlans(currentUser, [savedPlan])
+      setSyncedVersions((current) => ({
+        ...current,
+        [savedPlan.id]: savedPlan.updatedAt,
+      }))
+      syncErrorShownRef.current = false
+      setSyncStatus('saved')
+      toast.success('当前计划已保存到数据库')
+    } catch (error) {
+      console.error('手动保存 PTE 计划失败:', error)
+      setSyncStatus('error')
+      toast.error('保存失败，请检查网络后重试')
+    } finally {
+      setManualSaving(false)
+    }
+  }
+
   const dayStats = currentDay
     ? currentDay.tasks.reduce(
         (summary, task) => {
@@ -447,7 +492,7 @@ export default function PtePlanner() {
     : null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 md:pb-20">
       {hydrated && (
         <section className="rounded-3xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-lg sm:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -460,7 +505,7 @@ export default function PtePlanner() {
                 <span>每个方案的逐题记录都会自动保存，可以随时切换回来继续填写。</span>
                 <span
                   className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                    syncStatus === 'saved'
+                    syncStatus === 'saved' && !hasUnsavedChanges
                       ? 'bg-emerald-100 text-emerald-700'
                       : syncStatus === 'saving'
                         ? 'bg-cyan-100 text-cyan-700'
@@ -470,15 +515,17 @@ export default function PtePlanner() {
                   }`}
                   role="status"
                 >
-                  {syncStatus === 'saved'
+                  {syncStatus === 'saved' && !hasUnsavedChanges
                     ? '云端已保存'
-                    : syncStatus === 'saving'
-                      ? '正在同步…'
-                      : syncStatus === 'loading'
-                        ? '正在读取云端…'
-                        : syncStatus === 'offline'
-                          ? '未登录数据库'
-                          : '云端同步异常'}
+                    : hasUnsavedChanges && syncStatus !== 'saving'
+                      ? '等待自动保存'
+                      : syncStatus === 'saving'
+                        ? '正在同步…'
+                        : syncStatus === 'loading'
+                          ? '正在读取云端…'
+                          : syncStatus === 'offline'
+                            ? '未登录数据库'
+                            : '云端同步异常'}
                 </span>
               </div>
             </div>
@@ -1179,6 +1226,32 @@ export default function PtePlanner() {
         initialTask={templateTask ?? undefined}
         onClose={() => setTemplateLibraryOpen(false)}
       />
+      {savedPlan && (
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 flex justify-center md:bottom-5">
+          <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-2xl border border-white/70 bg-slate-950/92 p-2 pl-4 text-white shadow-2xl shadow-slate-900/30 backdrop-blur-xl">
+            <div className="hidden min-w-0 sm:block">
+              <p className="max-w-52 truncate text-xs font-bold text-white/90">
+                {savedPlan.name || '未命名计划'}
+              </p>
+              <p className="text-[11px] text-white/60">
+                {syncStatus === 'saving'
+                  ? '正在写入数据库…'
+                  : syncStatus === 'saved' && !hasUnsavedChanges
+                    ? '云端已保存'
+                    : '存在未保存的修改'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={saveNow}
+              disabled={manualSaving || syncStatus === 'saving' || !cloudReady}
+              className="min-h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
+            >
+              {manualSaving ? '保存中…' : syncStatus === 'saving' ? '自动保存中…' : '💾 立即保存'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
