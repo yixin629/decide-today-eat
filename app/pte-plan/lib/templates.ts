@@ -8,6 +8,29 @@ export interface PteTemplate {
   lines: readonly string[]
 }
 
+export interface SavedPteTemplate extends PteTemplate {
+  createdAt: string
+  updatedAt: string
+}
+
+export const PTE_TEMPLATE_TASK_TYPES = [
+  'DI',
+  'SGD',
+  'RL',
+  'RS',
+  'RA',
+  'RTS',
+  'ASQ',
+  'WE',
+  'SWT',
+  'SST',
+  'WFD',
+  'FIB',
+  'FIBDD',
+  'RO',
+  'HIW',
+] as const
+
 export const PTE_TEMPLATES: readonly PteTemplate[] = [
   {
     id: 'sgd-2',

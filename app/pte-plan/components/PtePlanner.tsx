@@ -8,7 +8,6 @@ import { readSessionUser } from '@/lib/auth-session'
 import { ensureAllTaskCoverage, generateStudyPlan } from '../engine/generate-plan'
 import { deleteCloudPlan, loadCloudPlans, saveCloudPlans } from '../lib/plan-repository'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
-import { templatesForTask } from '../lib/templates'
 import {
   SKILLS,
   type DailyStudyMood,
@@ -76,6 +75,7 @@ export default function PtePlanner() {
   const toast = useToast()
   const syncErrorShownRef = useRef(false)
   const autoSaveTimerRef = useRef<number | null>(null)
+  const activePlanRef = useRef<SavedPtePlan | null>(null)
   const [config, setConfig] = useState<PlannerConfig>(defaultConfig)
   const [plans, setPlans] = useState<SavedPtePlan[]>([])
   const [syncedVersions, setSyncedVersions] = useState<Record<string, string>>({})
@@ -173,11 +173,28 @@ export default function PtePlanner() {
   }, [cloudReady, currentUser, hydrated, plans, syncedVersions, toast])
 
   const savedPlan = plans.find((plan) => plan.id === activePlanId) ?? null
+
+  useEffect(() => {
+    activePlanRef.current = savedPlan
+  }, [savedPlan])
+
+  useEffect(() => {
+    if (!activePlanId) return
+    const openToday = () => {
+      const active = activePlanRef.current
+      if (active) setActiveDay(nextActiveDay(active))
+    }
+    openToday()
+    window.addEventListener('pageshow', openToday)
+    return () => window.removeEventListener('pageshow', openToday)
+  }, [activePlanId])
+
   const hasUnsavedChanges = Boolean(
     savedPlan && syncedVersions[savedPlan.id] !== savedPlan.updatedAt
   )
   const preset = getPreset(config.presetId)
   const currentDay = savedPlan?.days[activeDay]
+  const todayIndex = savedPlan?.days.findIndex((day) => day.date === dateValue(new Date())) ?? -1
   const totals = (() => {
     if (!savedPlan) return { planned: 0, done: 0, starred: 0 }
     return savedPlan.days.reduce(
@@ -293,6 +310,7 @@ export default function PtePlanner() {
     setPlans((current) => [copy, ...current])
     setActivePlanId(copy.id)
     setConfig(copy.config)
+    setActiveDay(nextActiveDay(copy))
     toast.success('已复制为新的独立计划')
   }
 
@@ -630,7 +648,7 @@ export default function PtePlanner() {
                 }}
                 className="rounded-xl bg-white px-4 py-2 text-sm font-black text-[#16324f] transition hover:bg-cyan-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
               >
-                📚 口语/写作模板库
+                📚 PTE 模板库
               </button>
               <span className="w-fit rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-cyan-50">
                 标准核对：2026-09-03
@@ -804,13 +822,24 @@ export default function PtePlanner() {
           <section className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
             <div className="rounded-t-[calc(1.5rem-1px)] border-b border-slate-200 bg-[#16324f] px-4 py-4 text-white sm:px-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <div>
                   <p className="text-xs font-semibold text-cyan-100">
                     Day {currentDay.dayNumber} · {currentDay.phase} · {currentDay.focus}
                   </p>
                   <h2 className="mt-1 text-xl font-black">
                     {format(parseISO(currentDay.date), 'M月d日 EEEE', { locale: zhCN })}
                   </h2>
+                  </div>
+                  {todayIndex >= 0 && activeDay !== todayIndex && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveDay(todayIndex)}
+                      className="rounded-full border border-cyan-200/40 bg-white/10 px-3 py-1.5 text-xs font-black text-cyan-50 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
+                    >
+                      回到今天
+                    </button>
+                  )}
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   {[
@@ -869,6 +898,9 @@ export default function PtePlanner() {
                         DAY {day.dayNumber}
                       </span>
                       <span className="block text-sm font-black">{day.date.slice(5)}</span>
+                      {index === todayIndex && (
+                        <span className="mt-0.5 block text-[10px] font-black">今天</span>
+                      )}
                       <span className="mt-0.5 block text-[10px] opacity-75">
                         {completed}/{planned}
                       </span>
@@ -1094,18 +1126,16 @@ export default function PtePlanner() {
                               <p className="mt-1 text-xs text-gray-500">{task.standard}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              {templatesForTask(task.shortLabel).length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTemplateTask(task.shortLabel)
-                                    setTemplateLibraryOpen(true)
-                                  }}
-                                  className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-800 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-                                >
-                                  查看模板
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTemplateTask(task.shortLabel)
+                                  setTemplateLibraryOpen(true)
+                                }}
+                                className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-800 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                              >
+                                模板
+                              </button>
                               <span className="text-xs font-bold text-gray-500">
                                 计划 {task.plannedCount} 题
                               </span>
@@ -1341,6 +1371,7 @@ export default function PtePlanner() {
       <TemplateLibrary
         open={templateLibraryOpen}
         initialTask={templateTask ?? undefined}
+        userId={currentUser}
         onClose={() => setTemplateLibraryOpen(false)}
       />
       {savedPlan && (
