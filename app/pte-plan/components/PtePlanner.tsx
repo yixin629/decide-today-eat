@@ -85,6 +85,7 @@ export default function PtePlanner() {
     'loading' | 'saving' | 'saved' | 'offline' | 'error'
   >('loading')
   const [taskPickerOpen, setTaskPickerOpen] = useState(false)
+  const [activeTaskNav, setActiveTaskNav] = useState<string | null>(null)
   const [manualSaving, setManualSaving] = useState(false)
   const [templateTask, setTemplateTask] = useState<string | null>(null)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
@@ -845,6 +846,7 @@ export default function PtePlanner() {
                       onClick={() => {
                         setActiveDay(index)
                         setTaskPickerOpen(false)
+                        setActiveTaskNav(null)
                       }}
                       className={`min-w-[5.2rem] snap-start rounded-xl border px-3 py-2 text-left transition ${
                         index === activeDay
@@ -935,37 +937,102 @@ export default function PtePlanner() {
             </div>
 
             <nav
-              className="sticky top-20 z-30 border-b border-slate-200 bg-white/95 px-3 py-3 shadow-md backdrop-blur-xl sm:px-5"
+              className="sticky top-16 z-30 px-3 py-3 sm:px-5 md:top-3"
               aria-label="今日题型快速导航"
             >
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                <span className="sticky left-0 z-10 shrink-0 bg-white/95 pr-2 text-xs font-black text-slate-500">
-                  快速跳转
-                </span>
-                {DISPLAY_SKILLS.flatMap((skill) => {
-                  const meta = SKILL_META[skill]
-                  return currentDay.tasks
-                    .filter(
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+                <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#16324f] text-sm text-white"
+                      aria-hidden="true"
+                    >
+                      ☰
+                    </span>
+                    <div>
+                      <p className="text-xs font-black text-slate-800">题型快速导航</p>
+                      <p className="text-[10px] text-slate-500">按四科分类 · 点击直接跳转</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                    {currentDay.tasks.length - currentDay.hiddenTaskIds.length} 种
+                  </span>
+                </div>
+
+                <div className="flex snap-x gap-2 overflow-x-auto p-1">
+                  {DISPLAY_SKILLS.map((skill) => {
+                    const meta = SKILL_META[skill]
+                    const tasks = currentDay.tasks.filter(
                       (task) =>
                         task.primarySkill === skill && !currentDay.hiddenTaskIds.includes(task.id)
                     )
-                    .map((task) => (
-                      <a
-                        key={task.id}
-                        href={`#pte-task-${task.id}`}
-                        className="min-h-10 shrink-0 rounded-xl border-2 bg-white px-3 py-2 text-xs font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-                        style={{ borderColor: meta.color, color: meta.color }}
+                    if (tasks.length === 0) return null
+                    return (
+                      <section
+                        key={skill}
+                        className="min-w-48 flex-1 snap-start rounded-xl border p-2.5"
+                        style={{ borderColor: `${meta.color}35`, backgroundColor: meta.softColor }}
+                        aria-label={`${meta.label}题型`}
                       >
-                        {task.shortLabel}
-                      </a>
-                    ))
-                })}
-                <a
-                  href="#pte-daily-summary"
-                  className="min-h-10 shrink-0 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
-                >
-                  今日总结
-                </a>
+                        <div className="mb-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: meta.color }}
+                              aria-hidden="true"
+                            />
+                            <h4 className="text-xs font-black" style={{ color: meta.color }}>
+                              {meta.label}
+                            </h4>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {tasks.length} 项
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tasks.map((task) => {
+                            const selected = activeTaskNav === task.id
+                            return (
+                              <a
+                                key={task.id}
+                                href={`#pte-task-${task.id}`}
+                                onClick={() => setActiveTaskNav(task.id)}
+                                aria-current={selected ? 'location' : undefined}
+                                className="min-h-9 rounded-lg border px-2.5 py-1.5 text-xs font-black shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                                style={{
+                                  borderColor: meta.color,
+                                  backgroundColor: selected ? meta.color : 'white',
+                                  color: selected ? 'white' : meta.color,
+                                }}
+                              >
+                                {task.shortLabel}
+                              </a>
+                            )
+                          })}
+                        </div>
+                      </section>
+                    )
+                  })}
+
+                  <section className="min-w-36 snap-start rounded-xl border border-indigo-200 bg-indigo-50 p-2.5">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" aria-hidden="true" />
+                      <h4 className="text-xs font-black text-indigo-700">复盘</h4>
+                    </div>
+                    <a
+                      href="#pte-daily-summary"
+                      onClick={() => setActiveTaskNav('daily-summary')}
+                      aria-current={activeTaskNav === 'daily-summary' ? 'location' : undefined}
+                      className={`inline-flex min-h-9 items-center rounded-lg border border-indigo-400 px-2.5 py-1.5 text-xs font-black shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-1 ${
+                        activeTaskNav === 'daily-summary'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-indigo-700'
+                      }`}
+                    >
+                      今日总结
+                    </a>
+                  </section>
+                </div>
               </div>
             </nav>
 
@@ -1267,28 +1334,49 @@ export default function PtePlanner() {
       />
       {savedPlan && (
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 flex justify-center md:bottom-5">
-          <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-2xl border border-white/70 bg-slate-950/92 p-2 pl-4 text-white shadow-2xl shadow-slate-900/30 backdrop-blur-xl">
-            <div className="hidden min-w-0 sm:block">
-              <p className="max-w-52 truncate text-xs font-bold text-white/90">
-                {savedPlan.name || '未命名计划'}
-              </p>
-              <p className="text-[11px] text-white/60">
-                {syncStatus === 'saving'
-                  ? '正在写入数据库…'
+          <button
+            type="button"
+            onClick={saveNow}
+            disabled={manualSaving || syncStatus === 'saving' || !cloudReady}
+            className={`pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border bg-white/95 px-4 py-2 text-sm font-bold shadow-[0_6px_22px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-wait ${
+              syncStatus === 'saving' || manualSaving
+                ? 'border-cyan-200 text-cyan-700 focus-visible:ring-cyan-300'
+                : syncStatus === 'saved' && !hasUnsavedChanges
+                  ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50 focus-visible:ring-emerald-300'
+                  : 'border-pink-200 text-pink-700 hover:bg-pink-50 focus-visible:ring-pink-300'
+            }`}
+            aria-label="立即将当前 PTE 计划保存到数据库"
+          >
+            {syncStatus === 'saving' || manualSaving ? (
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-200 border-t-cyan-600"
+                aria-hidden="true"
+              />
+            ) : syncStatus === 'saved' && !hasUnsavedChanges ? (
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs"
+                aria-hidden="true"
+              >
+                ✓
+              </span>
+            ) : (
+              <span
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-pink-100 text-xs"
+                aria-hidden="true"
+              >
+                ↑
+              </span>
+            )}
+            <span>
+              {manualSaving
+                ? '保存中'
+                : syncStatus === 'saving'
+                  ? '自动保存中'
                   : syncStatus === 'saved' && !hasUnsavedChanges
-                    ? '云端已保存'
-                    : '存在未保存的修改'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={saveNow}
-              disabled={manualSaving || syncStatus === 'saving' || !cloudReady}
-              className="min-h-12 whitespace-nowrap rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 disabled:cursor-wait disabled:opacity-60"
-            >
-              {manualSaving ? '保存中…' : syncStatus === 'saving' ? '自动保存中…' : '💾 立即保存'}
-            </button>
-          </div>
+                    ? '已保存'
+                    : '保存修改'}
+            </span>
+          </button>
         </div>
       )}
     </div>
