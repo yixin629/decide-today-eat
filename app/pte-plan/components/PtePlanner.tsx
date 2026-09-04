@@ -517,7 +517,7 @@ export default function PtePlanner() {
   return (
     <div className="space-y-6 pb-28 md:pb-20">
       {hydrated && (
-        <section className="rounded-3xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-lg sm:p-6">
+        <section className="relative z-20 overflow-visible rounded-3xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-5 shadow-lg sm:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
@@ -591,10 +591,10 @@ export default function PtePlanner() {
 
           {plans.length > 0 ? (
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
-              <label>
-                <span className="label-primary">切换计划</span>
+              <label className="relative z-50">
+                <span className="label-primary">切换计划（{plans.length}）</span>
                 <select
-                  className="input-primary min-h-12 w-full bg-white"
+                  className="input-primary relative z-50 min-h-12 w-full bg-white"
                   value={activePlanId ?? ''}
                   onChange={(event) => selectPlan(event.target.value)}
                 >
@@ -605,6 +605,11 @@ export default function PtePlanner() {
                     </option>
                   ))}
                 </select>
+                {plans.length === 1 && (
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    当前只有一个方案，复制或新建后即可切换
+                  </span>
+                )}
               </label>
               <label>
                 <span className="label-primary">当前计划名称</span>

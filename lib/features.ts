@@ -76,7 +76,7 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     category: 'today',
     showOnHome: true,
     showInNavigation: true,
-    quickAccessOrder: 4,
+    quickAccessOrder: 5,
     keywords: ['打卡'],
   },
   {
@@ -128,7 +128,7 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     category: 'memories',
     showOnHome: true,
     showInNavigation: true,
-    quickAccessOrder: 3,
+    quickAccessOrder: 4,
     mobileNavOrder: 2,
     keywords: ['照片', '照片墙'],
   },
@@ -170,6 +170,7 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     category: 'plans',
     showOnHome: true,
     showInNavigation: true,
+    quickAccessOrder: 3,
     keywords: ['PTE', '英语', '考试', '移民', '留学', '备考'],
   },
   {
@@ -180,7 +181,7 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     category: 'plans',
     showOnHome: true,
     showInNavigation: true,
-    quickAccessOrder: 5,
+    quickAccessOrder: 6,
     mobileNavOrder: 3,
     keywords: ['日历', '约会', '计划'],
   },
@@ -264,7 +265,6 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     category: 'sweet',
     showOnHome: true,
     showInNavigation: true,
-    quickAccessOrder: 6,
     keywords: ['留言', '便签'],
   },
   {
