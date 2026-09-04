@@ -68,11 +68,47 @@ export const colorThemes = {
     emoji: '🍒',
     swatch: 'from-red-600 to-red-800',
   },
+  anniversary: {
+    name: '周年纪念',
+    primary: '#a61e4d',
+    secondary: '#8a1538',
+    accent: '#b7791f',
+    emoji: '💍',
+    swatch: 'from-rose-800 to-amber-700',
+  },
+  birthday: {
+    name: '生日派对',
+    primary: '#9333ea',
+    secondary: '#db2777',
+    accent: '#c2410c',
+    emoji: '🎂',
+    swatch: 'from-purple-600 to-pink-600',
+  },
+  starlight: {
+    name: '星河纪念',
+    primary: '#4338ca',
+    secondary: '#6d28d9',
+    accent: '#a21caf',
+    emoji: '✨',
+    swatch: 'from-indigo-700 to-fuchsia-700',
+  },
 }
 
 type DisplayMode = 'light' | 'dark' | 'eye-care'
 type FontSize = 'small' | 'medium' | 'large'
 export type ColorThemeName = keyof typeof colorThemes
+
+const DAILY_THEME_NAMES: ColorThemeName[] = [
+  'default',
+  'lavender',
+  'sakura',
+  'ocean',
+  'sunset',
+  'forest',
+  'midnight',
+  'cherry',
+]
+const SPECIAL_THEME_NAMES: ColorThemeName[] = ['anniversary', 'birthday', 'starlight']
 
 const BG_GRADIENTS: Record<ColorThemeName, string> = {
   default:
@@ -91,6 +127,12 @@ const BG_GRADIENTS: Record<ColorThemeName, string> = {
     'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.09), transparent 34rem), linear-gradient(145deg, #fafaff 0%, #f0f2ff 100%)',
   cherry:
     'radial-gradient(circle at 12% 0%, rgb(var(--color-primary-rgb) / 0.08), transparent 34rem), linear-gradient(145deg, #fffafa 0%, #fff1f1 100%)',
+  anniversary:
+    'radial-gradient(circle at 12% 0%, rgb(183 121 31 / 0.18), transparent 28rem), radial-gradient(circle at 88% 12%, rgb(166 30 77 / 0.12), transparent 30rem), linear-gradient(145deg, #fffaf2 0%, #fff0f4 52%, #fdf6e7 100%)',
+  birthday:
+    'radial-gradient(circle at 12% 0%, rgb(147 51 234 / 0.13), transparent 28rem), radial-gradient(circle at 90% 16%, rgb(219 39 119 / 0.11), transparent 30rem), linear-gradient(145deg, #fffaff 0%, #fff1f8 100%)',
+  starlight:
+    'radial-gradient(circle at 15% 0%, rgb(67 56 202 / 0.15), transparent 30rem), radial-gradient(circle at 85% 12%, rgb(162 28 175 / 0.1), transparent 28rem), linear-gradient(145deg, #fbfaff 0%, #f1efff 100%)',
 }
 
 const DARK_GRADIENT =
@@ -349,7 +391,7 @@ export default function UnifiedThemePanel() {
               <section aria-labelledby="color-theme-label">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 id="color-theme-label" className="text-sm font-semibold text-gray-700">
-                    配色方案
+                    日常配色
                   </h3>
                   <span className="text-xs text-gray-500">{current.name}</span>
                 </div>
@@ -358,8 +400,8 @@ export default function UnifiedThemePanel() {
                   role="group"
                   aria-labelledby="color-theme-label"
                 >
-                  {(Object.entries(colorThemes) as [ColorThemeName, typeof current][]).map(
-                    ([key, theme]) => {
+                  {DAILY_THEME_NAMES.map((key) => {
+                      const theme = colorThemes[key]
                       const isSelected = colorTheme === key
                       return (
                         <button
@@ -392,8 +434,48 @@ export default function UnifiedThemePanel() {
                           )}
                         </button>
                       )
-                    }
-                  )}
+                    })}
+                </div>
+              </section>
+
+              <section aria-labelledby="special-theme-label">
+                <div className="mb-2">
+                  <h3 id="special-theme-label" className="text-sm font-semibold text-gray-700">
+                    纪念主题
+                  </h3>
+                  <p className="mt-0.5 text-xs text-gray-500">适合周年、生日和特别的日子</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="special-theme-label">
+                  {SPECIAL_THEME_NAMES.map((key) => {
+                    const theme = colorThemes[key]
+                    const isSelected = colorTheme === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => selectTheme(key)}
+                        className={`relative min-h-20 rounded-xl px-2 py-3 text-white transition-transform duration-200 hover:scale-[1.03] ${isSelected ? 'scale-[1.03]' : ''}`}
+                        style={{
+                          background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})`,
+                          boxShadow: isSelected
+                            ? `0 0 0 2px white, 0 0 0 4px ${theme.primary}`
+                            : undefined,
+                        }}
+                        aria-label={theme.name}
+                        aria-pressed={isSelected}
+                      >
+                        <span className="block text-2xl drop-shadow" aria-hidden="true">
+                          {theme.emoji}
+                        </span>
+                        <span className="mt-1 block text-[11px] font-bold">{theme.name}</span>
+                        {isSelected && (
+                          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-xs text-gray-900" aria-hidden="true">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </section>
 
