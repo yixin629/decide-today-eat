@@ -272,6 +272,9 @@ export default function PtePlanner() {
     setActivePlanId(null)
     setConfig(defaultConfig())
     setActiveDay(0)
+    window.requestAnimationFrame(() => {
+      document.getElementById('pte-plan-builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const renamePlan = (name: string) => {
@@ -559,7 +562,7 @@ export default function PtePlanner() {
                 onClick={startNewPlan}
                 className="min-h-11 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
               >
-                ＋新建方案
+                ＋配置新计划
               </button>
               {savedPlan && (
                 <>
@@ -592,7 +595,7 @@ export default function PtePlanner() {
           {plans.length > 0 ? (
             <div className="mt-5 grid gap-3 lg:grid-cols-2">
               <label className="relative z-50">
-                <span className="label-primary">切换计划（{plans.length}）</span>
+                <span className="label-primary">已保存计划（{plans.length}）</span>
                 <select
                   className="input-primary relative z-50 min-h-12 w-full bg-white"
                   value={activePlanId ?? ''}
@@ -632,7 +635,10 @@ export default function PtePlanner() {
         </section>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur-sm">
+      <section
+        id="pte-plan-builder"
+        className="scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur-sm"
+      >
         <div className="bg-[#16324f] px-5 py-6 text-white sm:px-7">
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
@@ -662,10 +668,16 @@ export default function PtePlanner() {
           </div>
         </div>
 
+        {!savedPlan && plans.length > 0 && (
+          <div className="border-b border-cyan-200 bg-cyan-50 px-5 py-3 text-sm font-semibold text-cyan-900 sm:px-7">
+            正在配置新计划：请先从下面选择申请标准，再设置日期和分数，最后点击“生成并保存逐日计划”。
+          </div>
+        )}
+
         <div className="grid gap-5 p-5 sm:p-7 xl:grid-cols-[1.3fr_0.7fr]">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="sm:col-span-2">
-              <span className="label-primary">申请标准</span>
+              <span className="label-primary">新计划申请标准（可自由选择）</span>
               <select
                 className="input-primary min-h-12 w-full"
                 value={config.presetId}
