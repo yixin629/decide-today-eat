@@ -18,6 +18,7 @@ import {
   type SavedPtePlan,
   type Skill,
 } from '../types'
+import PteReport from './PteReport'
 import TemplateLibrary from './TemplateLibrary'
 
 const DISPLAY_SKILLS: Skill[] = ['speaking', 'writing', 'reading', 'listening']
@@ -38,7 +39,7 @@ function defaultConfig(): PlannerConfig {
   return {
     presetId: preset.id,
     testType: preset.testType,
-    startDate: dateValue(addDays(new Date(), 1)),
+    startDate: dateValue(new Date()),
     testDate: dateValue(addDays(new Date(), 29)),
     dailyMinutes: 120,
     currentScores: { listening: 50, reading: 50, writing: 50, speaking: 50 },
@@ -65,7 +66,9 @@ function defaultPlanName(config: PlannerConfig) {
 
 function nextActiveDay(plan: SavedPtePlan) {
   const today = dateValue(new Date())
-  const nextIndex = plan.days.findIndex((day) => day.date >= today)
+  const todayIndex = plan.days.findIndex((day) => day.date === today)
+  if (todayIndex >= 0) return todayIndex
+  const nextIndex = plan.days.findIndex((day) => day.date > today)
   return nextIndex >= 0 ? nextIndex : Math.max(0, plan.days.length - 1)
 }
 
@@ -89,6 +92,7 @@ export default function PtePlanner() {
   const [manualSaving, setManualSaving] = useState(false)
   const [templateTask, setTemplateTask] = useState<string | null>(null)
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -235,7 +239,7 @@ export default function PtePlanner() {
     }
     setPlans((current) => [nextPlan, ...current])
     setActivePlanId(nextPlan.id)
-    setActiveDay(0)
+    setActiveDay(nextActiveDay(nextPlan))
     toast.success('新计划已生成并自动保存')
   }
 
@@ -541,6 +545,13 @@ export default function PtePlanner() {
               </button>
               {savedPlan && (
                 <>
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className="min-h-11 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-black text-cyan-800 transition hover:border-cyan-400 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                  >
+                    总体报告
+                  </button>
                   <button
                     type="button"
                     onClick={duplicatePlan}
@@ -1332,6 +1343,9 @@ export default function PtePlanner() {
         initialTask={templateTask ?? undefined}
         onClose={() => setTemplateLibraryOpen(false)}
       />
+      {savedPlan && (
+        <PteReport plan={savedPlan} open={reportOpen} onClose={() => setReportOpen(false)} />
+      )}
       {savedPlan && (
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 flex justify-center md:bottom-5">
           <button
