@@ -789,8 +789,8 @@ export default function PtePlanner() {
             ))}
           </section>
 
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
-            <div className="border-b border-slate-200 bg-[#16324f] px-4 py-4 text-white sm:px-6">
+          <section className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
+            <div className="rounded-t-[calc(1.5rem-1px)] border-b border-slate-200 bg-[#16324f] px-4 py-4 text-white sm:px-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-xs font-semibold text-cyan-100">
@@ -934,6 +934,41 @@ export default function PtePlanner() {
               )}
             </div>
 
+            <nav
+              className="sticky top-20 z-30 border-b border-slate-200 bg-white/95 px-3 py-3 shadow-md backdrop-blur-xl sm:px-5"
+              aria-label="今日题型快速导航"
+            >
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <span className="sticky left-0 z-10 shrink-0 bg-white/95 pr-2 text-xs font-black text-slate-500">
+                  快速跳转
+                </span>
+                {DISPLAY_SKILLS.flatMap((skill) => {
+                  const meta = SKILL_META[skill]
+                  return currentDay.tasks
+                    .filter(
+                      (task) =>
+                        task.primarySkill === skill && !currentDay.hiddenTaskIds.includes(task.id)
+                    )
+                    .map((task) => (
+                      <a
+                        key={task.id}
+                        href={`#pte-task-${task.id}`}
+                        className="min-h-10 shrink-0 rounded-xl border-2 bg-white px-3 py-2 text-xs font-black shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                        style={{ borderColor: meta.color, color: meta.color }}
+                      >
+                        {task.shortLabel}
+                      </a>
+                    ))
+                })}
+                <a
+                  href="#pte-daily-summary"
+                  className="min-h-10 shrink-0 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+                >
+                  今日总结
+                </a>
+              </div>
+            </nav>
+
             <div className="space-y-5 p-3 sm:p-5">
               {DISPLAY_SKILLS.map((skill) => {
                 const skillTasks = currentDay.tasks.filter(
@@ -964,7 +999,8 @@ export default function PtePlanner() {
                       {skillTasks.map((task) => (
                         <article
                           key={task.id}
-                          className="overflow-hidden rounded-2xl bg-white shadow-sm"
+                          id={`pte-task-${task.id}`}
+                          className="scroll-mt-40 overflow-hidden rounded-2xl bg-white shadow-sm"
                         >
                           <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -1116,7 +1152,10 @@ export default function PtePlanner() {
               })}
             </div>
 
-            <section className="border-t border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-6">
+            <section
+              id="pte-daily-summary"
+              className="scroll-mt-40 rounded-b-[calc(1.5rem-1px)] border-t border-slate-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-6"
+            >
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-indigo-600">
