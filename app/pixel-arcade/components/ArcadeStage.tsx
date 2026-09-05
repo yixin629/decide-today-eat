@@ -12,6 +12,9 @@ interface Platform { x: number; y: number; w: number; h: number }
 interface Item { x: number; y: number; taken: boolean }
 interface World {
   mode: ArcadeGameId
+  stage: number
+  goalX: number
+  targetScore: number
   player: Actor
   enemies: Actor[]
   shots: Shot[]
@@ -29,41 +32,51 @@ interface World {
 
 interface Controls { left: boolean; right: boolean; up: boolean; down: boolean; action: boolean; special: boolean }
 const blankControls = (): Controls => ({ left: false, right: false, up: false, down: false, action: false, special: false })
+const STAGE_NAMES: Record<ArcadeGameId, string[]> = {
+  'sky-hop': ['青空草原', '熔岩工厂', '月光浮城'],
+  'run-gun': ['密林前线', '钢铁基地', '风暴要塞'],
+  'cloud-puff': ['糖果原野', '冰晶洞窟', '星云宫殿'],
+  'spirit-duel': ['焰尾兽', '潮汐鲸', '雷翼龙'],
+  'energy-brawl': ['荒野擂台', '天空神殿', '宇宙裂隙'],
+}
 const overlap = (a: Actor, b: Actor) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 const makeEnemy = (x: number, y: number, kind = 'walker', color = '#ef4444', hp = 30): Actor => ({ x, y, vx: -1, vy: 0, w: 32, h: 32, hp, color, kind, alive: true, cooldown: 0 })
 
-function createWorld(mode: ArcadeGameId): World {
+function createWorld(mode: ArcadeGameId, stage = 0): World {
+  const goalX = 1700 + stage * 360
   const base: World = {
-    mode,
+    mode, stage, goalX, targetScore: 6000 + stage * 3000,
     player: { x: 70, y: 350, vx: 0, vy: 0, w: 30, h: 38, hp: 100, color: '#38bdf8', alive: true },
     enemies: [], shots: [], platforms: [], items: [], camera: 0, score: 0, time: 0,
     energy: 0, captured: 0, message: '', spawnAt: 0, hurtAt: 0,
   }
   if (mode === 'sky-hop' || mode === 'cloud-puff') {
     base.platforms = [
-      { x: 0, y: 410, w: 1800, h: 40 }, { x: 220, y: 340, w: 120, h: 18 },
+      { x: 0, y: 410, w: goalX + 180, h: 40 }, { x: 220, y: 340, w: 120, h: 18 },
       { x: 430, y: 290, w: 110, h: 18 }, { x: 650, y: 350, w: 150, h: 18 },
       { x: 900, y: 270, w: 120, h: 18 }, { x: 1160, y: 330, w: 160, h: 18 },
       { x: 1430, y: 260, w: 130, h: 18 }, { x: 1650, y: 350, w: 150, h: 18 },
     ]
-    base.items = [260, 470, 690, 950, 1210, 1480, 1710].map((x, index) => ({ x, y: index % 2 ? 240 : 300, taken: false }))
+    for (let x = 1840; x < goalX; x += 180) base.platforms.push({ x, y: 250 + ((x / 180) % 3) * 48, w: 115, h: 18 })
+    base.items = Array.from({ length: 7 + stage * 3 }, (_, index) => ({ x: 260 + index * 205, y: index % 2 ? 240 : 300, taken: false }))
     base.enemies = [makeEnemy(360, 378), makeEnemy(720, 318, 'spark', '#f59e0b'), makeEnemy(1080, 378, 'frost', '#60a5fa'), makeEnemy(1370, 378, 'flame', '#fb7185'), makeEnemy(1600, 378, 'spark', '#f59e0b')]
+    for (let x = 1820; x < goalX; x += 190) base.enemies.push(makeEnemy(x, 378, stage === 2 ? 'flame' : 'frost', stage === 2 ? '#fb7185' : '#60a5fa', 30 + stage * 10))
     if (mode === 'cloud-puff') base.player.color = '#f9a8d4'
   } else if (mode === 'run-gun') {
     base.player.y = 360
     base.platforms = [{ x: 0, y: 410, w: WIDTH, h: 40 }]
-    base.message = '击败 20 个机械兵即可通关'
+    base.message = `击败 ${20 + stage * 10} 个机械兵即可通关`
   } else if (mode === 'spirit-duel') {
     base.player = { x: 120, y: 290, vx: 0, vy: 0, w: 90, h: 90, hp: 100, color: '#22c55e', alive: true }
-    base.enemies = [makeEnemy(585, 290, 'wild', '#f97316', 100)]
+    base.enemies = [makeEnemy(585, 290, 'wild', ['#f97316', '#38bdf8', '#a78bfa'][stage], 100 + stage * 25)]
     base.enemies[0].w = 90; base.enemies[0].h = 90; base.enemies[0].vx = 0
-    base.message = '先攻击削弱灵兽，生命低于 45 时更容易捕捉'
+    base.message = `野生${STAGE_NAMES[mode][stage]}出现了！先削弱到 45 生命以下`
   } else {
     base.player = { x: 140, y: 340, vx: 0, vy: 0, w: 42, h: 58, hp: 100, color: '#fbbf24', alive: true }
-    base.enemies = [makeEnemy(620, 340, 'fighter', '#a78bfa', 100)]
+    base.enemies = [makeEnemy(620, 340, 'fighter', ['#a78bfa', '#38bdf8', '#f43f5e'][stage], 100 + stage * 30)]
     base.enemies[0].w = 42; base.enemies[0].h = 58; base.enemies[0].vx = 0
     base.platforms = [{ x: 0, y: 398, w: WIDTH, h: 52 }]
-    base.message = '击败影武者'
+    base.message = `第 ${stage + 1} 战：${STAGE_NAMES[mode][stage]}`
   }
   return base
 }
@@ -77,11 +90,12 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
   const actionLatchRef = useRef(false)
   const specialLatchRef = useRef(false)
   const [running, setRunning] = useState(false)
+  const [stage, setStage] = useState(0)
   const [finished, setFinished] = useState<'won' | 'lost' | null>(null)
   const [score, setScore] = useState(0)
 
   const reset = useCallback(() => {
-    worldRef.current = createWorld(game.id)
+    worldRef.current = createWorld(game.id, stage)
     controlsRef.current = blankControls()
     actionLatchRef.current = false
     specialLatchRef.current = false
@@ -89,7 +103,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
     setFinished(null)
     setRunning(true)
     lastRef.current = performance.now()
-  }, [game.id])
+  }, [game.id, stage])
 
   useEffect(() => {
     const setKey = (event: KeyboardEvent, value: boolean) => {
@@ -134,7 +148,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
       p.vx = c.left ? -4 : c.right ? 4 : p.vx * 0.72
       if (c.up && p.grounded) { p.vy = -11; p.grounded = false }
       p.vy += 0.55 * dt
-      p.x = Math.max(0, Math.min(1760, p.x + p.vx * dt))
+      p.x = Math.max(0, Math.min(world.goalX + 80, p.x + p.vx * dt))
       const oldBottom = p.y + p.h
       p.y += p.vy * dt
       p.grounded = false
@@ -144,7 +158,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
         }
       }
       if (p.y > HEIGHT) p.hp = 0
-      world.camera = Math.max(0, Math.min(1000, p.x - 260))
+      world.camera = Math.max(0, Math.min(world.goalX - 700, p.x - 260))
     }
 
     const update = (dt: number) => {
@@ -159,7 +173,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
         for (const enemy of world.enemies) {
           if (!enemy.alive) continue
           enemy.x += enemy.vx * dt
-          if (enemy.x < 100 || enemy.x > 1740) enemy.vx *= -1
+          if (enemy.x < 100 || enemy.x > world.goalX + 40) enemy.vx *= -1
           if (world.mode === 'cloud-puff' && c.action) {
             const distance = enemy.x - world.player.x
             if (distance > -30 && distance < 150 && Math.abs(enemy.y - world.player.y) < 80) {
@@ -172,7 +186,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
           }
         }
         if (world.mode === 'cloud-puff' && c.special && !specialLatchRef.current && world.energy > 0) shoot(world, true)
-        if (world.player.x > 1690) endGame('won')
+        if (world.player.x > world.goalX) endGame('won')
       } else if (world.mode === 'run-gun') {
         platformPhysics(world, dt)
         world.player.x = Math.min(WIDTH - 60, world.player.x)
@@ -223,7 +237,7 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
         } else if (shot.x > world.player.x && shot.x < world.player.x + world.player.w && shot.y > world.player.y && shot.y < world.player.y + world.player.h) { world.player.hp -= 12; shot.life = 0 }
       }
       world.shots = world.shots.filter((shot) => shot.life > 0 && shot.x > -20 && shot.x < 1900)
-      if (world.mode === 'run-gun' && world.score >= 6000) endGame('won')
+      if (world.mode === 'run-gun' && world.score >= world.targetScore) endGame('won')
       if (world.mode === 'energy-brawl' && world.enemies[0].hp <= 0) endGame('won')
       if (world.player.hp <= 0) endGame('lost')
       actionLatchRef.current = c.action
@@ -249,10 +263,10 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
       for (const enemy of world.enemies) if (enemy.alive || world.mode === 'spirit-duel' || world.mode === 'energy-brawl') drawActor(enemy, world.camera, true)
       for (const shot of world.shots) { context.fillStyle = shot.color; context.beginPath(); context.arc(shot.x - world.camera, shot.y, shot.size, 0, Math.PI * 2); context.fill() }
       drawActor(world.player, world.camera)
-      if (world.mode === 'sky-hop' || world.mode === 'cloud-puff') { context.fillStyle = '#fff'; context.fillRect(1740 - world.camera, 245, 7, 165); context.fillStyle = '#fb7185'; context.fillRect(1747 - world.camera, 250, 70, 42); context.fillStyle = '#fff'; context.font = 'bold 18px sans-serif'; context.fillText('GO!', 1760 - world.camera, 278) }
+      if (world.mode === 'sky-hop' || world.mode === 'cloud-puff') { context.fillStyle = '#fff'; context.fillRect(world.goalX + 45 - world.camera, 245, 7, 165); context.fillStyle = '#fb7185'; context.fillRect(world.goalX + 52 - world.camera, 250, 70, 42); context.fillStyle = '#fff'; context.font = 'bold 18px sans-serif'; context.fillText('GO!', world.goalX + 65 - world.camera, 278) }
       context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(14, 14, 230, 64); context.fillStyle = '#fff'; context.font = 'bold 18px sans-serif'; context.fillText(`SCORE ${world.score}`, 28, 39); context.fillStyle = '#fda4af'; context.fillRect(28, 51, Math.max(0, world.player.hp) * 1.7, 11); context.strokeStyle = '#fff'; context.strokeRect(28, 51, 170, 11)
       if (world.mode === 'energy-brawl' || world.mode === 'cloud-puff') { context.fillStyle = '#fde047'; context.fillRect(28, 67, world.energy * 1.7, 5) }
-      if (world.mode === 'spirit-duel' || world.mode === 'energy-brawl') { const foe = world.enemies[0]; context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(555, 14, 230, 52); context.fillStyle = '#fff'; context.fillText(world.mode === 'spirit-duel' ? '野生焰尾兽' : '影武者', 570, 39); context.fillStyle = '#a78bfa'; context.fillRect(570, 49, Math.max(0, foe.hp) * 1.7, 9) }
+      if (world.mode === 'spirit-duel' || world.mode === 'energy-brawl') { const foe = world.enemies[0]; context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(555, 14, 230, 52); context.fillStyle = '#fff'; context.fillText(world.mode === 'spirit-duel' ? `野生${STAGE_NAMES[world.mode][world.stage]}` : `对手·${STAGE_NAMES[world.mode][world.stage]}`, 570, 39); context.fillStyle = '#a78bfa'; context.fillRect(570, 49, Math.max(0, foe.hp) * (170 / (100 + world.stage * (world.mode === 'energy-brawl' ? 30 : 25))), 9) }
       if (world.message) { context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(120, 385, 560, 42); context.fillStyle = '#fff'; context.font = 'bold 16px sans-serif'; context.textAlign = 'center'; context.fillText(world.message, 400, 411); context.textAlign = 'left' }
     }
 
@@ -267,6 +281,13 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
   }, [endGame, running])
 
   const press = (key: keyof Controls, value: boolean) => { controlsRef.current[key] = value }
+  const chooseStage = (nextStage: number) => {
+    setStage(nextStage)
+    worldRef.current = createWorld(game.id, nextStage)
+    setRunning(false)
+    setFinished(null)
+    setScore(0)
+  }
   const buttons: Array<{ key: keyof Controls; label: string }> = game.id === 'spirit-duel'
     ? [{ key: 'action', label: '⚔️ 攻击' }, { key: 'special', label: '🔮 捕捉' }]
     : [{ key: 'left', label: '◀' }, { key: 'right', label: '▶' }, { key: 'up', label: '▲' }, { key: 'action', label: game.id === 'cloud-puff' ? '🌪️ 吸入' : '👊 动作' }, { key: 'special', label: '✨ 绝招' }]
@@ -277,11 +298,18 @@ export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
         <div><p className="text-xs font-bold tracking-[.2em] text-cyan-300">NOW PLAYING</p><h2 className="text-xl font-black">{game.icon} {game.name}</h2></div>
         <div className="text-right text-xs text-white/60"><div>方向键 / WASD</div><div>J 动作 · K 绝招</div></div>
       </div>
+      <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label="选择关卡">
+        {STAGE_NAMES[game.id].map((name, index) => (
+          <button key={name} type="button" onClick={() => chooseStage(index)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition ${stage === index ? 'bg-cyan-400 text-slate-950' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}>
+            {index + 1}. {name}
+          </button>
+        ))}
+      </div>
       <div className="relative overflow-hidden rounded-2xl border-4 border-slate-700 bg-black shadow-inner">
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="block aspect-video w-full touch-none bg-black [image-rendering:pixelated]" aria-label={`${game.name}游戏画面`} />
         {!running && (
           <div className="absolute inset-0 grid place-items-center bg-slate-950/65 p-6 text-center backdrop-blur-sm">
-            <div><div className="text-6xl">{finished === 'won' ? '🏆' : finished === 'lost' ? '💥' : game.icon}</div><h3 className="mt-3 text-3xl font-black">{finished === 'won' ? '挑战成功！' : finished === 'lost' ? '再来一次！' : game.name}</h3>{finished && <p className="mt-2 text-white/70">本局得分：{score}</p>}<button type="button" onClick={reset} className={`mt-5 rounded-full bg-gradient-to-r ${game.accent} px-8 py-3 font-black shadow-xl transition hover:scale-105`}>{finished ? '重新挑战' : '投币开始'}</button></div>
+            <div><div className="text-6xl">{finished === 'won' ? '🏆' : finished === 'lost' ? '💥' : game.icon}</div><h3 className="mt-3 text-3xl font-black">{finished === 'won' ? '挑战成功！' : finished === 'lost' ? '再来一次！' : STAGE_NAMES[game.id][stage]}</h3>{finished && <p className="mt-2 text-white/70">本局得分：{score}</p>}<div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={reset} className={`rounded-full bg-gradient-to-r ${game.accent} px-7 py-3 font-black shadow-xl transition hover:scale-105`}>{finished ? '重新挑战' : '投币开始'}</button>{finished === 'won' && stage < 2 && <button type="button" onClick={() => chooseStage(stage + 1)} className="rounded-full bg-white px-7 py-3 font-black text-slate-900 shadow-xl transition hover:scale-105">下一关 →</button>}</div></div>
           </div>
         )}
       </div>
