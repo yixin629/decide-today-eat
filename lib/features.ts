@@ -372,11 +372,11 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     name: '像素游戏厅',
     path: '/pixel-arcade',
     icon: '🕹️',
-    description: '横版闯关、跑射、吞噬、灵兽对战和能量乱斗',
+    description: '横版闯关、跑射、灵兽对战、格斗、切水果和消消乐',
     category: 'play',
     showOnHome: true,
     showInNavigation: true,
-    keywords: ['平台跳跃', '横版射击', '精灵', '格斗', '街机', '马里奥', '魂斗罗', '卡比', '宝可梦', '龙珠'],
+    keywords: ['平台跳跃', '横版射击', '精灵', '格斗', '街机', '切水果', '消消乐', '马里奥', '魂斗罗', '卡比', '宝可梦', '龙珠'],
   },
   {
     name: '欢乐麻将',

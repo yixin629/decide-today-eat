@@ -14,9 +14,9 @@ export default function PixelArcadePage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,#312e81_0,#111827_42%,#030712_100%)] px-4 pb-12 pt-20 text-white sm:px-6">
       <div className="mx-auto max-w-7xl">
         <BackButton href="/" text="返回首页" />
-        <PageHeader title="像素游戏厅" emoji="🕹️" subtitle="五台原创致敬街机，键盘和手机都能直接玩" />
+        <PageHeader title="像素游戏厅" emoji="🕹️" subtitle="七台原创致敬街机、三十五个关卡，键盘和手机都能直接玩" />
 
-        <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5" aria-label="选择小游戏">
+        <section className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7" aria-label="选择小游戏">
           {ARCADE_GAMES.map((item) => (
             <button
               key={item.id}
