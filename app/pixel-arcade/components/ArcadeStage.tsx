@@ -1,0 +1,293 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ArcadeGameDefinition, ArcadeGameId } from '../types'
+
+const WIDTH = 800
+const HEIGHT = 450
+
+interface Actor { x: number; y: number; vx: number; vy: number; w: number; h: number; hp: number; color: string; kind?: string; alive: boolean; grounded?: boolean; cooldown?: number }
+interface Shot { x: number; y: number; vx: number; vy: number; owner: 'player' | 'enemy'; color: string; life: number; size: number }
+interface Platform { x: number; y: number; w: number; h: number }
+interface Item { x: number; y: number; taken: boolean }
+interface World {
+  mode: ArcadeGameId
+  player: Actor
+  enemies: Actor[]
+  shots: Shot[]
+  platforms: Platform[]
+  items: Item[]
+  camera: number
+  score: number
+  time: number
+  energy: number
+  captured: number
+  message: string
+  spawnAt: number
+  hurtAt: number
+}
+
+interface Controls { left: boolean; right: boolean; up: boolean; down: boolean; action: boolean; special: boolean }
+const blankControls = (): Controls => ({ left: false, right: false, up: false, down: false, action: false, special: false })
+const overlap = (a: Actor, b: Actor) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+const makeEnemy = (x: number, y: number, kind = 'walker', color = '#ef4444', hp = 30): Actor => ({ x, y, vx: -1, vy: 0, w: 32, h: 32, hp, color, kind, alive: true, cooldown: 0 })
+
+function createWorld(mode: ArcadeGameId): World {
+  const base: World = {
+    mode,
+    player: { x: 70, y: 350, vx: 0, vy: 0, w: 30, h: 38, hp: 100, color: '#38bdf8', alive: true },
+    enemies: [], shots: [], platforms: [], items: [], camera: 0, score: 0, time: 0,
+    energy: 0, captured: 0, message: '', spawnAt: 0, hurtAt: 0,
+  }
+  if (mode === 'sky-hop' || mode === 'cloud-puff') {
+    base.platforms = [
+      { x: 0, y: 410, w: 1800, h: 40 }, { x: 220, y: 340, w: 120, h: 18 },
+      { x: 430, y: 290, w: 110, h: 18 }, { x: 650, y: 350, w: 150, h: 18 },
+      { x: 900, y: 270, w: 120, h: 18 }, { x: 1160, y: 330, w: 160, h: 18 },
+      { x: 1430, y: 260, w: 130, h: 18 }, { x: 1650, y: 350, w: 150, h: 18 },
+    ]
+    base.items = [260, 470, 690, 950, 1210, 1480, 1710].map((x, index) => ({ x, y: index % 2 ? 240 : 300, taken: false }))
+    base.enemies = [makeEnemy(360, 378), makeEnemy(720, 318, 'spark', '#f59e0b'), makeEnemy(1080, 378, 'frost', '#60a5fa'), makeEnemy(1370, 378, 'flame', '#fb7185'), makeEnemy(1600, 378, 'spark', '#f59e0b')]
+    if (mode === 'cloud-puff') base.player.color = '#f9a8d4'
+  } else if (mode === 'run-gun') {
+    base.player.y = 360
+    base.platforms = [{ x: 0, y: 410, w: WIDTH, h: 40 }]
+    base.message = '击败 20 个机械兵即可通关'
+  } else if (mode === 'spirit-duel') {
+    base.player = { x: 120, y: 290, vx: 0, vy: 0, w: 90, h: 90, hp: 100, color: '#22c55e', alive: true }
+    base.enemies = [makeEnemy(585, 290, 'wild', '#f97316', 100)]
+    base.enemies[0].w = 90; base.enemies[0].h = 90; base.enemies[0].vx = 0
+    base.message = '先攻击削弱灵兽，生命低于 45 时更容易捕捉'
+  } else {
+    base.player = { x: 140, y: 340, vx: 0, vy: 0, w: 42, h: 58, hp: 100, color: '#fbbf24', alive: true }
+    base.enemies = [makeEnemy(620, 340, 'fighter', '#a78bfa', 100)]
+    base.enemies[0].w = 42; base.enemies[0].h = 58; base.enemies[0].vx = 0
+    base.platforms = [{ x: 0, y: 398, w: WIDTH, h: 52 }]
+    base.message = '击败影武者'
+  }
+  return base
+}
+
+export default function ArcadeStage({ game }: { game: ArcadeGameDefinition }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const worldRef = useRef<World>(createWorld(game.id))
+  const controlsRef = useRef<Controls>(blankControls())
+  const frameRef = useRef<number | null>(null)
+  const lastRef = useRef(0)
+  const actionLatchRef = useRef(false)
+  const specialLatchRef = useRef(false)
+  const [running, setRunning] = useState(false)
+  const [finished, setFinished] = useState<'won' | 'lost' | null>(null)
+  const [score, setScore] = useState(0)
+
+  const reset = useCallback(() => {
+    worldRef.current = createWorld(game.id)
+    controlsRef.current = blankControls()
+    actionLatchRef.current = false
+    specialLatchRef.current = false
+    setScore(0)
+    setFinished(null)
+    setRunning(true)
+    lastRef.current = performance.now()
+  }, [game.id])
+
+  useEffect(() => {
+    const setKey = (event: KeyboardEvent, value: boolean) => {
+      const key = event.key.toLowerCase()
+      if (['arrowleft', 'a'].includes(key)) controlsRef.current.left = value
+      if (['arrowright', 'd'].includes(key)) controlsRef.current.right = value
+      if (['arrowup', 'w', ' '].includes(key)) controlsRef.current.up = value
+      if (['arrowdown', 's'].includes(key)) controlsRef.current.down = value
+      if (['j', 'x'].includes(key)) controlsRef.current.action = value
+      if (['k', 'c'].includes(key)) controlsRef.current.special = value
+      if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' '].includes(key)) event.preventDefault()
+    }
+    const down = (event: KeyboardEvent) => setKey(event, true)
+    const up = (event: KeyboardEvent) => setKey(event, false)
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+  }, [])
+
+  const endGame = useCallback((result: 'won' | 'lost') => {
+    setFinished(result)
+    setRunning(false)
+    setScore(worldRef.current.score)
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.imageSmoothingEnabled = false
+
+    const shoot = (world: World, special = false) => {
+      if (special && world.energy < 25) return
+      if (special) world.energy -= 25
+      world.shots.push({ x: world.player.x + world.player.w, y: world.player.y + world.player.h / 2, vx: special ? 9 : 7, vy: 0, owner: 'player', color: special ? '#fde047' : '#67e8f9', life: 100, size: special ? 13 : 6 })
+    }
+
+    const platformPhysics = (world: World, dt: number) => {
+      const p = world.player
+      const c = controlsRef.current
+      p.vx = c.left ? -4 : c.right ? 4 : p.vx * 0.72
+      if (c.up && p.grounded) { p.vy = -11; p.grounded = false }
+      p.vy += 0.55 * dt
+      p.x = Math.max(0, Math.min(1760, p.x + p.vx * dt))
+      const oldBottom = p.y + p.h
+      p.y += p.vy * dt
+      p.grounded = false
+      for (const platform of world.platforms) {
+        if (p.x + p.w > platform.x && p.x < platform.x + platform.w && oldBottom <= platform.y + 5 && p.y + p.h >= platform.y && p.vy >= 0) {
+          p.y = platform.y - p.h; p.vy = 0; p.grounded = true
+        }
+      }
+      if (p.y > HEIGHT) p.hp = 0
+      world.camera = Math.max(0, Math.min(1000, p.x - 260))
+    }
+
+    const update = (dt: number) => {
+      const world = worldRef.current
+      const c = controlsRef.current
+      world.time += dt
+      if (world.mode === 'sky-hop' || world.mode === 'cloud-puff') {
+        platformPhysics(world, dt)
+        for (const item of world.items) {
+          if (!item.taken && Math.hypot(world.player.x - item.x, world.player.y - item.y) < 42) { item.taken = true; world.score += 100 }
+        }
+        for (const enemy of world.enemies) {
+          if (!enemy.alive) continue
+          enemy.x += enemy.vx * dt
+          if (enemy.x < 100 || enemy.x > 1740) enemy.vx *= -1
+          if (world.mode === 'cloud-puff' && c.action) {
+            const distance = enemy.x - world.player.x
+            if (distance > -30 && distance < 150 && Math.abs(enemy.y - world.player.y) < 80) {
+              enemy.x -= Math.sign(distance) * 2.5 * dt
+              if (Math.abs(distance) < 45) { enemy.alive = false; world.energy = 100; world.player.kind = enemy.kind; world.score += 250; world.message = `复制了${enemy.kind === 'flame' ? '火焰' : enemy.kind === 'frost' ? '冰霜' : '闪电'}能力！` }
+            }
+          } else if (overlap(world.player, enemy)) {
+            if (world.player.vy > 2) { enemy.alive = false; world.player.vy = -7; world.score += 200 }
+            else if (world.time - world.hurtAt > 60) { world.player.hp -= 25; world.hurtAt = world.time; world.player.vx = -6 }
+          }
+        }
+        if (world.mode === 'cloud-puff' && c.special && !specialLatchRef.current && world.energy > 0) shoot(world, true)
+        if (world.player.x > 1690) endGame('won')
+      } else if (world.mode === 'run-gun') {
+        platformPhysics(world, dt)
+        world.player.x = Math.min(WIDTH - 60, world.player.x)
+        world.camera = 0
+        if (c.action && world.time - (world.player.cooldown ?? 0) > 10) { shoot(world); world.player.cooldown = world.time }
+        if (world.time > world.spawnAt) {
+          const flyer = Math.random() > 0.7
+          world.enemies.push(makeEnemy(WIDTH + 20, flyer ? 210 : 378, flyer ? 'drone' : 'bot', flyer ? '#fb7185' : '#ef4444', flyer ? 20 : 35))
+          world.spawnAt = world.time + 45 + Math.random() * 35
+        }
+        for (const enemy of world.enemies) {
+          if (!enemy.alive) continue
+          enemy.x -= (enemy.kind === 'drone' ? 2.3 : 1.4) * dt
+          enemy.cooldown = (enemy.cooldown ?? 0) - dt
+          if (enemy.cooldown <= 0) { world.shots.push({ x: enemy.x, y: enemy.y + 15, vx: -4, vy: 0, owner: 'enemy', color: '#fb7185', life: 160, size: 5 }); enemy.cooldown = 80 }
+          if (overlap(world.player, enemy)) { world.player.hp -= 0.4 * dt }
+        }
+      } else if (world.mode === 'spirit-duel') {
+        const enemy = world.enemies[0]
+        if (c.action && !actionLatchRef.current) {
+          const damage = 12 + Math.floor(Math.random() * 12); enemy.hp = Math.max(1, enemy.hp - damage); world.score += damage * 10; world.message = `闪叶冲击造成 ${damage} 点伤害！`
+          window.setTimeout(() => { if (worldRef.current.mode === 'spirit-duel' && running) { worldRef.current.player.hp -= 8 + Math.floor(Math.random() * 9) } }, 350)
+        }
+        if (c.special && !specialLatchRef.current) {
+          if (enemy.hp >= 45) world.message = '灵兽体力还很充足，契约球被弹开了！'
+          else if (Math.random() < (105 - enemy.hp) / 100) { world.captured += 1; world.score += 1500; world.message = '契约成功！灵兽已经加入图鉴。'; endGame('won') }
+          else { world.message = '差一点！再削弱一些试试。'; world.player.hp -= 6 }
+        }
+      } else {
+        const p = world.player
+        const enemy = world.enemies[0]
+        p.vx = c.left ? -4.5 : c.right ? 4.5 : p.vx * 0.72
+        if (c.up && p.grounded) { p.vy = -11; p.grounded = false }
+        p.vy += 0.55 * dt; p.x = Math.max(10, Math.min(WIDTH - p.w - 10, p.x + p.vx * dt)); p.y += p.vy * dt
+        if (p.y + p.h >= 398) { p.y = 398 - p.h; p.vy = 0; p.grounded = true }
+        const distance = p.x - enemy.x
+        enemy.x += Math.sign(distance) * 1.6 * dt
+        world.energy = Math.min(100, world.energy + 0.16 * dt)
+        if (c.action && !actionLatchRef.current && Math.abs(distance) < 80) { enemy.hp -= 12; world.score += 120; enemy.x -= Math.sign(distance) * 20 }
+        if (c.special && !specialLatchRef.current) shoot(world, true)
+        if (Math.abs(distance) < 55 && world.time - (enemy.cooldown ?? 0) > 45) { p.hp -= 9; enemy.cooldown = world.time }
+      }
+
+      for (const shot of world.shots) { shot.x += shot.vx * dt; shot.y += shot.vy * dt; shot.life -= dt }
+      for (const shot of world.shots) {
+        if (shot.owner === 'player') {
+          for (const enemy of world.enemies) if (enemy.alive && shot.x > enemy.x && shot.x < enemy.x + enemy.w && shot.y > enemy.y && shot.y < enemy.y + enemy.h) { enemy.hp -= shot.size > 10 ? 28 : 18; shot.life = 0; if (enemy.hp <= 0) { enemy.alive = false; world.score += 300 } }
+        } else if (shot.x > world.player.x && shot.x < world.player.x + world.player.w && shot.y > world.player.y && shot.y < world.player.y + world.player.h) { world.player.hp -= 12; shot.life = 0 }
+      }
+      world.shots = world.shots.filter((shot) => shot.life > 0 && shot.x > -20 && shot.x < 1900)
+      if (world.mode === 'run-gun' && world.score >= 6000) endGame('won')
+      if (world.mode === 'energy-brawl' && world.enemies[0].hp <= 0) endGame('won')
+      if (world.player.hp <= 0) endGame('lost')
+      actionLatchRef.current = c.action
+      specialLatchRef.current = c.special
+    }
+
+    const drawActor = (actor: Actor, camera: number, face = false) => {
+      const x = Math.round(actor.x - camera), y = Math.round(actor.y)
+      context.fillStyle = 'rgba(0,0,0,.25)'; context.fillRect(x + 4, y + actor.h - 3, actor.w, 7)
+      context.fillStyle = actor.color; context.fillRect(x, y, actor.w, actor.h)
+      context.fillStyle = '#fff'; context.fillRect(x + actor.w * .55, y + 8, 7, 7)
+      context.fillStyle = '#111827'; context.fillRect(x + actor.w * .55 + 3, y + 10, 3, 3)
+      if (face) { context.fillStyle = '#fff'; context.fillRect(x + 6, y + 12, 7, 7) }
+    }
+
+    const draw = () => {
+      const world = worldRef.current
+      const gradients: Record<ArcadeGameId, [string, string]> = { 'sky-hop': ['#38bdf8', '#dbeafe'], 'run-gun': ['#1f2937', '#7f1d1d'], 'cloud-puff': ['#f9a8d4', '#ddd6fe'], 'spirit-duel': ['#86efac', '#0f766e'], 'energy-brawl': ['#312e81', '#111827'] }
+      const gradient = context.createLinearGradient(0, 0, 0, HEIGHT); gradient.addColorStop(0, gradients[world.mode][0]); gradient.addColorStop(1, gradients[world.mode][1]); context.fillStyle = gradient; context.fillRect(0, 0, WIDTH, HEIGHT)
+      context.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 12; i++) context.fillRect(((i * 113 - world.camera * .2) % 900) - 50, 40 + (i % 4) * 55, 55, 10)
+      for (const platform of world.platforms) { context.fillStyle = world.mode === 'energy-brawl' ? '#4c1d95' : '#166534'; context.fillRect(platform.x - world.camera, platform.y, platform.w, platform.h); context.fillStyle = '#86efac'; context.fillRect(platform.x - world.camera, platform.y, platform.w, 7) }
+      for (const item of world.items) if (!item.taken) { context.fillStyle = '#fde047'; context.beginPath(); context.arc(item.x - world.camera, item.y, 10, 0, Math.PI * 2); context.fill(); context.fillStyle = '#fff'; context.fillText('★', item.x - world.camera - 6, item.y + 5) }
+      for (const enemy of world.enemies) if (enemy.alive || world.mode === 'spirit-duel' || world.mode === 'energy-brawl') drawActor(enemy, world.camera, true)
+      for (const shot of world.shots) { context.fillStyle = shot.color; context.beginPath(); context.arc(shot.x - world.camera, shot.y, shot.size, 0, Math.PI * 2); context.fill() }
+      drawActor(world.player, world.camera)
+      if (world.mode === 'sky-hop' || world.mode === 'cloud-puff') { context.fillStyle = '#fff'; context.fillRect(1740 - world.camera, 245, 7, 165); context.fillStyle = '#fb7185'; context.fillRect(1747 - world.camera, 250, 70, 42); context.fillStyle = '#fff'; context.font = 'bold 18px sans-serif'; context.fillText('GO!', 1760 - world.camera, 278) }
+      context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(14, 14, 230, 64); context.fillStyle = '#fff'; context.font = 'bold 18px sans-serif'; context.fillText(`SCORE ${world.score}`, 28, 39); context.fillStyle = '#fda4af'; context.fillRect(28, 51, Math.max(0, world.player.hp) * 1.7, 11); context.strokeStyle = '#fff'; context.strokeRect(28, 51, 170, 11)
+      if (world.mode === 'energy-brawl' || world.mode === 'cloud-puff') { context.fillStyle = '#fde047'; context.fillRect(28, 67, world.energy * 1.7, 5) }
+      if (world.mode === 'spirit-duel' || world.mode === 'energy-brawl') { const foe = world.enemies[0]; context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(555, 14, 230, 52); context.fillStyle = '#fff'; context.fillText(world.mode === 'spirit-duel' ? '野生焰尾兽' : '影武者', 570, 39); context.fillStyle = '#a78bfa'; context.fillRect(570, 49, Math.max(0, foe.hp) * 1.7, 9) }
+      if (world.message) { context.fillStyle = 'rgba(3,7,18,.72)'; context.fillRect(120, 385, 560, 42); context.fillStyle = '#fff'; context.font = 'bold 16px sans-serif'; context.textAlign = 'center'; context.fillText(world.message, 400, 411); context.textAlign = 'left' }
+    }
+
+    const loop = (now: number) => {
+      const dt = Math.min(2, (now - lastRef.current) / 16.67 || 1); lastRef.current = now
+      if (running) update(dt)
+      draw()
+      frameRef.current = requestAnimationFrame(loop)
+    }
+    frameRef.current = requestAnimationFrame(loop)
+    return () => { if (frameRef.current !== null) cancelAnimationFrame(frameRef.current) }
+  }, [endGame, running])
+
+  const press = (key: keyof Controls, value: boolean) => { controlsRef.current[key] = value }
+  const buttons: Array<{ key: keyof Controls; label: string }> = game.id === 'spirit-duel'
+    ? [{ key: 'action', label: '⚔️ 攻击' }, { key: 'special', label: '🔮 捕捉' }]
+    : [{ key: 'left', label: '◀' }, { key: 'right', label: '▶' }, { key: 'up', label: '▲' }, { key: 'action', label: game.id === 'cloud-puff' ? '🌪️ 吸入' : '👊 动作' }, { key: 'special', label: '✨ 绝招' }]
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-white/15 bg-slate-950/80 p-3 shadow-2xl sm:p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div><p className="text-xs font-bold tracking-[.2em] text-cyan-300">NOW PLAYING</p><h2 className="text-xl font-black">{game.icon} {game.name}</h2></div>
+        <div className="text-right text-xs text-white/60"><div>方向键 / WASD</div><div>J 动作 · K 绝招</div></div>
+      </div>
+      <div className="relative overflow-hidden rounded-2xl border-4 border-slate-700 bg-black shadow-inner">
+        <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="block aspect-video w-full touch-none bg-black [image-rendering:pixelated]" aria-label={`${game.name}游戏画面`} />
+        {!running && (
+          <div className="absolute inset-0 grid place-items-center bg-slate-950/65 p-6 text-center backdrop-blur-sm">
+            <div><div className="text-6xl">{finished === 'won' ? '🏆' : finished === 'lost' ? '💥' : game.icon}</div><h3 className="mt-3 text-3xl font-black">{finished === 'won' ? '挑战成功！' : finished === 'lost' ? '再来一次！' : game.name}</h3>{finished && <p className="mt-2 text-white/70">本局得分：{score}</p>}<button type="button" onClick={reset} className={`mt-5 rounded-full bg-gradient-to-r ${game.accent} px-8 py-3 font-black shadow-xl transition hover:scale-105`}>{finished ? '重新挑战' : '投币开始'}</button></div>
+          </div>
+        )}
+      </div>
+      <div className="mt-4 flex select-none flex-wrap justify-center gap-2 sm:gap-3">
+        {buttons.map((button) => <button key={button.key} type="button" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); press(button.key, true) }} onPointerUp={() => press(button.key, false)} onPointerCancel={() => press(button.key, false)} className="min-h-12 min-w-14 rounded-2xl border border-white/15 bg-white/10 px-4 font-black shadow-lg transition active:scale-95 active:bg-white/25">{button.label}</button>)}
+      </div>
+    </section>
+  )
+}
