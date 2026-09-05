@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
+import ThreeDDice from '@/app/components/ui/ThreeDDice'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface DiceOption {
@@ -58,6 +59,12 @@ export default function LoveDicePage() {
   const [customOptions, setCustomOptions] = useState<string[]>(['', '', '', '', '', ''])
   const [isCustomMode, setIsCustomMode] = useState(false)
   const [history, setHistory] = useState<{ dice: string; result: string; time: string }[]>([])
+  const [diceFace, setDiceFace] = useState(1)
+  const rollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (rollTimerRef.current) clearTimeout(rollTimerRef.current)
+  }, [])
 
   // 掷骰子
   const rollDice = () => {
@@ -72,38 +79,19 @@ export default function LoveDicePage() {
       return
     }
 
+    const finalIndex = Math.floor(Math.random() * options.length)
+    const finalResult = options[finalIndex]
+    setDiceFace((finalIndex % 6) + 1)
     setIsRolling(true)
     setResult(null)
 
-    // 动画效果
-    let count = 0
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * options.length)
-      setResult(options[randomIndex])
-      count++
-
-      if (count >= 20) {
-        clearInterval(interval)
-        const finalIndex = Math.floor(Math.random() * options.length)
-        const finalResult = options[finalIndex]
-        setResult(finalResult)
-        setIsRolling(false)
-
-        // 添加到历史记录
-        setHistory((prev) =>
-          [
-            {
-              dice: isCustomMode ? '自定义骰子' : selectedDice.name,
-              result: finalResult,
-              time: new Date().toLocaleTimeString(),
-            },
-            ...prev,
-          ].slice(0, 10)
-        )
-
-        toast.success(`🎲 结果是: ${finalResult}！`)
-      }
-    }, 80)
+    rollTimerRef.current = setTimeout(() => {
+      setResult(finalResult)
+      setIsRolling(false)
+      setHistory((prev) => [{ dice: isCustomMode ? '自定义骰子' : selectedDice.name, result: finalResult, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 10))
+      toast.success(`🎲 结果是: ${finalResult}！`)
+      rollTimerRef.current = null
+    }, 1450)
   }
 
   // 更新自定义选项
@@ -215,19 +203,10 @@ export default function LoveDicePage() {
 
           {/* 骰子动画区域 */}
           <div className="flex flex-col items-center mb-6">
-            <div
-              onClick={rollDice}
-              className={`w-32 h-32 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl shadow-lg 
-                flex items-center justify-center cursor-pointer transition-all
-                ${isRolling ? 'animate-bounce scale-110' : 'hover:scale-105 hover:shadow-xl'}`}
-            >
-              {result ? (
-                <span className="text-white text-lg font-bold text-center px-2">{result}</span>
-              ) : (
-                <span className="text-6xl">🎲</span>
-              )}
+            <div className="rounded-3xl bg-gradient-to-b from-pink-50 to-purple-100 px-8 pt-4 shadow-inner">
+              <ThreeDDice value={diceFace} rolling={isRolling} onRoll={rollDice} />
             </div>
-            <p className="text-gray-500 text-sm mt-3">{isRolling ? '转转转...' : '点击骰子开始'}</p>
+            <p className="text-gray-500 text-sm mt-3">{isRolling ? '骰子正在桌面上滚动…' : '点击真实骰子开始'}</p>
           </div>
 
           {/* 结果显示 */}

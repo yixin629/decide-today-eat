@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import type { JSX } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
+import ThreeDDice from '@/app/components/ui/ThreeDDice'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 
 interface Player {
@@ -205,69 +205,8 @@ export default function BoardGamePage() {
 
   // 骰子显示
   const renderDice = () => {
-    const dots: Record<number, JSX.Element> = {
-      1: (
-        <div className="flex items-center justify-center h-full">
-          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-        </div>
-      ),
-      2: (
-        <div className="flex justify-between items-center h-full px-2">
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-        </div>
-      ),
-      3: (
-        <div className="h-full flex flex-col justify-between py-1 px-2">
-          <div className="w-2 h-2 bg-gray-800 rounded-full self-end"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full self-center"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full self-start"></div>
-        </div>
-      ),
-      4: (
-        <div className="grid grid-cols-2 gap-1 p-2 h-full">
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-        </div>
-      ),
-      5: (
-        <div className="grid grid-cols-2 gap-1 p-2 h-full relative">
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          </div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-        </div>
-      ),
-      6: (
-        <div className="grid grid-cols-2 gap-1 p-1 h-full">
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-          <div className="w-2 h-2 bg-gray-800 rounded-full"></div>
-        </div>
-      ),
-    }
-
     return (
-      <div
-        onClick={rollDice}
-        className={`w-16 h-16 bg-white rounded-xl shadow-lg border-2 border-gray-200 cursor-pointer 
-          transition-transform ${isRolling ? 'animate-spin' : 'hover:scale-110'} 
-          ${gameOver ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        {diceValue ? (
-          dots[diceValue]
-        ) : (
-          <div className="flex items-center justify-center h-full text-2xl">🎲</div>
-        )}
-      </div>
+      <ThreeDDice value={diceValue ?? 1} rolling={isRolling} onRoll={rollDice} disabled={gameOver} />
     )
   }
 
