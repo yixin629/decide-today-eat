@@ -9,6 +9,7 @@ import AIChatbot from '@/app/components/ai-chat/AIChatbot'
 import UnifiedThemePanel from '@/app/components/layout/UnifiedThemePanel'
 import HeartParticles from '@/app/components/layout/HeartParticles'
 import RandomSurprise from '@/app/components/layout/RandomSurprise'
+import NotificationCenter from '@/app/components/layout/NotificationCenter'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,7 +25,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" data-scroll-behavior="smooth">
       <body className={`${inter.className} min-h-dvh`}>
         <ToastProvider>
           <AuthGuard>
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </a>
             <RandomSurprise />
             <Navigation />
+            <NotificationCenter />
             <UserAvatar />
             <div id="main-content" tabIndex={-1}>
               {children}

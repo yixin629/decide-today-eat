@@ -1,366 +1,84 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useToast } from '@/app/components/feedback/ToastProvider'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
 import PageHeader from '@/app/components/ui/PageHeader'
-import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
+import { useToast } from '@/app/components/feedback/ToastProvider'
+import { useAuth } from '@/hooks/useAuth'
+import { createCoupleNotification } from '@/lib/couple-interactions'
+import { supabase } from '@/lib/supabase'
 
-const DEFAULT_FOODS = [
-  // 基础美食
-  { name: '火锅', emoji: '🍲' },
-  { name: '烤肉', emoji: '🥩' },
-  { name: '寿司', emoji: '🍣' },
-  { name: '披萨', emoji: '🍕' },
-  { name: '拉面', emoji: '🍜' },
-  { name: '麻辣烫', emoji: '🌶️' },
-  { name: '汉堡', emoji: '🍔' },
-  { name: '炸鸡', emoji: '🍗' },
-  { name: '海鲜', emoji: '🦞' },
-  { name: '烧烤', emoji: '🍢' },
-
-  // 云南特色美食
-  { name: '过桥米线', emoji: '🍜' },
-  { name: '汽锅鸡', emoji: '🍗' },
-  { name: '宣威火腿', emoji: '🥓' },
-  { name: '鲜花饼', emoji: '🌸' },
-  { name: '饵块', emoji: '🍚' },
-  { name: '豆焖饭', emoji: '🍛' },
-  { name: '野生菌火锅', emoji: '🍄' },
-  { name: '酸汤鱼', emoji: '🐟' },
-  { name: '凉鸡米线', emoji: '🍜' },
-  { name: '烧饵块', emoji: '🍘' },
-  { name: '罐罐米线', emoji: '🥘' },
-  { name: '蒙自年糕', emoji: '🍡' },
-  { name: '建水豆腐', emoji: '🧈' },
-  { name: '乳扇', emoji: '🥛' },
-  { name: '喜洲粑粑', emoji: '🥞' },
-  { name: '腾冲饵丝', emoji: '🍜' },
-  { name: '大救驾', emoji: '🍽️' },
-  { name: '菠萝饭', emoji: '🍍' },
-  { name: '竹筒饭', emoji: '🎋' },
-  { name: '烤乳猪', emoji: '🐷' },
-  { name: '撒撇', emoji: '🥗' },
-  { name: '傣味酸笋', emoji: '🥬' },
-  { name: '香茅草烤鱼', emoji: '🐟' },
-  { name: '舂鸡脚', emoji: '🍗' },
-  { name: '云腿月饼', emoji: '🥮' },
-  { name: '卤饵丝', emoji: '🍜' },
-  { name: '鸡枞菌', emoji: '🍄' },
-  { name: '松茸炖鸡', emoji: '🍗' },
-
-  // 贵州特色美食
-  { name: '酸汤鱼', emoji: '🐟' },
-  { name: '羊肉粉', emoji: '🍜' },
-  { name: '肠旺面', emoji: '🍜' },
-  { name: '丝娃娃', emoji: '🌯' },
-  { name: '豆腐圆子', emoji: '⚪' },
-  { name: '牛肉粉', emoji: '🍜' },
-  { name: '折耳根', emoji: '🥬' },
-  { name: '糯米饭', emoji: '🍚' },
-  { name: '青岩猪脚', emoji: '🦶' },
-  { name: '苗家酸汤', emoji: '🥘' },
-  { name: '辣子鸡', emoji: '🐔' },
-  { name: '红酸汤', emoji: '🥘' },
-  { name: '豆米火锅', emoji: '🍲' },
-  { name: '烙锅', emoji: '🍳' },
-  { name: '鸡辣子', emoji: '🌶️' },
-  { name: '状元蹄', emoji: '🦶' },
-  { name: '花溪牛肉粉', emoji: '🍜' },
-  { name: '恋爱豆腐果', emoji: '💕' },
-  { name: '炒饵块', emoji: '🍘' },
-  { name: '遵义羊肉粉', emoji: '🐑' },
-  { name: '凯里酸汤鱼', emoji: '🐟' },
-  { name: '镇宁波波糖', emoji: '🍬' },
-  { name: '威宁荞酥', emoji: '🍪' },
-
-  // 昭通特色美食
-  { name: '昭通小肉串', emoji: '🍢' },
-  { name: '昭通酱', emoji: '🥫' },
-  { name: '油糕稀豆粉', emoji: '🥞' },
-  { name: '昭通天麻炖鸡', emoji: '🍗' },
-  { name: '昭通苹果', emoji: '🍎' },
-  { name: '洋芋粑粑', emoji: '🥔' },
-  { name: '镇雄小碗红糖', emoji: '🍯' },
-  { name: '彝良天麻', emoji: '🌿' },
-  { name: '威信扎染', emoji: '🎨' },
-  { name: '盐津豆腐干', emoji: '🧈' },
-  { name: '大关筇竹笋', emoji: '🎋' },
-  { name: '永善花椒', emoji: '🌶️' },
-  { name: '绥江半边红李子', emoji: '🍑' },
-  { name: '巧家小碗红糖', emoji: '🍯' },
-  { name: '鲁甸樱桃', emoji: '🍒' },
-  { name: '昭阳烧洋芋', emoji: '🥔' },
-  { name: '镇雄洋芋鸡', emoji: '🐔' },
-  { name: '彝良麻辣洋芋', emoji: '🥔' },
-  { name: '威信手工面', emoji: '🍜' },
-  { name: '盐津乌骨鸡', emoji: '🐔' },
-  { name: '大关黄牛肉', emoji: '🥩' },
-  { name: '永善松露', emoji: '🍄' },
-  { name: '绥江花生', emoji: '🥜' },
-  { name: '巧家核桃', emoji: '🌰' },
-  { name: '昭通炒洋芋', emoji: '🥔' },
-  { name: '昭通羊汤锅', emoji: '🍲' },
-  { name: '昭通卷粉', emoji: '🌯' },
-  { name: '昭通凉粉', emoji: '🥤' },
-  { name: '昭通米线', emoji: '🍜' },
-  { name: '昭通烧烤', emoji: '🍢' },
-  { name: '昭通饵块', emoji: '🍘' },
-  { name: '昭通臭豆腐', emoji: '🧈' },
-  { name: '昭通豆花米线', emoji: '🍜' },
-  { name: '昭通锅巴洋芋', emoji: '🥔' },
-  { name: '昭通烤鸡', emoji: '🍗' },
-  { name: '昭通凉拌鸡', emoji: '🐔' },
-  { name: '昭通火腿', emoji: '🥓' },
-  { name: '昭通腊肉', emoji: '🥓' },
-  { name: '昭通香肠', emoji: '🌭' },
-  { name: '昭通酸菜鱼', emoji: '🐟' },
-  { name: '昭通水煮鱼', emoji: '🐟' },
-  { name: '昭通毛豆腐', emoji: '🧈' },
+type Kind = 'choice' | 'punishment'
+type WheelOption = { id: string; label: string; emoji: string; kind: Kind; custom?: boolean; wheelType?: string }
+type Preset = { id: string; label: string; icon: string; question: string; color: string; options: WheelOption[] }
+const o = (id: string, emoji: string, label: string): WheelOption => ({ id, emoji, label, kind: 'choice' })
+const PRESETS: Preset[] = [
+  { id:'food', label:'今晚吃什么', icon:'🍜', question:'今晚就吃……', color:'from-orange-400 to-rose-500', options:[o('f1','🍲','火锅'),o('f2','🥩','烤肉'),o('f3','🍣','寿司'),o('f4','🍕','披萨'),o('f5','🍜','米线'),o('f6','🍔','汉堡'),o('f7','🍗','炸鸡'),o('f8','🍳','一起做饭')] },
+  { id:'dishes', label:'谁洗碗', icon:'🫧', question:'今天洗碗的是……', color:'from-cyan-400 to-blue-500', options:[o('d1','⭐','zyx'),o('d2','🍐','zly'),o('d3','🫶','一起洗'),o('d4','✊','猜拳决定')] },
+  { id:'movie', label:'看什么电影', icon:'🎬', question:'今晚的片单是……', color:'from-violet-500 to-fuchsia-500', options:[o('m1','😂','喜剧'),o('m2','💥','动作'),o('m3','💗','爱情'),o('m4','🧸','动画'),o('m5','🚀','科幻'),o('m6','👻','恐怖')] },
+  { id:'weekend', label:'周末去哪', icon:'🗺️', question:'周末目的地是……', color:'from-emerald-400 to-teal-500', options:[o('w1','🏠','宅家做饭'),o('w2','🌳','公园散步'),o('w3','☕','咖啡店'),o('w4','🎦','电影院'),o('w5','🚶','随机散步'),o('w6','🚗','周边一日游')] },
+  { id:'apology', label:'谁先道歉', icon:'🤝', question:'先迈出一步的是……', color:'from-pink-400 to-rose-500', options:[o('a1','⭐','zyx先道歉'),o('a2','🍐','zly先道歉'),o('a3','🫂','先抱抱再一起说'),o('a4','💌','各写一句真心话')] },
+  { id:'boss', label:'今天听谁的', icon:'👑', question:'今天的决定权属于……', color:'from-amber-400 to-orange-500', options:[o('b1','⭐','听zyx的'),o('b2','🍐','听zly的'),o('b3','🔁','一人决定一件'),o('b4','🎲','再转一次')] },
 ]
 
 export default function FoodPage() {
+  const { user } = useAuth()
   const toast = useToast()
-  const [selectedFood, setSelectedFood] = useState<any>(null)
-  const [isSpinning, setIsSpinning] = useState(false)
-  const [foodOptions, setFoodOptions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [newFood, setNewFood] = useState('')
+  const [wheelId, setWheelId] = useState('food')
+  const [custom, setCustom] = useState<WheelOption[]>([])
+  const [draft, setDraft] = useState({ label: '', emoji: '✨', kind: 'choice' as Kind })
+  const [result, setResult] = useState<WheelOption | null>(null)
+  const [punishment, setPunishment] = useState<WheelOption | null>(null)
+  const [spinning, setSpinning] = useState(false)
+  const [rotation, setRotation] = useState(0)
+  const preset = PRESETS.find((item) => item.id === wheelId) ?? PRESETS[0]
 
-  const [selectedCategory, setSelectedCategory] = useState('全部')
-
-  // 加载食物选项
-  const loadFoodOptions = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('food_options')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        setFoodOptions(data)
-      } else {
-        // 如果数据库为空，插入默认数据
-        await insertDefaultFoods()
-      }
-    } catch (error) {
-      console.error('加载食物选项失败:', error)
-      // 出错时使用默认数据
-      setFoodOptions(DEFAULT_FOODS)
-    } finally {
-      setLoading(false)
-    }
+  const loadCustom = useCallback(async () => {
+    const { data } = await supabase.from('decision_options').select('id, wheel_type, option_kind, label, emoji').order('created_at')
+    setCustom((data ?? []).map((row) => ({ id: String(row.id), label: String(row.label), emoji: String(row.emoji || '✨'), kind: row.option_kind as Kind, custom: true, wheelType: String(row.wheel_type) })))
   }, [])
+  useEffect(() => { void loadCustom() }, [loadCustom])
+  useEffect(() => { setResult(null); setPunishment(null) }, [wheelId])
 
-  useEffect(() => {
-    loadFoodOptions()
-  }, [loadFoodOptions])
+  const wheelCustom = custom.filter((item) => item.wheelType === wheelId)
+  const choices = useMemo(() => [...preset.options, ...wheelCustom.filter((item) => item.kind === 'choice')], [preset, wheelCustom])
+  const punishments = wheelCustom.filter((item) => item.kind === 'punishment')
 
-  // 插入默认食物数据
-  const insertDefaultFoods = async () => {
+  const spin = () => {
+    if (spinning || !choices.length) return
+    setSpinning(true); setResult(null); setPunishment(null)
+    const chosen = choices[Math.floor(Math.random() * choices.length)]
+    setRotation((value) => value + 1440 + Math.floor(Math.random() * 360))
+    window.setTimeout(() => { setResult(chosen); setPunishment(punishments.length ? punishments[Math.floor(Math.random() * punishments.length)] : null); setSpinning(false) }, 1500)
+  }
+  const add = async () => {
+    if (!user || !draft.label.trim()) return
+    const { error } = await supabase.from('decision_options').insert({ user_id: user, wheel_type: wheelId, option_kind: draft.kind, label: draft.label.trim(), emoji: draft.emoji.trim() || '✨' })
+    if (error) return toast.error('保存失败，请先执行最新数据库迁移')
+    setDraft({ ...draft, label: '' }); await loadCustom(); toast.success(draft.kind === 'choice' ? '选项已添加' : '小惩罚已添加')
+  }
+  const remove = async (id: string) => {
+    const { error } = await supabase.from('decision_options').delete().eq('id', id)
+    if (!error) { setCustom((items) => items.filter((item) => item.id !== id)); toast.success('已删除') }
+  }
+  const share = async () => {
+    if (!user || !result) return
     try {
-      const { data, error } = await supabase
-        .from('food_options')
-        .insert(
-          DEFAULT_FOODS.map((food) => ({
-            name: food.name,
-            emoji: food.emoji,
-            category: '默认',
-            is_favorite: false,
-          }))
-        )
-        .select()
-
-      if (!error && data) {
-        setFoodOptions(data)
-      }
-    } catch (error) {
-      console.error('插入默认数据失败:', error)
-      setFoodOptions(DEFAULT_FOODS)
-    }
+      await createCoupleNotification({ actor: user, type: 'wheel', title: `${preset.icon} ${preset.label}有结果了`, message: `${result.emoji} ${result.label}${punishment ? `；附加挑战：${punishment.emoji} ${punishment.label}` : ''}`, link: '/food', metadata: { wheelId, result: result.label } })
+      toast.success('结果已经告诉对方啦')
+    } catch { toast.error('发送失败，请检查数据库迁移') }
   }
 
-  // 获取所有类别
-  const categories = ['全部', ...Array.from(new Set(foodOptions.map((f) => f.category || '默认')))]
-
-  // 筛选食物
-  const filteredFoods =
-    selectedCategory === '全部'
-      ? foodOptions
-      : foodOptions.filter((f) => (f.category || '默认') === selectedCategory)
-
-  const spinWheel = () => {
-    if (isSpinning || filteredFoods.length === 0) return
-
-    setIsSpinning(true)
-    setSelectedFood(null)
-
-    // 模拟转盘动画
-    let count = 0
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * filteredFoods.length)
-      setSelectedFood(filteredFoods[randomIndex])
-      count++
-
-      if (count > 20) {
-        clearInterval(interval)
-        setIsSpinning(false)
-      }
-    }, 100)
-  }
-
-  const addCustomFood = async () => {
-    if (!newFood.trim()) return
-
-    try {
-      const { data, error } = await supabase
-        .from('food_options')
-        .insert([
-          {
-            name: newFood.trim(),
-            emoji: '🍱',
-            category: '自定义',
-            is_favorite: false,
-          },
-        ])
-        .select()
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        setFoodOptions([...foodOptions, data[0]])
-        setNewFood('')
-        toast.success('添加成功！')
-      }
-    } catch (error) {
-      console.error('添加食物失败:', error)
-      toast.error('添加食物失败，请重试')
-    }
-  }
-
-  const deleteFood = async (id: number) => {
-    try {
-      const { error } = await supabase.from('food_options').delete().eq('id', id)
-
-      if (error) throw error
-
-      setFoodOptions(foodOptions.filter((food) => food.id !== id))
-      toast.success('删除成功')
-    } catch (error) {
-      // If it's a default food that hasn't been persisted properly, just remove from local state
-      if (!id) {
-        setFoodOptions(
-          foodOptions.filter((food) => food.name !== foodOptions.find((f) => f.id === id)?.name)
-        )
-        return
-      }
-      console.error('删除食物失败:', error)
-      toast.error('删除失败，请重试')
-    }
-  }
-
-  return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        <BackButton href="/" text="返回首页" />
-
-        {loading ? (
-          <LoadingSkeleton type="card" count={1} />
-        ) : (
-          <div className="card text-center">
-            <PageHeader title="今晚吃什么？" emoji="🍱" emojiDouble subtitle="让命运来决定你们的晚餐" className="!mb-6" />
-
-            {/* Result Display */}
-            <div className="mb-8 min-h-[160px] flex items-center justify-center">
-              {selectedFood ? (
-                <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-2xl p-8 transform scale-110 transition-all animate-bounce">
-                  <div className="text-8xl mb-4">{selectedFood.emoji}</div>
-                  <div className="text-4xl font-bold text-primary">{selectedFood.name}</div>
-                </div>
-              ) : (
-                <div className="text-gray-400">
-                  <div className="text-6xl mb-4">❓</div>
-                  <p>点击下方按钮开始决定</p>
-                </div>
-              )}
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2 justify-center mb-6">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm transition-all ${
-                    selectedCategory === category
-                      ? 'bg-primary text-white shadow-md transform scale-105'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
-            {/* Spin Button */}
-            <button
-              onClick={spinWheel}
-              disabled={isSpinning || filteredFoods.length === 0}
-              className="btn-primary text-xl px-12 py-4 mb-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all w-full md:w-auto"
-            >
-              {isSpinning ? '正在随机选餐... 🎰' : '帮我决定！✨'}
-            </button>
-            <p className="text-sm text-gray-400 mb-8">当前候选：{filteredFoods.length} 个选项</p>
-
-            {/* Food Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
-              {filteredFoods.map((food, index) => (
-                <div
-                  key={food.id || index}
-                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all relative group cursor-pointer border border-gray-100 hover:border-primary/30"
-                >
-                  {food.category === '自定义' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteFood(food.id)
-                      }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 flex items-center justify-center shadow-md z-10"
-                    >
-                      ×
-                    </button>
-                  )}
-                  <div className="text-4xl mb-2 transform group-hover:scale-110 transition-transform">
-                    {food.emoji}
-                  </div>
-                  <div className="text-sm font-semibold text-gray-700">{food.name}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Custom Food Input */}
-            <div className="border-t pt-6">
-              <h3 className="text-xl font-bold text-gray-700 mb-4">添加自定义选项</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newFood}
-                  onChange={(e) => setNewFood(e.target.value)}
-                  placeholder="输入食物名称..."
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 rounded-full focus:outline-none focus:border-primary"
-                  onKeyPress={(e) => e.key === 'Enter' && addCustomFood()}
-                />
-                <button onClick={addCustomFood} className="btn-primary">
-                  添加
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+  return <main className="min-h-screen px-4 pb-8 pt-20 sm:px-6"><div className="mx-auto max-w-6xl">
+    <BackButton href="/" text="返回首页" />
+    <PageHeader title="万能转盘" emoji="🎡" subtitle="吃什么、谁洗碗、去哪玩——难选的都交给一点运气" />
+    <div className="mb-6 flex gap-2 overflow-x-auto pb-2" aria-label="选择转盘主题">{PRESETS.map((item) => <button key={item.id} type="button" onClick={() => setWheelId(item.id)} className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition ${wheelId === item.id ? 'bg-gray-900 text-white shadow-lg' : 'border border-gray-200 bg-white text-gray-600 hover:border-pink-300'}`}>{item.icon} {item.label}</button>)}</div>
+    <div className="grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
+      <section className="card overflow-hidden !p-0"><div className={`bg-gradient-to-br ${preset.color} px-5 py-8 text-center text-white sm:px-8`}><p className="text-sm font-medium text-white/80">{preset.question}</p><div className="relative mx-auto my-6 h-64 w-64 sm:h-72 sm:w-72"><div className="absolute left-1/2 top-[-8px] z-10 -translate-x-1/2 text-4xl drop-shadow">🔻</div><div className="grid h-full w-full place-items-center rounded-full border-[10px] border-white/90 bg-[conic-gradient(#fda4af_0_45deg,#fde68a_45deg_90deg,#86efac_90deg_135deg,#93c5fd_135deg_180deg,#c4b5fd_180deg_225deg,#f9a8d4_225deg_270deg,#fdba74_270deg_315deg,#67e8f9_315deg)] shadow-2xl transition-transform duration-[1500ms] ease-out" style={{ transform: `rotate(${rotation}deg)` }}><div className="grid h-28 w-28 place-items-center rounded-full border-4 border-white bg-white/95 text-center text-gray-800 shadow-lg"><span><span className="block text-4xl">{spinning ? '✨' : result?.emoji ?? preset.icon}</span><span className="mt-1 block max-w-20 text-xs font-bold">{spinning ? '转动中' : result?.label ?? '准备好'}</span></span></div></div></div><button type="button" onClick={spin} disabled={spinning} className="rounded-full bg-white px-10 py-3.5 text-lg font-black text-gray-900 shadow-xl transition hover:-translate-y-0.5 disabled:opacity-60">{spinning ? '命运正在选择…' : '开始转动'}</button></div>
+      {result && <div className="p-5 text-center"><p className="text-sm text-gray-500">本次结果</p><p className="mt-1 text-2xl font-black text-gray-800">{result.emoji} {result.label}</p>{punishment && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">附加挑战：{punishment.emoji} {punishment.label}</p>}<button type="button" onClick={() => void share()} className="mt-4 rounded-full bg-pink-100 px-5 py-2 text-sm font-bold text-pink-700 hover:bg-pink-200">💌 告诉对方</button></div>}</section>
+      <section className="card"><h2 className="text-xl font-bold text-gray-800">这个转盘的内容</h2><p className="mt-1 text-sm text-gray-500">自定义内容会存进两个人共用的数据库。</p><div className="my-5 flex flex-wrap gap-2">{choices.map((item) => <span key={item.id} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-2 text-sm text-gray-700">{item.emoji} {item.label}{item.custom && <button type="button" onClick={() => void remove(item.id)} className="ml-1 text-gray-400 hover:text-red-500" aria-label={`删除${item.label}`}>×</button>}</span>)}</div>
+      {punishments.length > 0 && <div className="mb-6"><h3 className="mb-2 text-sm font-bold text-amber-800">🎯 随结果抽取的小惩罚</h3><div className="flex flex-wrap gap-2">{punishments.map((item) => <span key={item.id} className="rounded-full bg-amber-50 px-3 py-2 text-sm text-amber-800">{item.emoji} {item.label} <button type="button" onClick={() => void remove(item.id)} aria-label={`删除${item.label}`}>×</button></span>)}</div></div>}
+      <div className="rounded-2xl border border-pink-100 bg-pink-50/60 p-4"><h3 className="font-bold text-gray-800">添加自定义内容</h3><div className="mt-3 grid grid-cols-[4.5rem_1fr] gap-2"><input value={draft.emoji} onChange={(e) => setDraft({ ...draft, emoji: e.target.value })} aria-label="表情" maxLength={4} className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-center text-xl" /><input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void add() }} placeholder="例如：唱一首歌" className="min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-pink-400" /></div><div className="mt-3 flex flex-wrap items-center gap-2"><button type="button" onClick={() => setDraft({ ...draft, kind: 'choice' })} className={`rounded-full px-3 py-2 text-sm ${draft.kind === 'choice' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>普通选项</button><button type="button" onClick={() => setDraft({ ...draft, kind: 'punishment' })} className={`rounded-full px-3 py-2 text-sm ${draft.kind === 'punishment' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600'}`}>小惩罚</button><button type="button" onClick={() => void add()} disabled={!draft.label.trim()} className="ml-auto rounded-full bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50">添加</button></div></div></section>
     </div>
-  )
+  </div></main>
 }
