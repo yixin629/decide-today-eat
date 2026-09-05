@@ -65,7 +65,7 @@ export default function NotificationCenter() {
     return () => document.removeEventListener('mousedown', close)
   }, [open])
 
-  if (!user || pathname === '/login' || pathname === '/chat') return null
+  if (!user || pathname === '/login' || pathname === '/chat' || pathname.startsWith('/mahjong/') || pathname === '/dream-journey') return null
 
   const unread = items.filter((item) => !item.read_at).length
   const markRead = async (id: string) => {
@@ -79,7 +79,7 @@ export default function NotificationCenter() {
   }
 
   return (
-    <div ref={panelRef} className="fixed right-[4.9rem] top-3 z-50 sm:right-[9.2rem] sm:top-4">
+    <div ref={panelRef} className="fixed right-[5.75rem] top-3 z-50 sm:right-[10rem] sm:top-4">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

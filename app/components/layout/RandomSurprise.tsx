@@ -36,6 +36,7 @@ export default function RandomSurprise() {
   const [surprise, setSurprise] = useState<{ emoji: string; message: string } | null>(null)
   const [show, setShow] = useState(false)
   const pathname = usePathname()
+  const immersiveGame = pathname.startsWith('/mahjong/') || pathname === '/dream-journey'
 
   useEffect(() => {
     let revealTimer: ReturnType<typeof setTimeout> | undefined
@@ -44,6 +45,8 @@ export default function RandomSurprise() {
 
     setShow(false)
     setSurprise(null)
+
+    if (immersiveGame) return
 
     // 10% 概率触发惊喜
     const shouldShowSurprise = Math.random() < 0.1
@@ -83,9 +86,9 @@ export default function RandomSurprise() {
       if (hideTimer) clearTimeout(hideTimer)
       if (removeTimer) clearTimeout(removeTimer)
     }
-  }, [pathname]) // 每次页面切换时重新检查
+  }, [immersiveGame, pathname]) // 每次页面切换时重新检查
 
-  if (!surprise) return null
+  if (immersiveGame || !surprise) return null
 
   return (
     <div

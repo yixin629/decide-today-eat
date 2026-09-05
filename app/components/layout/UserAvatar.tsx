@@ -124,7 +124,7 @@ export default function UserAvatar() {
   if (!currentUser) return null
 
   // Chat page has its own header with avatar, so hide this global one to prevent overlap
-  if (pathname === '/chat' || pathname === '/login') return null
+  if (pathname === '/chat' || pathname === '/login' || pathname.startsWith('/mahjong/') || pathname === '/dream-journey') return null
 
   const displayAvatar = avatarUrl || userInfo?.emoji || '👤'
   const isImg = displayAvatar.startsWith('http')

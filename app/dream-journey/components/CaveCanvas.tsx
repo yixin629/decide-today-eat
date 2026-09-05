@@ -170,7 +170,7 @@ export default function CaveCanvas({ paused, bossActive, chestOpened, initialPos
 
   return (
     <div className="relative overflow-hidden rounded-2xl border-4 border-rose-300/80 bg-slate-950 shadow-2xl">
-      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="block aspect-[9/5.6] w-full touch-none cursor-crosshair" onPointerDown={(event) => setTarget(event.clientX, event.clientY)} aria-label="赤焰妖王洞窟，使用方向键、WASD或点击移动" />
+      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="block aspect-[9/5.6] min-h-[240px] w-full touch-none cursor-crosshair md:min-h-0" onPointerDown={(event) => setTarget(event.clientX, event.clientY)} aria-label="赤焰妖王洞窟，使用方向键、WASD或点击移动" />
       {!ready && <div className="absolute inset-0 grid place-items-center bg-slate-950 text-rose-200">🔥 正在进入赤焰洞窟…</div>}
       <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-slate-950/75 px-3 py-1 text-xs">独立场景 · 洞窟祭坛</div>
       {navigatingTo && !paused && <div className="pointer-events-none absolute right-3 top-3 rounded-full border border-rose-200/50 bg-slate-950/80 px-3 py-1 text-xs font-bold text-rose-100">➤ 自动寻路：{navigatingTo}</div>}

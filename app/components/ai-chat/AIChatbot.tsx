@@ -44,7 +44,7 @@ export default function AIChatbot() {
   const dialogRef = useRef<HTMLElement>(null)
   const shouldRestoreTriggerFocusRef = useRef(false)
   const hideFloatingAssistant =
-    pathname === '/login' || pathname === '/chat' || pathname.startsWith('/chat/')
+    pathname === '/login' || pathname === '/chat' || pathname.startsWith('/chat/') || pathname.startsWith('/mahjong/') || pathname === '/dream-journey'
 
   // Load history on mount
   useEffect(() => {

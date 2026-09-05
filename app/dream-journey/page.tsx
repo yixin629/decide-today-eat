@@ -462,8 +462,43 @@ export default function DreamJourneyPage() {
     setNotice(result.message)
   }
 
+  const continueAdventure = () => {
+    const objective = getQuestTarget(questStage)
+    if (questStage === 'not-started') {
+      const master = nearbyNpc?.id === 'master' ? nearbyNpc : objective?.id === 'master' ? objective : null
+      if (master && Math.hypot(position.x - master.x, position.y - master.y) < 180) {
+        interactWithNpc(master)
+      } else if (objective) {
+        navigateToQuestTarget({ x: objective.x, y: objective.y })
+      }
+      return
+    }
+    if (questStage === 'hunting') {
+      beginEncounter()
+      return
+    }
+    if (questStage === 'boss-ready' || questStage === 'returning') {
+      if (objective) navigateToQuestTarget({ x: objective.x, y: objective.y })
+      return
+    }
+    if (stats.eliteWins >= 2) beginMoonChapter()
+    else beginEncounter()
+  }
+
+  const primaryActionLabel = questStage === 'not-started'
+    ? '领取新手试炼'
+    : questStage === 'hunting'
+      ? `立即迎战小妖 · ${stats.questProgress}/${QUEST_TARGET}`
+      : questStage === 'boss-ready'
+        ? '自动前往赤焰洞窟'
+        : questStage === 'returning'
+          ? '自动返回师父复命'
+          : stats.eliteWins >= 2
+            ? '挑战月影秘境'
+            : '开始悬赏巡逻'
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#4338ca_0,_#172554_36%,_#071120_100%)] px-3 py-5 pb-24 text-white md:px-6 md:pb-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#4338ca_0,_#172554_36%,_#071120_100%)] px-3 pb-8 pt-4 text-white md:px-6">
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <BackButton className="mb-0 border-white/20 bg-white/10 text-white hover:bg-white/20" />
@@ -474,7 +509,15 @@ export default function DreamJourneyPage() {
           <span className="rounded-full border border-amber-300/40 bg-amber-100/10 px-4 py-2 text-sm text-amber-100">任务与位置自动存档</span>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="mb-4 grid gap-3 rounded-2xl border border-amber-200/25 bg-slate-950/45 p-3 shadow-xl backdrop-blur sm:grid-cols-[1fr_auto] sm:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[.18em] text-amber-300">当前行动</p>
+            <p className="mt-1 text-sm text-slate-200">{notice}</p>
+          </div>
+          <button type="button" onClick={continueAdventure} disabled={Boolean(pendingBattle || battle || battleResult || dialogue)} className="rounded-xl bg-gradient-to-r from-amber-300 to-orange-400 px-6 py-3 font-black text-slate-950 shadow-lg transition hover:-translate-y-0.5 disabled:opacity-50">⚔️ {primaryActionLabel}</button>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
           <section className="relative">
             {loaded ? (
               scene === 'overworld' ? (
@@ -546,7 +589,7 @@ export default function DreamJourneyPage() {
             {skillOpen && <SkillPanel skills={skills} onUpgrade={handleUpgradeHeroSkill} onClose={() => setSkillOpen(false)} />}
           </section>
 
-          <aside className="flex flex-col gap-4">
+          <aside className="flex flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:pr-1">
             <div className="order-4 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
               <div className="mb-3 flex items-center gap-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-2xl">⚔️</div>
@@ -577,9 +620,7 @@ export default function DreamJourneyPage() {
               )}
             </div>
 
-            <div className="order-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-xs leading-5 text-slate-300">
-              <b className="mr-2 text-sky-300">历练动态</b>{notice}
-            </div>
+            <div className="order-3 rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2 text-xs leading-5 text-slate-300"><b className="mr-2 text-sky-300">操作提示</b>点击上方金色按钮即可继续主线；地图探索和手动移动仍然保留。</div>
 
             <div className="order-2">
               {scene === 'overworld' ? <MiniMap position={position} questStage={questStage} sceneName={sceneName} onNavigate={navigateToMapTarget} /> : (

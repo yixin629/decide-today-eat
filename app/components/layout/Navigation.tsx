@@ -102,7 +102,7 @@ export default function Navigation() {
     features: filteredFeatures.filter((feature) => feature.category === category.id),
   })).filter((category) => category.features.length > 0)
 
-  const hideNavigation = pathname === '/login' || pathname === '/chat'
+  const hideNavigation = pathname === '/login' || pathname === '/chat' || pathname.startsWith('/mahjong/') || pathname === '/dream-journey'
   if (hideNavigation || !homeFeature) return null
 
   return (

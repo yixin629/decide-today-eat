@@ -46,7 +46,7 @@ export default function GameEndModal({ gameState, currentUser, onReturnToLobby }
               <div className="text-5xl mb-2">{winner.avatar}</div>
               <div className="text-xl font-bold text-amber-300 mb-1">{winner.name} 胡啦!</div>
               <div className="inline-block bg-black/30 text-amber-200/80 text-xs px-3 py-1 rounded-full mb-6">
-                {isSelfDrawn ? '自摸' : '点炮'} &middot; {gameState.mode === 'sichuan' ? '血战到底' : '经典模式'}
+                {isSelfDrawn ? '自摸' : '点炮'} &middot; {gameState.mode === 'sichuan' ? '四川定缺' : '经典模式'}
               </div>
 
               {/* Score table */}

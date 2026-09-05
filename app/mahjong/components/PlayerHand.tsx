@@ -4,6 +4,8 @@ import React from 'react'
 import TileComponent from './Tile'
 import { Player, Tile } from '../engine/MahjongLogic'
 
+const suitNames = { characters: '万', bamboo: '条', dots: '筒' }
+
 interface PlayerHandProps {
   player: Player
   position: 'bottom' | 'top' | 'left' | 'right'
@@ -38,6 +40,7 @@ export default function PlayerHand({
             <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">胡</span>
           )}
           {isCurrentTurn && <span className="text-xs font-bold ml-1">出牌中...</span>}
+          {player.voidSuit && <span className="rounded bg-black/20 px-1.5 py-0.5 text-[10px]">定缺{suitNames[player.voidSuit]}</span>}
         </div>
 
         {/* Melds */}
@@ -54,7 +57,8 @@ export default function PlayerHand({
         )}
 
         {/* Hand tiles */}
-        <div className="flex gap-[2px] justify-center flex-wrap">
+        <p className="mb-0.5 text-[10px] text-white/45 md:hidden">← 左右滑动查看全部手牌 →</p>
+        <div className="flex max-w-full gap-[3px] overflow-x-auto px-2 pb-3 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {player.hand.map((tile, i) => (
             <TileComponent
               key={`h-${i}-${tile.id}`}
@@ -84,11 +88,12 @@ export default function PlayerHand({
         {player.status === 'hu' && (
           <span className="bg-red-600 text-white px-1 rounded font-bold">胡</span>
         )}
+        {player.voidSuit && <span className="rounded bg-black/20 px-1 py-0.5 text-[9px]">缺{suitNames[player.voidSuit]}</span>}
       </div>
 
       {/* Hidden hand tiles */}
-      <div className="flex gap-[1px]">
-        {player.hand.map((_, i) => (
+      <div className="flex max-w-[170px] gap-[1px] overflow-hidden sm:max-w-none">
+        {player.hand.slice(0, 14).map((_, i) => (
           <TileComponent key={`oh-${i}`} isHidden size="xs" />
         ))}
       </div>

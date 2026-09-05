@@ -89,9 +89,14 @@ export default function Tile({
   const color = tile ? SUIT_COLOR[tile.suit] : '#333'
   const numText = tile ? NUM_CN[tile.value] : ''
   const suitText = tile ? SUIT_CN[tile.suit] : ''
+  const tileLabel = tile ? `${NUM_CN[tile.value]}${SUIT_CN[tile.suit]}` : '麻将牌'
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={tileLabel}
+      aria-pressed={isSelected}
+      disabled={!onClick}
       onClick={onClick}
       className={className}
       style={{
@@ -136,6 +141,6 @@ export default function Tile({
       >
         {suitText}
       </span>
-    </div>
+    </button>
   )
 }

@@ -59,7 +59,7 @@
 | 星座           | `horoscope_readings`             | `migrations/horoscope-table.sql`                                | 独立迁移                                                                                                                          |
 | 穿搭记录       | `outfit_records`                 | `migrations/outfit-records-table.sql`                           | 独立迁移                                                                                                                          |
 | PTE 备考计划   | `pte_plans`、`pte_templates`     | `migrations/pte-plans-table.sql` + `migrations/pte-templates-table.sql` | 按网站登录身份保存多个计划、逐题记录和个人模板                                                                                |
-| 双人陪伴功能   | `decision_options`、`memory_places`、`couple_growth`、`couple_gifts`、`couple_notifications` | `migrations/couple-companion-features.sql` | 万能转盘、共同养成、回忆地图、礼物、PTE 鼓励与实时通知 |
+| 双人陪伴功能   | `decision_options`、`food_options`、`memory_places`、`couple_growth`、`couple_gifts`、`couple_notifications` | `migrations/couple-companion-features.sql` + `migrations/expand-decision-wheel-options.sql` | 万能转盘（保留旧食物库并扩充其他主题）、共同养成、回忆地图、礼物、PTE 鼓励与实时通知 |
 | 互动功能包     | 见下表                           | `migrations/supabase-new-features.sql`                          | 包含默认数据和遗留表，不能默认重复执行                                                                                            |
 
 `migrations/supabase-new-features.sql` 当前提供这些页面需要的表：
@@ -95,6 +95,7 @@
 | `add-photo-tag.sql`             | 为旧 `photos` 补 `tag` 和索引                    |
 | `chat-table-safe.sql`           | 当前聊天表、索引、宽松 RLS 和 Realtime           |
 | `check-in-table.sql`            | 签到表和索引                                     |
+| `expand-decision-wheel-options.sql` | 非破坏性扩充万能转盘分类、内置选项与小惩罚；不清空旧食物和自定义内容 |
 | `couple-companion-features.sql` | 双人陪伴、转盘、地图、礼物与通知；宽松私有应用策略与通知 Realtime |
 | `enhance-diary-table.sql`       | 日记天气与贴纸字段                               |
 | `enhance-notes-table.sql`       | 留言样式、封口与 emoji 字段                      |

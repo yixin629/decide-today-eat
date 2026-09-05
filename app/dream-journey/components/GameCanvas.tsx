@@ -454,7 +454,7 @@ export default function GameCanvas({
         ref={canvasRef}
         width={900}
         height={560}
-        className="block aspect-[9/5.6] w-full touch-none cursor-crosshair"
+        className="block aspect-[9/5.6] min-h-[240px] w-full touch-none cursor-crosshair md:min-h-0"
         onPointerDown={(event) => setTargetFromPointer(event.clientX, event.clientY)}
         aria-label="梦境长安游戏地图，使用方向键、WASD、虚拟方向键或点击地图移动"
       />

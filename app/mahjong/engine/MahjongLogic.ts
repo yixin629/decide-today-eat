@@ -119,7 +119,10 @@ export function initializeGameState(
   players[0].status = 'thinking';
 
   // Sort hands
-  players.forEach((p) => p.hand.sort(sortTiles));
+  players.forEach((p) => {
+    p.hand.sort(sortTiles);
+    if (mode === 'sichuan') p.voidSuit = chooseVoidSuit(p.hand);
+  });
 
   return {
     id,
@@ -146,9 +149,12 @@ export function applyDiscard(state: GameState, playerId: string, tileIndex: numb
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const player = newState.players.find(p => p.id === playerId);
   if (!player) return newState;
+  if (newState.players[newState.currentTurn]?.id !== playerId) return newState;
+  if (tileIndex < 0 || tileIndex >= player.hand.length) return newState;
 
   const [discardedTile] = player.hand.splice(tileIndex, 1);
   player.discards.push(discardedTile);
+  player.status = 'waiting';
   
   newState.lastAction = { playerId, type: 'discard', tile: discardedTile };
   newState.pendingActions = {};
@@ -254,6 +260,24 @@ export function applyAction(state: GameState, playerId: string, actionType: Acti
     return newState;
   }
 
+  if (actionType === 'chow') {
+    const combination = canChow(player.hand, discardedTile, newState.mode)[0];
+    if (!combination) return state;
+    combination.forEach((tile) => {
+      const index = player.hand.findIndex((candidate) => candidate.id === tile.id);
+      if (index !== -1) player.hand.splice(index, 1);
+    });
+    player.melds.push({
+      type: 'chow',
+      tiles: [...combination, discardedTile].sort(sortTiles),
+      fromPlayer: discarderId,
+    });
+    player.hand.sort(sortTiles);
+    newState.currentTurn = newState.players.findIndex((candidate) => candidate.id === playerId);
+    newState.players.forEach((candidate) => { candidate.status = candidate.id === playerId ? 'thinking' : candidate.status === 'hu' ? 'hu' : 'waiting'; });
+    return newState;
+  }
+
   if (actionType === 'kong') {
     // Remove 3 matching tiles from hand
     for (let i = 0; i < 3; i++) {
@@ -287,6 +311,13 @@ export function applyBotTurn(state: GameState, playerId: string): GameState {
    const player = newState.players.find(p => p.id === playerId);
    if (!player) return newState;
 
+   if (canHu(player.hand, newState.mode, player.voidSuit)) {
+      player.status = 'hu';
+      newState.lastAction = { playerId, type: 'hu', tile: player.hand[player.hand.length - 1] };
+      newState.status = 'finished';
+      return newState;
+   }
+
    // Assume they already drew, so they just discard
    const tileToDiscard = getBotDiscard(player, newState.mode);
    const tileIndex = player.hand.findIndex(t => t.id === tileToDiscard.id);
@@ -309,6 +340,9 @@ export function advanceTurn(state: GameState): GameState {
    } while (newState.players[newState.currentTurn].status === 'hu');
 
    const nextPlayer = newState.players[newState.currentTurn];
+   newState.players.forEach((player) => {
+      if (player.status !== 'hu') player.status = player.id === nextPlayer.id ? 'thinking' : 'waiting';
+   });
    
    // Draw a tile
    if (newState.deck.length > 0) {
@@ -333,6 +367,23 @@ export function sortTiles(a: Tile, b: Tile): number {
     return a.suit.localeCompare(b.suit);
   }
   return a.value - b.value;
+}
+
+export function chooseVoidSuit(hand: Tile[]): Suit {
+  const counts: Record<Suit, number> = { characters: 0, bamboo: 0, dots: 0 };
+  hand.forEach((tile) => { counts[tile.suit] += 1; });
+  return (Object.entries(counts) as [Suit, number][]).sort((a, b) => a[1] - b[1])[0][0];
+}
+
+export function applySelfHu(state: GameState, playerId: string): GameState {
+  const newState = JSON.parse(JSON.stringify(state)) as GameState;
+  const playerIndex = newState.players.findIndex((player) => player.id === playerId);
+  const player = newState.players[playerIndex];
+  if (!player || playerIndex !== newState.currentTurn || !canHu(player.hand, newState.mode, player.voidSuit)) return state;
+  player.status = 'hu';
+  newState.lastAction = { playerId, type: 'hu', tile: player.hand[player.hand.length - 1] };
+  newState.status = 'finished';
+  return newState;
 }
 
 export function isSameTile(a: Tile, b: Tile): boolean {

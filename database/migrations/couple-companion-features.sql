@@ -9,11 +9,23 @@ CREATE TABLE IF NOT EXISTS decision_options (
   option_kind TEXT NOT NULL DEFAULT 'choice' CHECK (option_kind IN ('choice', 'punishment')),
   label TEXT NOT NULL CHECK (char_length(label) BETWEEN 1 AND 80),
   emoji TEXT NOT NULL DEFAULT '✨' CHECK (char_length(emoji) <= 16),
+  category TEXT NOT NULL DEFAULT '自定义',
+  is_builtin BOOLEAN NOT NULL DEFAULT false,
+  source_key TEXT,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, NOW())
 );
 
+-- CREATE TABLE IF NOT EXISTS 不会为已存在的旧表补字段，因此要单独增量补齐。
+ALTER TABLE decision_options
+  ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '自定义',
+  ADD COLUMN IF NOT EXISTS is_builtin BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS source_key TEXT;
+
 CREATE INDEX IF NOT EXISTS decision_options_type_idx
   ON decision_options(wheel_type, option_kind, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS decision_options_source_key_idx
+  ON decision_options(source_key) WHERE source_key IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS memory_places (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

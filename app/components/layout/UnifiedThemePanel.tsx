@@ -220,7 +220,7 @@ export default function UnifiedThemePanel() {
   const dialogRef = useRef<HTMLElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const hideThemeControl =
-    pathname === '/login' || pathname === '/chat' || pathname.startsWith('/chat/')
+    pathname === '/login' || pathname === '/chat' || pathname.startsWith('/chat/') || pathname.startsWith('/mahjong/') || pathname === '/dream-journey'
 
   useEffect(() => {
     let savedTheme: string | null = null

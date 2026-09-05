@@ -7,9 +7,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import LoadingSkeleton from '@/app/components/ui/LoadingSkeleton'
 import {
-  GameState,
+  GameState, canHu, applySelfHu, initializeGameState,
   applyDiscard, applyBotTurn, applyAction,
-  ValidAction, ActionType,
+  ActionType,
 } from '../engine/MahjongLogic'
 import PlayerHand from '../components/PlayerHand'
 import TileComponent from '../components/Tile'
@@ -24,10 +24,37 @@ export default function MahjongGameRoom() {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTileIndex, setSelectedTileIndex] = useState<number | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const isPractice = id === 'practice'
+
+  const persistGame = async (next: GameState) => {
+    setGameState(next)
+    if (isPractice) return true
+    setIsSaving(true)
+    const { error } = await supabase.from('mahjong_games').update({ game_state: next, status: next.status }).eq('id', id)
+    setIsSaving(false)
+    if (error) {
+      showToast('牌局同步失败，请重试', 'error')
+      await fetchGame(false)
+      return false
+    }
+    return true
+  }
 
   // ─── Data Fetching ────────────────────────────────────────
   useEffect(() => {
     if (!currentUser || !id) return
+    if (isPractice) {
+      const practicePlayers = [
+        { id: currentUser, name: currentUser === 'zyx' ? '星星' : '梨梨', avatar: currentUser === 'zyx' ? '⭐' : '🍐', isBot: false },
+        { id: 'bot_practice_1', name: '阿旺', avatar: '🐯', isBot: true },
+        { id: 'bot_practice_2', name: '小满', avatar: '🐼', isBot: true },
+        { id: 'bot_practice_3', name: '团子', avatar: '🦊', isBot: true },
+      ]
+      setGameState(initializeGameState('practice', 'sichuan', 1, practicePlayers, currentUser))
+      setIsLoading(false)
+      return
+    }
     fetchGame(true)
 
     const channel = supabase
@@ -45,7 +72,7 @@ export default function MahjongGameRoom() {
       })
 
     return () => { supabase.removeChannel(channel) }
-  }, [currentUser, id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser, id, isPractice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchGame = async (showLoading = false) => {
     try {
@@ -94,6 +121,12 @@ export default function MahjongGameRoom() {
     return () => clearInterval(interval)
   }, [gameState?.currentTurn, gameState?.status, currentUser]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (gameState || !currentUser || !id || isPractice) return
+    const interval = window.setInterval(() => { void fetchGame(false) }, 1500)
+    return () => window.clearInterval(interval)
+  }, [gameState, currentUser, id, isPractice]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── Player Position Mapping ──────────────────────────────
   const getRenderPositions = () => {
     if (!gameState) return { bottom: null, right: null, top: null, left: null }
@@ -120,23 +153,15 @@ export default function MahjongGameRoom() {
       })
       if (hasHumanPending) return
 
-      for (const [pId, actions] of Object.entries(gameState.pendingActions)) {
-        const player = gameState.players.find(p => p.id === pId)
-        if (player?.isBot) {
-          const timer = setTimeout(async () => {
-            try {
-              let chosen: ValidAction | undefined
-              chosen = actions.find(a => a.type === 'hu')
-              if (!chosen) chosen = actions.find(a => a.type === 'kong')
-              if (!chosen) chosen = actions.find(a => a.type === 'pong')
-              const typeToTake = chosen ? chosen.type : 'pass'
-              const next = applyAction(gameState, player.id, typeToTake)
-              setGameState(next)
-              await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
-            } catch (err) { console.error('Bot pending action error:', err) }
-          }, 800 + Math.random() * 800)
-          return () => clearTimeout(timer)
-        }
+      const priorities: ActionType[] = ['hu', 'kong', 'pong', 'chow']
+      const botResponses = Object.entries(gameState.pendingActions).flatMap(([playerId, actions]) => {
+        const player = gameState.players.find(candidate => candidate.id === playerId)
+        return player?.isBot ? actions.map(action => ({ playerId, action })) : []
+      })
+      const response = botResponses.sort((a, b) => priorities.indexOf(a.action.type) - priorities.indexOf(b.action.type))[0]
+      if (response) {
+        const timer = setTimeout(() => { void persistGame(applyAction(gameState, response.playerId, response.action.type)) }, 650)
+        return () => clearTimeout(timer)
       }
       return
     }
@@ -149,8 +174,7 @@ export default function MahjongGameRoom() {
       const timer = setTimeout(async () => {
         try {
           const next = applyBotTurn(gameState, cp.id)
-          setGameState(next)
-          await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
+          await persistGame(next)
         } catch (err) { console.error('Bot turn error:', err) }
       }, 1200)
       return () => clearTimeout(timer)
@@ -165,27 +189,28 @@ export default function MahjongGameRoom() {
       showToast('还没到你的回合', 'warning')
       return
     }
+    const player = gameState.players[selfIdx]
+    const selectedTile = player.hand[selectedTileIndex]
+    if (gameState.mode === 'sichuan' && player.voidSuit && player.hand.some(tile => tile.suit === player.voidSuit) && selectedTile.suit !== player.voidSuit) {
+      showToast(`定缺牌还没打完，请先打${player.voidSuit === 'characters' ? '万' : player.voidSuit === 'bamboo' ? '条' : '筒'}`, 'warning')
+      return
+    }
     const next = applyDiscard(gameState, currentUser, selectedTileIndex)
     setSelectedTileIndex(null)
-    setGameState(next)
-    try {
-      await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
-    } catch (err) {
-      console.error(err)
-      showToast('出牌失败', 'error')
-    }
+    await persistGame(next)
   }
 
   const handleAction = async (actionType: ActionType) => {
     if (!gameState || !currentUser) return
     const next = applyAction(gameState, currentUser, actionType)
-    setGameState(next)
-    try {
-      await supabase.from('mahjong_games').update({ game_state: next }).eq('id', id)
-    } catch (err) {
-      console.error(err)
-      showToast('操作失败', 'error')
-    }
+    await persistGame(next)
+  }
+
+  const handleSelfHu = async () => {
+    if (!gameState || !currentUser) return
+    const next = applySelfHu(gameState, currentUser)
+    if (next === gameState) return showToast('现在还不能胡', 'warning')
+    await persistGame(next)
   }
 
   // ─── Loading / Waiting States ─────────────────────────────
@@ -219,13 +244,14 @@ export default function MahjongGameRoom() {
     : false
   const hasPending = gameState.pendingActions && Object.keys(gameState.pendingActions).length > 0
   const myPending = gameState.pendingActions?.[currentUser] ?? null
+  const canSelfHu = Boolean(bottom && isMyTurn && !hasPending && canHu(bottom.hand, gameState.mode, bottom.voidSuit))
 
   const actionLabels: Record<string, string> = { hu: '胡', kong: '杠', pong: '碰', chow: '吃' }
 
   // ─── Render ───────────────────────────────────────────────
   return (
-    <div
-      className="min-h-screen overflow-hidden flex flex-col relative select-none"
+    <main
+      className="relative flex min-h-dvh select-none flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]"
       style={{
         background: 'radial-gradient(ellipse at center, #1a4a2e 0%, #0f2d1a 50%, #081a0f 100%)',
       }}
@@ -237,7 +263,7 @@ export default function MahjongGameRoom() {
       }} />
 
       {/* ── Top Bar ── */}
-      <div className="relative z-30 flex items-center justify-between px-4 py-2">
+      <div className="relative z-30 flex items-center justify-between gap-2 px-3 py-2">
         <button
           onClick={() => router.push('/mahjong')}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/30 text-white/70 text-sm
@@ -250,27 +276,27 @@ export default function MahjongGameRoom() {
         </button>
 
         {/* Center info */}
-        <div className="flex items-center gap-4">
-          <div className="bg-black/40 border border-amber-700/30 rounded-lg px-4 py-1.5 text-center">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg border border-amber-700/30 bg-black/40 px-2.5 py-1.5 text-center sm:px-4">
             <div className="text-amber-400/70 text-[10px] tracking-wider uppercase">
-              {gameState.mode === 'sichuan' ? '四川血战' : '经典模式'}
+              {gameState.mode === 'sichuan' ? '四川定缺' : '经典模式'}
             </div>
             <div className="text-amber-300 text-sm font-bold">{gameState.baseMultiplier * 100} 豆/番</div>
           </div>
-          <div className="bg-black/40 border border-white/10 rounded-lg px-4 py-1.5 text-center">
+          <div className="rounded-lg border border-white/10 bg-black/40 px-2.5 py-1.5 text-center sm:px-4">
             <div className="text-white/40 text-[10px]">剩余</div>
             <div className="text-white font-bold text-lg leading-none">{gameState.deck.length}</div>
           </div>
         </div>
 
-        <div className="w-[60px]" />
+        <div className="w-10 text-right text-[10px] text-white/45 sm:w-[60px]">{isPractice ? '本地练习' : isSaving ? '同步中' : '已同步'}</div>
       </div>
 
       {/* ── Game Table ── */}
-      <div className="flex-1 relative w-full max-w-5xl mx-auto">
+      <div className="relative mx-auto w-full max-w-5xl flex-1">
         {/* Center discard area - all players' discards */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="w-[260px] h-[220px] md:w-[360px] md:h-[300px] rounded-xl
+          <div className="h-[210px] w-[250px] rounded-xl md:h-[300px] md:w-[360px]
             border border-amber-700/20 bg-black/15 relative overflow-hidden">
 
             {/* Top player discards (grow downward) */}
@@ -343,7 +369,7 @@ export default function MahjongGameRoom() {
 
         {/* ── Left Player ── */}
         {left && (
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10">
+          <div className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 md:block">
             <PlayerHand
               player={left}
               position="left"
@@ -354,7 +380,7 @@ export default function MahjongGameRoom() {
 
         {/* ── Right Player ── */}
         {right && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10">
+          <div className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 md:block">
             <PlayerHand
               player={right}
               position="right"
@@ -363,23 +389,14 @@ export default function MahjongGameRoom() {
           </div>
         )}
 
+        <div className="absolute inset-x-2 top-24 z-10 flex justify-between md:hidden">
+          {[left, right].map((player) => player && <div key={player.id} className="rounded-xl border border-white/10 bg-black/45 px-2 py-1.5 text-center text-white/80"><span className="text-lg">{player.avatar}</span><p className="max-w-16 truncate text-[10px] font-bold">{player.name} · {player.hand.length}张</p></div>)}
+        </div>
+
         {/* ── Action Buttons (center overlay) ── */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-3 pointer-events-none">
           {/* My turn: Discard button */}
-          {isMyTurn && !hasPending && (
-            <button
-              onClick={handleSelfDiscard}
-              disabled={selectedTileIndex === null}
-              className="pointer-events-auto px-10 py-3 rounded-xl font-black text-xl
-                bg-gradient-to-b from-amber-400 to-amber-600 text-black
-                shadow-lg shadow-amber-600/30
-                hover:from-amber-300 hover:to-amber-500
-                disabled:from-gray-600 disabled:to-gray-700 disabled:text-gray-400 disabled:shadow-none
-                active:scale-95 transition-all"
-            >
-              出 牌
-            </button>
-          )}
+          {isMyTurn && !hasPending && <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/10 bg-black/55 p-2 shadow-xl backdrop-blur"><button onClick={handleSelfDiscard} disabled={selectedTileIndex === null || isSaving} className="rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-7 py-2.5 text-lg font-black text-black shadow-lg disabled:from-gray-600 disabled:to-gray-700 disabled:text-gray-400">出牌</button>{canSelfHu && <button type="button" onClick={() => void handleSelfHu()} className="rounded-xl bg-gradient-to-b from-red-500 to-red-700 px-5 py-2.5 text-lg font-black text-white">胡</button>}</div>}
 
           {/* Interruption buttons */}
           {myPending && myPending.length > 0 && (
@@ -415,7 +432,7 @@ export default function MahjongGameRoom() {
 
         {/* ── Bottom Player (Self) ── */}
         {bottom && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full px-2 z-10">
+          <div className="absolute bottom-1 left-1/2 z-10 w-full -translate-x-1/2 px-1 sm:bottom-2 sm:px-2">
             <PlayerHand
               player={bottom}
               position="bottom"
@@ -435,6 +452,6 @@ export default function MahjongGameRoom() {
         currentUser={currentUser}
         onReturnToLobby={() => router.push('/mahjong')}
       />
-    </div>
+    </main>
   )
 }
