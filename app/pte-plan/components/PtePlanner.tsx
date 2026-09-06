@@ -76,6 +76,7 @@ export default function PtePlanner() {
   const syncErrorShownRef = useRef(false)
   const autoSaveTimerRef = useRef<number | null>(null)
   const activePlanRef = useRef<SavedPtePlan | null>(null)
+  const quickNavRef = useRef<HTMLElement>(null)
   const [config, setConfig] = useState<PlannerConfig>(defaultConfig)
   const [plans, setPlans] = useState<SavedPtePlan[]>([])
   const [syncedVersions, setSyncedVersions] = useState<Record<string, string>>({})
@@ -516,6 +517,29 @@ export default function PtePlanner() {
         { planned: 0, done: 0, extra: 0, starred: 0 }
       )
     : null
+
+  const scrollToSection = (targetId: string, navKey: string) => {
+    const target = document.getElementById(targetId)
+    if (!target) return
+    setActiveTaskNav(navKey)
+    const navigation = quickNavRef.current
+    const navigationRect = navigation?.getBoundingClientRect()
+    const stickyTop = navigation
+      ? Number.parseFloat(window.getComputedStyle(navigation).top) || 0
+      : 0
+    const offset = (navigationRect?.height ?? 0) + Math.max(stickyTop, 12) + 16
+    const top = window.scrollY + target.getBoundingClientRect().top - offset
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+  }
+
+  const scrollToPageEdge = (edge: 'top' | 'bottom') => {
+    setActiveTaskNav(null)
+    const root = document.documentElement
+    window.scrollTo({
+      top: edge === 'top' ? 0 : root.scrollHeight,
+      behavior: 'instant' as ScrollBehavior,
+    })
+  }
 
   return (
     <div className="space-y-6 pb-28 md:pb-20">
@@ -997,6 +1021,7 @@ export default function PtePlanner() {
             </div>
 
             <nav
+              ref={quickNavRef}
               className="sticky top-16 z-30 px-3 py-3 sm:px-5 md:top-3"
               aria-label="今日题型快速导航"
             >
@@ -1056,7 +1081,10 @@ export default function PtePlanner() {
                               <a
                                 key={task.id}
                                 href={`#pte-task-${task.id}`}
-                                onClick={() => setActiveTaskNav(task.id)}
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  scrollToSection(`pte-task-${task.id}`, task.id)
+                                }}
                                 aria-current={selected ? 'location' : undefined}
                                 className="min-h-9 rounded-lg border px-2.5 py-1.5 text-xs font-black shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                                 style={{
@@ -1081,7 +1109,10 @@ export default function PtePlanner() {
                     </div>
                     <a
                       href="#pte-daily-summary"
-                      onClick={() => setActiveTaskNav('daily-summary')}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        scrollToSection('pte-daily-summary', 'daily-summary')
+                      }}
                       aria-current={activeTaskNav === 'daily-summary' ? 'location' : undefined}
                       className={`inline-flex min-h-9 items-center rounded-lg border border-indigo-400 px-2.5 py-1.5 text-xs font-black shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-1 ${
                         activeTaskNav === 'daily-summary'
@@ -1393,6 +1424,13 @@ export default function PtePlanner() {
       />
       {savedPlan && (
         <PteReport plan={savedPlan} open={reportOpen} onClose={() => setReportOpen(false)} />
+      )}
+      {savedPlan && (
+        <nav className="fixed bottom-[calc(env(safe-area-inset-bottom)+6rem)] left-3 z-40 flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_8px_26px_rgba(15,23,42,0.18)] backdrop-blur-xl md:bottom-5 md:left-5" aria-label="页面位置快捷导航">
+          <button type="button" onClick={() => scrollToPageEdge('top')} className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-800" aria-label="返回页面顶部">↑<span className="ml-1 hidden sm:inline">顶部</span></button>
+          <div className="h-px bg-slate-200" aria-hidden="true" />
+          <button type="button" onClick={() => scrollToPageEdge('bottom')} className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" aria-label="前往页面底部">↓<span className="ml-1 hidden sm:inline">底部</span></button>
+        </nav>
       )}
       {savedPlan && (
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-40 flex justify-center md:bottom-5">
