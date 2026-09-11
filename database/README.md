@@ -53,6 +53,8 @@
 | 个人资料与提醒 | `user_profiles`、`reminders`     | `migrations/profile-tables.sql`                                 | 自定义头像再执行 `migrations/update-profile-avatar.sql`；已有同名资料导致 `PGRST116` 时执行 `fixes/deduplicate-user-profiles.sql` |
 | 五子棋         | `gomoku_games`                   | 基础 setup + `migrations/gomoku-mahjong-schema.sql`             | 添加当前 JSONB 状态字段、Realtime 和兼容约束                                                                                      |
 | 麻将           | `mahjong_games`、`user_balances` | `migrations/gomoku-mahjong-schema.sql`                          | 同时插入两个默认用户余额，使用前应审查                                                                                            |
+| 甜蜜大富翁     | `monopoly_rooms`                 | `migrations/monopoly-online-rooms.sql`                           | 在线房间、JSONB 对局状态、乐观版本号与 Realtime；本地双人模式不依赖数据库                                                         |
+| 换装共享作品墙 | `dress_up_outfits`              | `migrations/dress-up-shared-gallery.sql`                         | 完整造型 JSONB、双方共享作品列表和 Realtime；本机造型仍保存在 localStorage                                                        |
 | 心情追踪       | `mood_records`                   | `migrations/mood-records-table.sql`                             | 兼容旧 `TEXT id`，新插入默认生成 UUID 字符串                                                                                      |
 | 情侣书架       | `novels`                         | `migrations/novels-table.sql`                                   | 独立、可重复执行的当前表迁移                                                                                                      |
 | 塔罗           | `tarot_readings`                 | `migrations/tarot-table.sql`                                    | 独立迁移                                                                                                                          |
@@ -104,6 +106,8 @@
 | `horoscope-table.sql`           | 星座记录                                         |
 | `mood-records-table.sql`        | 心情记录；兼容 `TEXT` 或 `UUID` 类型的已有 `id`  |
 | `music-player-schema.sql`       | 共享歌曲                                         |
+| `monopoly-online-rooms.sql`     | 大富翁在线房间、索引、宽松私有站点 RLS 和 Realtime |
+| `dress-up-shared-gallery.sql`   | 换装造型共享作品墙和 Realtime                    |
 | `novels-table.sql`              | 情侣书架                                         |
 | `outfit-records-table.sql`      | 穿搭记录                                         |
 | `profile-tables.sql`            | 个人资料和提醒；新库会为规范化姓名建立唯一索引   |
@@ -191,6 +195,7 @@
 - `migrations/replace-food-options-seed.sql` 使用 `TRUNCATE ... CASCADE`，会替换全部食物数据。
 - `fixes/deduplicate-user-profiles.sql` 会删除重复个人资料行；执行前必须备份，并先审查脚本创建的恢复表名称与合并规则。
 - `migrations/gomoku-mahjong-schema.sql` 会放宽旧五子棋列约束、配置 Realtime，并为两个固定用户插入默认余额。
+- `migrations/monopoly-online-rooms.sql` 使用适合当前私人站点的匿名读写策略；浏览器本地身份和客户端回合检查不是可信授权，公开部署前必须接入可靠认证并收紧 RLS。
 - `migrations/supabase-new-features.sql` 和 `add-more-love-quotes.sql` 的种子不是完全幂等的。
 - 多个当前和历史脚本创建允许匿名公开读写的宽松 RLS；这不等同于适合公开生产环境。
 - `photos`、`songs`、`love_notes` 的页面会使用 Realtime，但对应脚本尚未统一加入 publication。

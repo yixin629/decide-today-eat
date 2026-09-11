@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
 import { useToast } from '@/app/components/feedback/ToastProvider'
+import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 import {
   ACCESSORIES,
   BLUSH_COLORS,
@@ -22,6 +24,7 @@ import { darken, lighten } from './lib/color'
 
 export default function DressUpPage() {
   const toast = useToast()
+  const { user } = useAuth()
   const [gender, setGender] = useState<'male' | 'female'>('female')
   const [skinTone, setSkinTone] = useState(0)
   const [hairStyle, setHairStyle] = useState(0)
@@ -39,6 +42,7 @@ export default function DressUpPage() {
   const [eyeColor, setEyeColor] = useState(0)
   const [blushColor, setBlushColor] = useState(1)
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([])
+  const [sharedOutfits, setSharedOutfits] = useState<Array<{ id: string; created_by: string; name: string; outfit: SavedOutfit; created_at: string }>>([])
   const [outfitName, setOutfitName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory' | 'scene' | 'makeup'>('scene')
@@ -48,18 +52,32 @@ export default function DressUpPage() {
     if (saved) setSavedOutfits(JSON.parse(saved))
   }, [])
 
-  const saveOutfit = () => {
+  useEffect(() => {
+    const loadSharedOutfits = async () => {
+      const { data, error } = await supabase.from('dress_up_outfits').select('id, created_by, name, outfit, created_at').order('created_at', { ascending: false }).limit(30)
+      if (!error && data) setSharedOutfits(data as typeof sharedOutfits)
+    }
+    void loadSharedOutfits()
+    const channel = supabase.channel('dress-up-gallery').on('postgres_changes', { event: '*', schema: 'public', table: 'dress_up_outfits' }, () => void loadSharedOutfits()).subscribe()
+    return () => { void supabase.removeChannel(channel) }
+  }, [])
+
+  const saveOutfit = async () => {
     if (!outfitName.trim()) { toast.error('请输入装扮名称'); return }
     const newOutfit: SavedOutfit = {
       id: Date.now().toString(),
       name: outfitName.trim(),
       gender, skinTone, hairStyle, hairColor, topStyle, topColor,
-      bottomStyle, bottomColor, shoesStyle, shoesColor, accessory, scene,
+      bottomStyle, bottomColor, shoesStyle, shoesColor, accessory, scene, lipColor, eyeColor, blushColor,
       timestamp: Date.now(),
     }
     const updated = [newOutfit, ...savedOutfits]
     setSavedOutfits(updated)
     localStorage.setItem('dressUpOutfits_v3', JSON.stringify(updated))
+    if (user) {
+      const { error } = await supabase.from('dress_up_outfits').insert({ created_by: user, name: newOutfit.name, outfit: newOutfit })
+      if (error) toast.warning('已保存到本机；共享作品墙保存失败，请确认已执行数据库迁移')
+    }
     setOutfitName(''); setShowSaveDialog(false)
     toast.success(`"${newOutfit.name}" 已保存`)
   }
@@ -69,6 +87,9 @@ export default function DressUpPage() {
     setTopStyle(o.topStyle); setTopColor(o.topColor); setBottomStyle(o.bottomStyle); setBottomColor(o.bottomColor)
     setShoesStyle(o.shoesStyle); setShoesColor(o.shoesColor); setAccessory(o.accessory)
     if (o.scene !== undefined) setScene(o.scene)
+    if (o.lipColor !== undefined) setLipColor(o.lipColor)
+    if (o.eyeColor !== undefined) setEyeColor(o.eyeColor)
+    if (o.blushColor !== undefined) setBlushColor(o.blushColor)
     toast.success(`加载 "${o.name}"`)
   }
 
@@ -1516,6 +1537,18 @@ export default function DressUpPage() {
                   </div>
                 </div>
               )}
+
+              <div className="rounded-xl bg-gradient-to-br from-violet-50 to-pink-50 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div><h3 className="font-semibold">🌍 我们的共享作品墙</h3><p className="text-xs text-gray-500">两台电脑会实时看到彼此保存的造型</p></div>
+                  <span className="badge-blue">{sharedOutfits.length} 套</span>
+                </div>
+                {sharedOutfits.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">保存第一套造型，开始你们的线上衣橱</p> : (
+                  <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                    {sharedOutfits.map(item => <button type="button" key={item.id} onClick={() => loadOutfit(item.outfit)} className="rounded-xl border bg-white p-3 text-left transition hover:border-primary hover:shadow-md"><div className="flex items-center justify-between"><span className="font-semibold text-gray-900">{item.name}</span><span>{item.outfit.gender === 'female' ? '👩' : '👨'}</span></div><div className="mt-1 flex justify-between text-xs text-gray-500"><span>by {item.created_by}</span><span>{SCENES[item.outfit.scene || 0]?.emoji} {SCENES[item.outfit.scene || 0]?.name}</span></div></button>)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1533,7 +1566,7 @@ export default function DressUpPage() {
               />
               <div className="flex gap-3">
                 <button onClick={() => setShowSaveDialog(false)} className="flex-1 btn-secondary">取消</button>
-                <button onClick={saveOutfit} className="flex-1 btn-primary">保存</button>
+                <button onClick={() => void saveOutfit()} className="flex-1 btn-primary">保存并分享</button>
               </div>
             </div>
           </div>

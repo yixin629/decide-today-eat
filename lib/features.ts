@@ -510,6 +510,17 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['棋盘', '骰子'],
   },
   {
+    name: '甜蜜大富翁',
+    path: '/monopoly',
+    icon: '🏙️',
+    description: '买地收租，经营两个人的甜蜜版图',
+    category: 'play',
+    showOnHome: true,
+    showInNavigation: true,
+    relatedRoutes: ['/monopoly/[id]'],
+    keywords: ['大富翁', '地产', '棋盘', '骰子'],
+  },
+  {
     name: '梦境长安',
     path: '/dream-journey',
     icon: '⚔️',

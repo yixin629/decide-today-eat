@@ -15,6 +15,9 @@ export interface SavedOutfit {
   shoesColor: string
   accessory: number
   scene: number
+  lipColor?: number
+  eyeColor?: number
+  blushColor?: number
   timestamp: number
 }
 
