@@ -25,6 +25,7 @@ npm run cf:build
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 匿名客户端密钥 | 必需 | 通常不需要重复配置 |
 | `GROQ_API_KEY` | AI 聊天服务端密钥 | 按需 | 按需、必须作为 Secret |
 | `CHATANYWHERE_API_KEY` | AI 聊天备用服务端密钥 | 按需 | 按需、必须作为 Secret |
+| `YOUTUBE_API_KEY` | 音乐播放器的 YouTube 站内搜索 | 不需要 | 按需、必须作为 Secret |
 
 不要把真实值写入 `.env.local.example`、`wrangler.toml`、源码或文档。Supabase `service_role` 密钥也不能放进客户端变量。
 
@@ -88,6 +89,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```text
 GROQ_API_KEY
 CHATANYWHERE_API_KEY
+YOUTUBE_API_KEY
 ```
 
 仅启用一个 AI 服务时，只需配置对应密钥。如果构建过程中的服务端预渲染确实读取某个服务端变量，再把同名值额外添加为 Build secret；Build variables 不会自动成为 Worker 的运行时变量。

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
+import { getYouTubeEmbedUrl, parseYouTubeUrl } from './lib/youtube'
 
 interface Song {
   id: string
@@ -15,6 +16,8 @@ interface Song {
   added_by?: string
   created_at?: string
 }
+
+interface SearchResult { videoId: string; title: string; artist: string; thumbnail: string | null }
 
 export default function MusicPlayerPage() {
   const toast = useToast()
@@ -32,6 +35,9 @@ export default function MusicPlayerPage() {
 
   // UI State
   const [showAddSong, setShowAddSong] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   // Form State
   const [newSongUrl, setNewSongUrl] = useState('')
@@ -96,6 +102,11 @@ export default function MusicPlayerPage() {
       return
     }
 
+    if (detectedSource === 'youtube' && !parseYouTubeUrl(newSongUrl)) {
+      toast.error('无法识别此 YouTube / YouTube Music 链接')
+      return
+    }
+
     try {
       const finalUrl = newSongUrl
       let finalCover = '🎵'
@@ -130,6 +141,27 @@ export default function MusicPlayerPage() {
       console.error('Add song failed:', error)
       toast.error('添加失败')
     }
+  }
+
+  const searchYouTube = async () => {
+    const query = searchQuery.trim()
+    if (query.length < 2) { toast.warning('请输入至少两个字'); return }
+    setIsSearching(true)
+    try {
+      const response = await fetch(`/api/youtube-search?q=${encodeURIComponent(query)}`)
+      const data = await response.json() as { results?: SearchResult[]; error?: string }
+      if (!response.ok) throw new Error(data.error ?? '搜索失败')
+      setSearchResults(data.results ?? [])
+      if (!data.results?.length) toast.info('没有找到可嵌入的视频')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '搜索失败')
+    } finally { setIsSearching(false) }
+  }
+
+  const addSearchResult = async (result: SearchResult) => {
+    const { error } = await supabase.from('songs').insert({ title: result.title, artist: result.artist, url: `https://www.youtube.com/watch?v=${result.videoId}`, source: 'youtube', cover: '🔴', added_by: 'user' })
+    if (error) toast.error('加入歌单失败')
+    else toast.success(`已加入：${result.title}`)
   }
 
   // Remove Song
@@ -200,25 +232,21 @@ export default function MusicPlayerPage() {
     }
 
     if (currentSong.source === 'youtube') {
-      // https://www.youtube.com/watch?v=ID -> https://www.youtube.com/embed/ID
-      // https://youtu.be/ID -> https://www.youtube.com/embed/ID
-      const embedUrl = currentSong.url
-      let videoId = ''
-
-      if (embedUrl.includes('v=')) {
-        videoId = embedUrl.split('v=')[1]?.split('&')[0]
-      } else if (embedUrl.includes('youtu.be/')) {
-        videoId = embedUrl.split('youtu.be/')[1]?.split('?')[0]
-      }
-
-      if (videoId) {
+      const embedUrl = getYouTubeEmbedUrl(currentSong.url)
+      if (embedUrl) {
         return (
-          <iframe
-            className="w-full h-60 rounded-xl"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          <div>
+            <iframe
+            className="aspect-video w-full rounded-xl"
+            src={embedUrl}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            title="YouTube"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            title={`${currentSong.title} - YouTube 播放器`}
           />
+            <p className="mt-3 text-center text-xs text-gray-500">请点击播放器内的播放按钮。若视频禁止嵌入，可在 YouTube 中打开。</p>
+            <a href={currentSong.url} target="_blank" rel="noreferrer" className="mx-auto mt-2 block w-fit text-sm font-semibold text-primary hover:underline">在 YouTube / YouTube Music 打开 ↗</a>
+          </div>
         )
       } else {
         return <div className="text-red-500">无法解析 YouTube 链接</div>
@@ -294,7 +322,7 @@ export default function MusicPlayerPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-2">
             🎵 共享音乐播放器 (Online)
           </h1>
-          <p className="text-gray-600 text-center mb-6">支持 MP3 / Spotify / YouTube • 实时同步</p>
+          <p className="text-gray-600 text-center mb-6">支持 MP3 / Spotify / YouTube Music • 双方共享歌单</p>
 
           {/* Player Display */}
           <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-6 mb-6 shadow-inner min-h-[300px] flex flex-col justify-center">
@@ -323,9 +351,18 @@ export default function MusicPlayerPage() {
           {showAddSong && (
             <div className="bg-gray-50 p-4 rounded-xl mb-6 animate-fade-in border border-gray-100">
               <div className="space-y-3">
+                <div>
+                  <label className="label-primary">直接搜索 YouTube Music</label>
+                  <div className="flex gap-2">
+                    <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void searchYouTube() }} placeholder="歌曲、歌手或专辑" className="input-primary" maxLength={80} />
+                    <button type="button" onClick={() => void searchYouTube()} disabled={isSearching} className="btn-primary shrink-0 px-5">{isSearching ? '搜索中…' : '搜索'}</button>
+                  </div>
+                </div>
+                {searchResults.length > 0 && <div className="grid max-h-72 gap-2 overflow-y-auto rounded-xl border bg-white p-2">{searchResults.map((result) => <div key={result.videoId} className="flex items-center gap-3 rounded-lg p-2 hover:bg-gray-50"><div className="h-12 w-20 shrink-0 rounded-md bg-cover bg-center bg-gray-200" style={result.thumbnail ? { backgroundImage: `url(${result.thumbnail})` } : undefined} /><div className="min-w-0 flex-1"><p className="line-clamp-2 text-sm font-semibold text-gray-900">{result.title}</p><p className="truncate text-xs text-gray-500">{result.artist}</p></div><button type="button" onClick={() => void addSearchResult(result)} className="rounded-full bg-pink-100 px-3 py-2 text-xs font-bold text-pink-700 hover:bg-pink-200">＋歌单</button></div>)}</div>}
+                <div className="flex items-center gap-3 py-1 text-xs text-gray-400"><span className="h-px flex-1 bg-gray-200" /><span>或粘贴链接</span><span className="h-px flex-1 bg-gray-200" /></div>
                 <input
                   type="text"
-                  placeholder="链接 (MP3 / Spotify / YouTube)"
+                  placeholder="链接（MP3 / Spotify / YouTube Music）"
                   value={newSongUrl}
                   onChange={(e) => setNewSongUrl(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-primary outline-none"

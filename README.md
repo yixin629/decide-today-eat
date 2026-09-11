@@ -48,7 +48,7 @@ NEXT_PUBLIC_SUPABASE_URL=你的项目地址
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 ```
 
-如需 AI 聊天功能，再按 `.env.local.example` 配置相应服务的 API Key。不要提交 `.env.local` 或任何真实密钥。
+如需 AI 聊天或音乐播放器的 YouTube 站内搜索，再按 `.env.local.example` 配置相应服务端 API Key。不要提交 `.env.local` 或任何真实密钥。
 
 ### 3. 初始化数据库
 
