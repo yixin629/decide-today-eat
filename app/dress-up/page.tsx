@@ -16,6 +16,7 @@ import {
   SCENES,
   SHOES_STYLES,
   SKIN_TONES,
+  STYLE_CHALLENGES,
   TOP_STYLES_FEMALE,
   TOP_STYLES_MALE,
   type SavedOutfit,
@@ -42,19 +43,51 @@ export default function DressUpPage() {
   const [eyeColor, setEyeColor] = useState(0)
   const [blushColor, setBlushColor] = useState(1)
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([])
-  const [sharedOutfits, setSharedOutfits] = useState<Array<{ id: string; created_by: string; name: string; outfit: SavedOutfit; created_at: string }>>([])
+  const [sharedOutfits, setSharedOutfits] = useState<Array<{ id: string; created_by: string; name: string; outfit: SavedOutfit; liked_by: string[]; created_at: string }>>([])
   const [outfitName, setOutfitName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [activeTab, setActiveTab] = useState<'hair' | 'top' | 'bottom' | 'shoes' | 'accessory' | 'scene' | 'makeup'>('scene')
+  const [challengeScore, setChallengeScore] = useState<number | null>(null)
+  const [coins, setCoins] = useState(0)
+  const challengeDay = new Date().toISOString().slice(0, 10)
+  const dailyChallenge = STYLE_CHALLENGES[Math.floor(Date.now() / 86400000) % STYLE_CHALLENGES.length]
 
   useEffect(() => {
     const saved = localStorage.getItem('dressUpOutfits_v3')
     if (saved) setSavedOutfits(JSON.parse(saved))
+    setCoins(Number(localStorage.getItem('dressUpCoins') ?? 0))
   }, [])
+
+  const judgeChallenge = () => {
+    let score = 10
+    if (scene === dailyChallenge.scene) score += 35
+    if (dailyChallenge.topStyles.includes(topStyle)) score += 20
+    if (dailyChallenge.bottomStyles.includes(bottomStyle)) score += 15
+    if (dailyChallenge.shoeStyles.includes(shoesStyle)) score += 10
+    if (dailyChallenge.accessories.includes(accessory)) score += 10
+    setChallengeScore(score)
+    const claimKey = `dressUpChallenge:${challengeDay}`
+    if (!localStorage.getItem(claimKey)) {
+      const reward = Math.max(10, Math.floor(score / 2))
+      const nextCoins = coins + reward
+      setCoins(nextCoins)
+      localStorage.setItem('dressUpCoins', String(nextCoins))
+      localStorage.setItem(claimKey, String(score))
+      toast.success(`挑战完成，获得 ${reward} 枚衣橱币！`)
+    } else {
+      toast.info(`本次搭配获得 ${score} 分`)
+    }
+  }
+
+  const toggleLike = async (outfitId: string) => {
+    if (!user) { toast.warning('请先登录再点赞'); return }
+    const { error } = await supabase.rpc('toggle_dress_up_outfit_like', { p_outfit_id: outfitId, p_user_id: user })
+    if (error) toast.error('点赞失败，请确认共享作品墙迁移已更新')
+  }
 
   useEffect(() => {
     const loadSharedOutfits = async () => {
-      const { data, error } = await supabase.from('dress_up_outfits').select('id, created_by, name, outfit, created_at').order('created_at', { ascending: false }).limit(30)
+      const { data, error } = await supabase.from('dress_up_outfits').select('id, created_by, name, outfit, liked_by, created_at').order('created_at', { ascending: false }).limit(30)
       if (!error && data) setSharedOutfits(data as typeof sharedOutfits)
     }
     void loadSharedOutfits()
@@ -69,6 +102,8 @@ export default function DressUpPage() {
       name: outfitName.trim(),
       gender, skinTone, hairStyle, hairColor, topStyle, topColor,
       bottomStyle, bottomColor, shoesStyle, shoesColor, accessory, scene, lipColor, eyeColor, blushColor,
+      challengeTitle: challengeScore === null ? undefined : dailyChallenge.title,
+      challengeScore: challengeScore ?? undefined,
       timestamp: Date.now(),
     }
     const updated = [newOutfit, ...savedOutfits]
@@ -1304,6 +1339,14 @@ export default function DressUpPage() {
               </div>
 
               {/* Action buttons */}
+              <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div><span className="badge-amber">每日主题</span><h3 className="mt-2 text-lg font-black text-gray-900">{dailyChallenge.title}</h3><p className="mt-1 text-sm text-gray-600">{dailyChallenge.story}</p></div>
+                  <div className="whitespace-nowrap rounded-xl bg-white px-3 py-2 text-center shadow-sm"><div className="text-xs text-gray-500">衣橱币</div><div className="font-black text-amber-700">🪙 {coins}</div></div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-gray-500">提示：场景权重最高，服装、鞋子和配饰也会影响评分。</p><button type="button" onClick={judgeChallenge} className="btn-success shrink-0 px-4 py-2 text-sm">提交挑战</button></div>
+                {challengeScore !== null && <div className="mt-3 rounded-xl bg-white p-3 text-center"><span className="text-2xl">{'⭐'.repeat(Math.max(1, Math.ceil(challengeScore / 20)))}</span><strong className="ml-2 text-xl text-gray-900">{challengeScore} 分</strong><p className="text-xs text-gray-500">{challengeScore >= 90 ? '完美命中主题！' : challengeScore >= 70 ? '很有氛围，再调整一两件单品试试。' : '继续根据主题提示调整搭配吧。'}</p></div>}
+              </div>
               <div className="flex justify-center gap-3 flex-wrap">
                 <button onClick={randomize} className="btn-secondary">🎲 随机搭配</button>
                 <button onClick={() => setShowSaveDialog(true)} className="btn-primary">💾 保存造型</button>
@@ -1545,10 +1588,12 @@ export default function DressUpPage() {
                 </div>
                 {sharedOutfits.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-gray-500">保存第一套造型，开始你们的线上衣橱</p> : (
                   <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-                    {sharedOutfits.map(item => <button type="button" key={item.id} onClick={() => loadOutfit(item.outfit)} className="rounded-xl border bg-white p-3 text-left transition hover:border-primary hover:shadow-md"><div className="flex items-center justify-between"><span className="font-semibold text-gray-900">{item.name}</span><span>{item.outfit.gender === 'female' ? '👩' : '👨'}</span></div><div className="mt-1 flex justify-between text-xs text-gray-500"><span>by {item.created_by}</span><span>{SCENES[item.outfit.scene || 0]?.emoji} {SCENES[item.outfit.scene || 0]?.name}</span></div></button>)}
+                    {sharedOutfits.map(item => <div key={item.id} className="rounded-xl border bg-white p-3 transition hover:border-primary hover:shadow-md"><button type="button" onClick={() => loadOutfit(item.outfit)} className="w-full text-left"><div className="flex items-center justify-between"><span className="font-semibold text-gray-900">{item.name}</span><span>{item.outfit.challengeScore ? `⭐ ${item.outfit.challengeScore}` : item.outfit.gender === 'female' ? '👩' : '👨'}</span></div><div className="mt-1 flex justify-between text-xs text-gray-500"><span>by {item.created_by}</span><span>{SCENES[item.outfit.scene || 0]?.emoji} {item.outfit.challengeTitle ?? SCENES[item.outfit.scene || 0]?.name}</span></div></button><div className="mt-2 flex items-center justify-between border-t pt-2 text-xs"><span className="text-gray-400">点击造型即可加载</span><button type="button" onClick={() => void toggleLike(item.id)} className={`rounded-full px-2 py-1 font-semibold ${user && item.liked_by.includes(user) ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600'}`}>♥ {item.liked_by.length}</button></div></div>)}
                   </div>
                 )}
               </div>
+
+              {sharedOutfits.some(item => item.outfit.challengeScore !== undefined) && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><h3 className="mb-3 font-semibold">🏆 搭配挑战榜</h3><ol className="space-y-2">{[...sharedOutfits].filter(item => item.outfit.challengeScore !== undefined).sort((a, b) => (b.outfit.challengeScore ?? 0) - (a.outfit.challengeScore ?? 0) || b.liked_by.length - a.liked_by.length).slice(0, 3).map((item, index) => <li key={item.id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm"><span><strong className="mr-2">{['🥇', '🥈', '🥉'][index]}</strong>{item.name} <span className="text-gray-400">· {item.created_by}</span></span><span className="font-black text-amber-700">{item.outfit.challengeScore} 分</span></li>)}</ol></div>}
             </div>
           </div>
         </div>

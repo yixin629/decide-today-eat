@@ -18,8 +18,28 @@ export interface SavedOutfit {
   lipColor?: number
   eyeColor?: number
   blushColor?: number
+  challengeTitle?: string
+  challengeScore?: number
   timestamp: number
 }
+
+export interface StyleChallenge {
+  title: string
+  story: string
+  scene: number
+  topStyles: number[]
+  bottomStyles: number[]
+  shoeStyles: number[]
+  accessories: number[]
+}
+
+export const STYLE_CHALLENGES: StyleChallenge[] = [
+  { title: '海边日落约会', story: '轻松、明亮，又适合沿着沙滩散步。', scene: 2, topStyles: [0, 2, 6], bottomStyles: [2, 3, 7], shoeStyles: [0, 4, 5], accessories: [2, 5, 6] },
+  { title: '咖啡馆初见', story: '温柔得体，留下让人想再见一面的印象。', scene: 1, topStyles: [1, 3, 6], bottomStyles: [0, 2, 4], shoeStyles: [2, 3, 6], accessories: [1, 4, 5] },
+  { title: '都市通勤日', story: '在专业与个人风格之间找到平衡。', scene: 3, topStyles: [1, 5, 7], bottomStyles: [0, 4, 6], shoeStyles: [1, 3, 6], accessories: [1, 5, 6] },
+  { title: '霓虹夜游', story: '大胆一点，让造型在夜色中成为焦点。', scene: 5, topStyles: [2, 3, 5], bottomStyles: [3, 5, 7], shoeStyles: [1, 2, 7], accessories: [2, 3, 7] },
+  { title: '周末公园野餐', story: '舒服、自然，还要方便一起拍照。', scene: 4, topStyles: [0, 2, 4], bottomStyles: [0, 1, 3], shoeStyles: [0, 4, 5], accessories: [3, 5, 6] },
+]
 
 export interface Scene {
   name: string
