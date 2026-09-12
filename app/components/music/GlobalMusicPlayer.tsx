@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useMusicPlayer } from './MusicPlayerContext'
 import { getYouTubeEmbedUrl } from '@/app/music-player/lib/youtube'
@@ -74,24 +75,22 @@ export default function GlobalMusicPlayer() {
 
   return (
     <>
-      {hasSong && (
-        <button
-          type="button"
-          onClick={() => setIsOpen((open) => !open)}
-          className={`fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-[7.75rem] flex h-12 w-12 items-center justify-center rounded-full text-xl text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:bottom-6 sm:right-[10.5rem] sm:h-14 sm:w-14 sm:text-2xl ${
-            panelOpen ? 'z-[70]' : 'z-50'
-          } bg-gradient-to-br from-rose-400 to-fuchsia-600`}
-          aria-label={panelOpen ? '收起音乐播放器' : '打开音乐播放器'}
-          aria-expanded={panelOpen}
-          aria-controls="global-music-panel"
-          title={isPlaying ? `正在播放：${currentSong?.title}` : '音乐播放器'}
-        >
-          <span aria-hidden="true">{isPlaying ? '🎶' : '🎵'}</span>
-          {isPlaying && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        className={`fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-[7.75rem] flex h-12 w-12 items-center justify-center rounded-full text-xl text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:bottom-6 sm:right-[10.5rem] sm:h-14 sm:w-14 sm:text-2xl ${
+          panelOpen ? 'z-[70]' : 'z-50'
+        } bg-gradient-to-br from-rose-400 to-fuchsia-600`}
+        aria-label={panelOpen ? '收起音乐播放器' : '打开音乐播放器'}
+        aria-expanded={panelOpen}
+        aria-controls="global-music-panel"
+        title={hasSong ? (isPlaying ? `正在播放：${currentSong?.title}` : '音乐播放器') : '音乐播放器'}
+      >
+        <span aria-hidden="true">{isPlaying ? '🎶' : '🎵'}</span>
+        {isPlaying && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />}
+      </button>
 
-      {hasSong && panelOpen && !onMusicPage && (
+      {panelOpen && !onMusicPage && (
         <div
           className="fixed inset-0 z-[55] bg-slate-950/35 backdrop-blur-[1px]"
           onClick={() => setIsOpen(false)}
@@ -99,18 +98,31 @@ export default function GlobalMusicPlayer() {
         />
       )}
 
-      {/* Always mounted once a song exists — visibility only, never unmount/remount (see note above). */}
+      {/* Always mounted — visibility only, never unmount/remount (see note above). */}
       <section
         id="global-music-panel"
         role="dialog"
         aria-label="音乐播放器"
-        aria-hidden={!hasSong || !panelOpen}
+        aria-hidden={!panelOpen}
         className={`fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8.5rem)] z-[60] flex max-h-[calc(100dvh-10rem)] flex-col overflow-hidden rounded-2xl border border-pink-100 bg-white shadow-2xl transition-[opacity,transform] duration-200 sm:inset-x-auto sm:bottom-24 sm:right-6 sm:max-h-[calc(100dvh-6rem)] sm:w-[360px] ${
-          hasSong && panelOpen
+          panelOpen
             ? 'pointer-events-auto translate-y-0 opacity-100'
             : 'pointer-events-none translate-y-3 opacity-0'
         }`}
       >
+        {!currentSong && (
+          <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+            <span className="text-3xl" aria-hidden="true">🎵</span>
+            <p className="text-sm text-gray-500">还没有播放任何歌曲</p>
+            <Link
+              href="/music-player"
+              onClick={() => setIsOpen(false)}
+              className="rounded-full bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-pink-600"
+            >
+              去添加 / 选一首
+            </Link>
+          </div>
+        )}
         {currentSong && (
           <>
             <div className="flex items-center gap-2 border-b border-pink-50 px-3 py-2">
