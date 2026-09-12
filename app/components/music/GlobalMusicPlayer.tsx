@@ -1,10 +1,43 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useMusicPlayer } from './MusicPlayerContext'
 import { getYouTubeEmbedUrl } from '@/app/music-player/lib/youtube'
+
+// Minimal shape of the bits of the YouTube IFrame Player API we actually use.
+interface YTPlayer { destroy: () => void }
+interface YTPlayerEvent { data: number }
+interface YTNamespace {
+  Player: new (target: HTMLElement, options: { events: { onStateChange: (event: YTPlayerEvent) => void } }) => YTPlayer
+  PlayerState: { ENDED: number }
+}
+declare global {
+  interface Window {
+    YT?: YTNamespace
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
+// Loads the official youtube.com/iframe_api script once per page and resolves when window.YT is ready.
+// This is what lets us detect "video ended" on an embedded YouTube player — plain <iframe onEnded>
+// doesn't exist; only the JS API's onStateChange event exposes that.
+function useYouTubeApiReady() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (window.YT?.Player) { setReady(true); return }
+    if (!document.getElementById('youtube-iframe-api')) {
+      const tag = document.createElement('script')
+      tag.id = 'youtube-iframe-api'
+      tag.src = 'https://www.youtube.com/iframe_api'
+      document.head.appendChild(tag)
+    }
+    const previous = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => { previous?.(); setReady(true) }
+  }, [])
+  return ready
+}
 
 // Rendered once in the root layout so the <audio>/<iframe> element is never
 // unmounted while navigating between pages — that's what keeps playback going
@@ -45,6 +78,25 @@ export default function GlobalMusicPlayer() {
 
   const panelOpen = isOpen || onMusicPage
   const hasSong = Boolean(currentSong)
+
+  // Auto-advance for YouTube tracks: wire the official IFrame Player API to the embedded
+  // iframe so its "ended" state routes into the same handleTrackEnded logic as MP3s. A plain
+  // <iframe> has no onEnded event, which is why auto-next silently did nothing before.
+  const ytReady = useYouTubeApiReady()
+  const ytIframeRef = useRef<HTMLIFrameElement>(null)
+  const handleTrackEndedRef = useRef(handleTrackEnded)
+  useEffect(() => { handleTrackEndedRef.current = handleTrackEnded }, [handleTrackEnded])
+  useEffect(() => {
+    if (!ytReady || currentSong?.source !== 'youtube' || !ytIframeRef.current || !window.YT) return
+    const player = new window.YT.Player(ytIframeRef.current, {
+      events: {
+        onStateChange: (event) => {
+          if (window.YT && event.data === window.YT.PlayerState.ENDED) handleTrackEndedRef.current()
+        },
+      },
+    })
+    return () => player.destroy()
+  }, [ytReady, currentSong?.id, currentSong?.source])
 
   useEffect(() => {
     if (!lyricsOpen || !currentSong) return
@@ -175,11 +227,13 @@ export default function GlobalMusicPlayer() {
               <div className={lyricsOpen ? 'hidden' : ''}>
                 {currentSong.source === 'youtube' && (() => {
                   const embedUrl = getYouTubeEmbedUrl(currentSong.url)
+                  const jsApiParams = `&enablejsapi=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}`
                   return embedUrl ? (
                     <iframe
+                      ref={ytIframeRef}
                       key={currentSong.id}
                       className="aspect-video w-full"
-                      src={`${embedUrl}${autoplayParam}`}
+                      src={`${embedUrl}${autoplayParam}${jsApiParams}`}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                       referrerPolicy="strict-origin-when-cross-origin"
