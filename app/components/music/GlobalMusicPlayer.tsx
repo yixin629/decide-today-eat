@@ -15,17 +15,59 @@ import { getYouTubeEmbedUrl } from '@/app/music-player/lib/youtube'
 // visibility classes toggle. Conditionally rendering it (`{open && <section>...}`)
 // would unmount the <audio>/<iframe> every time the panel is collapsed, which is
 // exactly the "music stops" bug this component exists to avoid.
+interface LyricsState {
+  loading: boolean
+  found: boolean
+  text: string | null
+  error: boolean
+}
+
+const REPEAT_LABELS: Record<string, { icon: string; label: string }> = {
+  off: { icon: '➡️', label: '不循环' },
+  all: { icon: '🔁', label: '列表循环' },
+  one: { icon: '🔂', label: '单曲循环' },
+}
+
 export default function GlobalMusicPlayer() {
-  const { currentSong, isPlaying, currentTime, duration, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev } = useMusicPlayer()
+  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin } = useMusicPlayer()
   const pathname = usePathname()
   const onMusicPage = pathname === '/music-player'
   const [isOpen, setIsOpen] = useState(false)
+  const [lyricsOpen, setLyricsOpen] = useState(false)
+  const [lyrics, setLyrics] = useState<LyricsState>({ loading: false, found: false, text: null, error: false })
 
   // Landing on the dedicated page opens the panel automatically; leaving it collapses back to the FAB.
   useEffect(() => { setIsOpen(onMusicPage) }, [onMusicPage])
 
   const panelOpen = isOpen || onMusicPage
   const hasSong = Boolean(currentSong)
+
+  useEffect(() => {
+    if (!lyricsOpen || !currentSong) return
+    let cancelled = false
+    setLyrics({ loading: true, found: false, text: null, error: false })
+    const params = new URLSearchParams({ title: currentSong.title, artist: currentSong.artist })
+    fetch(`/api/lyrics?${params}`)
+      .then((response) => response.json() as Promise<{ found?: boolean; plainLyrics?: string | null; error?: string }>)
+      .then((data) => {
+        if (cancelled) return
+        if (data.error) { setLyrics({ loading: false, found: false, text: null, error: true }); return }
+        setLyrics({ loading: false, found: Boolean(data.found), text: data.plainLyrics ?? null, error: false })
+      })
+      .catch(() => { if (!cancelled) setLyrics({ loading: false, found: false, text: null, error: true }) })
+    return () => { cancelled = true }
+  }, [lyricsOpen, currentSong?.id, currentSong?.title, currentSong?.artist])
+
+  // Bake `autoplay=1` into an embed's src only for the moment a new song becomes current
+  // (and only if it should already be playing) — never in response to later play/pause
+  // toggles, since changing an <iframe> src always reloads it and would restart the track.
+  const [lastSeenId, setLastSeenId] = useState<string | null>(null)
+  const [autoplayId, setAutoplayId] = useState<string | null>(null)
+  if (currentSong && currentSong.id !== lastSeenId) {
+    setLastSeenId(currentSong.id)
+    if (isPlaying) setAutoplayId(currentSong.id)
+  }
+  const autoplayParam = currentSong && autoplayId === currentSong.id ? '&autoplay=1' : ''
 
   return (
     <>
@@ -74,6 +116,24 @@ export default function GlobalMusicPlayer() {
                 <p className="truncate text-sm font-bold text-gray-800">{currentSong.title}</p>
                 <p className="truncate text-xs text-gray-400">{currentSong.artist}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => toggleLike(currentSong.id)}
+                className={`shrink-0 rounded-full p-1.5 transition-colors ${currentSong.liked ? 'text-rose-500' : 'text-gray-300 hover:text-rose-400'}`}
+                aria-label={currentSong.liked ? '取消喜欢' : '喜欢这首歌'}
+                aria-pressed={Boolean(currentSong.liked)}
+              >
+                {currentSong.liked ? '❤️' : '🤍'}
+              </button>
+              <button
+                type="button"
+                onClick={() => togglePin(currentSong.id)}
+                className={`shrink-0 rounded-full p-1.5 transition-colors ${currentSong.pinned ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400'}`}
+                aria-label={currentSong.pinned ? '取消置顶' : '置顶这首歌'}
+                aria-pressed={Boolean(currentSong.pinned)}
+              >
+                📌
+              </button>
               {!onMusicPage && (
                 <button
                   type="button"
@@ -87,58 +147,93 @@ export default function GlobalMusicPlayer() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {currentSong.source === 'youtube' && (() => {
-                const embedUrl = getYouTubeEmbedUrl(currentSong.url)
-                return embedUrl ? (
-                  <iframe
-                    className="aspect-video w-full"
-                    src={embedUrl}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    title={`${currentSong.title} - YouTube 播放器`}
-                  />
-                ) : (
-                  <p className="p-3 text-xs text-red-500">无法解析 YouTube 链接</p>
-                )
-              })()}
-
-              {currentSong.source === 'spotify' && (
-                <iframe
-                  className="h-80 w-full"
-                  src={currentSong.url.includes('/embed/') ? currentSong.url : currentSong.url.replace('spotify.com/', 'spotify.com/embed/')}
-                  allow="encrypted-media"
-                  title="Spotify"
-                />
-              )}
-
-              {currentSong.source === 'file' && (
-                <div className="px-3 py-3">
-                  <audio
-                    ref={audioRef}
-                    src={currentSong.url}
-                    onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
-                    onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-                    onEnded={() => playNext()}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    autoPlay={isPlaying}
-                  />
-                  <div className="mb-1 h-1.5 w-full rounded-full bg-gray-200">
-                    <div className="h-1.5 rounded-full bg-pink-500 transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-400">
-                    <span>{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
-                    <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
-                  </div>
+              {/* Lyrics is just an overlay of visibility — the media below stays mounted so toggling it never interrupts playback. */}
+              <div className={lyricsOpen ? '' : 'hidden'}>
+                <div className="min-h-[10rem] px-3 py-3 text-sm leading-relaxed text-gray-700">
+                  {lyrics.loading && <p className="text-gray-400">歌词加载中…</p>}
+                  {!lyrics.loading && lyrics.error && <p className="text-red-500">歌词服务暂时不可用</p>}
+                  {!lyrics.loading && !lyrics.error && !lyrics.found && <p className="text-gray-400">没有找到这首歌的歌词</p>}
+                  {!lyrics.loading && lyrics.found && lyrics.text && <pre className="whitespace-pre-wrap font-sans">{lyrics.text}</pre>}
                 </div>
-              )}
+              </div>
+
+              <div className={lyricsOpen ? 'hidden' : ''}>
+                {currentSong.source === 'youtube' && (() => {
+                  const embedUrl = getYouTubeEmbedUrl(currentSong.url)
+                  return embedUrl ? (
+                    <iframe
+                      key={currentSong.id}
+                      className="aspect-video w-full"
+                      src={`${embedUrl}${autoplayParam}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      title={`${currentSong.title} - YouTube 播放器`}
+                    />
+                  ) : (
+                    <p className="p-3 text-xs text-red-500">无法解析 YouTube 链接</p>
+                  )
+                })()}
+
+                {currentSong.source === 'spotify' && (() => {
+                  const base = currentSong.url.includes('/embed/') ? currentSong.url : currentSong.url.replace('spotify.com/', 'spotify.com/embed/')
+                  const embedUrl = `${base}${base.includes('?') ? '&' : '?'}${autoplayParam ? 'autoplay=1' : 'autoplay=0'}`
+                  return (
+                    <iframe
+                      key={currentSong.id}
+                      className="h-80 w-full"
+                      src={embedUrl}
+                      allow="autoplay; encrypted-media"
+                      title="Spotify"
+                    />
+                  )
+                })()}
+
+                {currentSong.source === 'file' && (
+                  <div className="px-3 py-3">
+                    <audio
+                      ref={audioRef}
+                      src={currentSong.url}
+                      onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
+                      onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+                      onEnded={handleTrackEnded}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      autoPlay={isPlaying}
+                    />
+                    <div className="mb-1 h-1.5 w-full rounded-full bg-gray-200">
+                      <div className="h-1.5 rounded-full bg-pink-500 transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-gray-400">
+                      <span>{Math.floor(currentTime / 60)}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}</span>
+                      <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-center gap-5 border-t border-pink-50 px-3 py-2">
+            <div className="flex items-center justify-center gap-4 border-t border-pink-50 px-3 py-2">
+              <button
+                onClick={cycleRepeatMode}
+                className={`text-base transition-opacity ${repeatMode === 'off' ? 'opacity-40 hover:opacity-70' : 'opacity-100'}`}
+                aria-label={`播放模式：${REPEAT_LABELS[repeatMode].label}，点击切换`}
+                title={REPEAT_LABELS[repeatMode].label}
+              >
+                {REPEAT_LABELS[repeatMode].icon}
+              </button>
               <button onClick={playPrev} className="text-lg text-gray-500 hover:text-primary" aria-label="上一首">⏮️</button>
               <button onClick={togglePlay} className="text-2xl hover:scale-105" aria-label={isPlaying ? '暂停' : '播放'}>{isPlaying ? '⏸️' : '▶️'}</button>
               <button onClick={playNext} className="text-lg text-gray-500 hover:text-primary" aria-label="下一首">⏭️</button>
+              <button
+                onClick={() => setLyricsOpen((open) => !open)}
+                className={`text-base transition-opacity ${lyricsOpen ? 'opacity-100' : 'opacity-40 hover:opacity-70'}`}
+                aria-label={lyricsOpen ? '关闭歌词' : '显示歌词'}
+                aria-pressed={lyricsOpen}
+                title="歌词"
+              >
+                📜
+              </button>
             </div>
           </>
         )}

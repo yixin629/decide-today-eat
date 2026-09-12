@@ -49,7 +49,7 @@
 | 聊天           | `chat_messages`                  | `migrations/chat-table-safe.sql`                                | 包含 Realtime publication 配置                                                                                                    |
 | 每日签到       | `check_ins`                      | `migrations/check-in-table.sql` + `fixes/fix-check-ins-rls.sql` | 后者启用当前宽松 RLS，并固定共享函数的 `search_path`                                                                              |
 | 共同账本       | `shared_expenses`                | `migrations/expenses-table.sql`                                 | 独立迁移                                                                                                                          |
-| 音乐播放器     | `songs`                          | `migrations/music-player-schema.sql`                            | 独立迁移                                                                                                                          |
+| 音乐播放器     | `songs`、`pinned_artists`        | `migrations/music-player-schema.sql` + `migrations/music-player-enhancements.sql` | 后者补充喜欢、置顶歌曲与置顶歌手，并加入 Realtime                                                                                 |
 | 个人资料与提醒 | `user_profiles`、`reminders`     | `migrations/profile-tables.sql`                                 | 自定义头像再执行 `migrations/update-profile-avatar.sql`；已有同名资料导致 `PGRST116` 时执行 `fixes/deduplicate-user-profiles.sql` |
 | 五子棋         | `gomoku_games`                   | 基础 setup + `migrations/gomoku-mahjong-schema.sql`             | 添加当前 JSONB 状态字段、Realtime 和兼容约束                                                                                      |
 | 麻将           | `mahjong_games`、`user_balances` | `migrations/gomoku-mahjong-schema.sql`                          | 同时插入两个默认用户余额，使用前应审查                                                                                            |
@@ -106,6 +106,7 @@
 | `horoscope-table.sql`           | 星座记录                                         |
 | `mood-records-table.sql`        | 心情记录；兼容 `TEXT` 或 `UUID` 类型的已有 `id`  |
 | `music-player-schema.sql`       | 共享歌曲                                         |
+| `music-player-enhancements.sql` | 歌曲喜欢/置顶字段、置顶歌手表和 Realtime         |
 | `monopoly-online-rooms.sql`     | 大富翁在线房间、索引、宽松私有站点 RLS 和 Realtime |
 | `dress-up-shared-gallery.sql`   | 换装造型共享作品墙和 Realtime                    |
 | `novels-table.sql`              | 情侣书架                                         |
