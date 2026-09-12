@@ -541,6 +541,10 @@ export default function PtePlanner() {
     })
   }
 
+  const scrollToQuickNav = () => {
+    quickNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="space-y-6 pb-28 md:pb-20">
       {hydrated && (
@@ -1428,6 +1432,8 @@ export default function PtePlanner() {
       {savedPlan && (
         <nav className="fixed bottom-[calc(env(safe-area-inset-bottom)+6rem)] left-3 z-40 flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_8px_26px_rgba(15,23,42,0.18)] backdrop-blur-xl md:bottom-5 md:left-5" aria-label="页面位置快捷导航">
           <button type="button" onClick={() => scrollToPageEdge('top')} className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black text-slate-600 transition hover:bg-cyan-50 hover:text-cyan-800" aria-label="返回页面顶部">↑<span className="ml-1 hidden sm:inline">顶部</span></button>
+          <div className="h-px bg-slate-200" aria-hidden="true" />
+          <button type="button" onClick={scrollToQuickNav} className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black text-slate-600 transition hover:bg-amber-50 hover:text-amber-800" aria-label="跳转到题型快速导航">☰<span className="ml-1 hidden sm:inline">题型</span></button>
           <div className="h-px bg-slate-200" aria-hidden="true" />
           <button type="button" onClick={() => scrollToPageEdge('bottom')} className="flex h-10 min-w-10 items-center justify-center rounded-xl px-2 text-sm font-black text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" aria-label="前往页面底部">↓<span className="ml-1 hidden sm:inline">底部</span></button>
         </nav>
