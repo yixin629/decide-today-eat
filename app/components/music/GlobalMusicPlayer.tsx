@@ -71,11 +71,12 @@ const REPEAT_LABELS: Record<string, { icon: string; label: string }> = {
 const REACTION_OPTIONS = ['🌹', '💐', '❤️', '👏', '🔥', '😂']
 
 export default function GlobalMusicPlayer() {
-  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin, listenTogether, partnerOnline, pendingSync, reactions, partyInvite, dismissPartyInvite, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction } = useMusicPlayer()
+  const { songs, currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, selectSong, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin, listenTogether, partnerOnline, pendingSync, reactions, partyInvite, dismissPartyInvite, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction } = useMusicPlayer()
   const pathname = usePathname()
   const onMusicPage = pathname === '/music-player'
   const [isOpen, setIsOpen] = useState(false)
   const [lyricsOpen, setLyricsOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
   const [lyrics, setLyrics] = useState<LyricsState>({ loading: false, found: false, text: null, error: false })
 
@@ -360,7 +361,30 @@ export default function GlobalMusicPlayer() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {/* Lyrics is just an overlay of visibility — the media below stays mounted so toggling it never interrupts playback. */}
+              {/* Playlist / lyrics are just visibility overlays — the media below stays mounted
+                  so switching between them never interrupts playback (see note above). */}
+              <div className={listOpen ? '' : 'hidden'}>
+                <div className="divide-y divide-pink-50">
+                  {songs.length === 0 && <p className="px-3 py-6 text-center text-xs text-gray-400">歌单是空的，去 <Link href="/music-player" onClick={() => setIsOpen(false)} className="text-primary underline">音乐播放器</Link> 添加吧</p>}
+                  {songs.map((song) => (
+                    <button
+                      key={song.id}
+                      type="button"
+                      onClick={() => { selectSong(song.id); setListOpen(false) }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${song.id === currentSong.id ? 'bg-pink-50' : 'hover:bg-gray-50'}`}
+                    >
+                      <span className="text-base shrink-0">{song.id === currentSong.id ? (isPlaying ? '🎶' : '🎵') : (song.cover || '🎵')}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block truncate text-sm ${song.id === currentSong.id ? 'font-bold text-primary' : 'text-gray-700'}`}>{song.title}</span>
+                        <span className="block truncate text-xs text-gray-400">{song.artist}</span>
+                      </span>
+                      {song.pinned && <span className="shrink-0 text-xs" aria-hidden="true">📌</span>}
+                      {song.liked && <span className="shrink-0 text-xs" aria-hidden="true">❤️</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className={lyricsOpen ? '' : 'hidden'}>
                 <div className="min-h-[10rem] px-3 py-3 text-sm leading-relaxed text-gray-700">
                   {lyrics.loading && <p className="text-gray-400">歌词加载中…</p>}
@@ -370,7 +394,7 @@ export default function GlobalMusicPlayer() {
                 </div>
               </div>
 
-              <div className={lyricsOpen ? 'hidden' : ''}>
+              <div className={lyricsOpen || listOpen ? 'hidden' : ''}>
                 {currentSong.source === 'youtube' && (() => {
                   const embedUrl = getYouTubeEmbedUrl(currentSong.url)
                   const jsApiParams = `&enablejsapi=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}`
@@ -474,13 +498,22 @@ export default function GlobalMusicPlayer() {
               <button onClick={togglePlay} className="text-2xl hover:scale-105" aria-label={isPlaying ? '暂停' : '播放'}>{isPlaying ? '⏸️' : '▶️'}</button>
               <button onClick={playNext} className="text-lg text-gray-500 hover:text-primary" aria-label="下一首">⏭️</button>
               <button
-                onClick={() => setLyricsOpen((open) => !open)}
+                onClick={() => { setLyricsOpen((open) => !open); setListOpen(false) }}
                 className={`text-base transition-opacity ${lyricsOpen ? 'opacity-100' : 'opacity-40 hover:opacity-70'}`}
                 aria-label={lyricsOpen ? '关闭歌词' : '显示歌词'}
                 aria-pressed={lyricsOpen}
                 title="歌词"
               >
                 📜
+              </button>
+              <button
+                onClick={() => { setListOpen((open) => !open); setLyricsOpen(false) }}
+                className={`text-base transition-opacity ${listOpen ? 'opacity-100' : 'opacity-40 hover:opacity-70'}`}
+                aria-label={listOpen ? '关闭歌单' : `打开歌单（${songs.length} 首）`}
+                aria-pressed={listOpen}
+                title="歌单"
+              >
+                📋
               </button>
             </div>
           </>
