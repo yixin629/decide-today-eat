@@ -7,7 +7,11 @@ import { useMusicPlayer } from './MusicPlayerContext'
 import { getYouTubeEmbedUrl } from '@/app/music-player/lib/youtube'
 
 // Minimal shape of the bits of the YouTube IFrame Player API we actually use.
-interface YTPlayer { destroy: () => void }
+interface YTPlayer {
+  destroy: () => void
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void
+  getCurrentTime: () => number
+}
 interface YTPlayerEvent { data: number }
 interface YTNamespace {
   Player: new (target: HTMLElement, options: { events: { onStateChange: (event: YTPlayerEvent) => void } }) => YTPlayer
@@ -62,8 +66,10 @@ const REPEAT_LABELS: Record<string, { icon: string; label: string }> = {
   one: { icon: '🔂', label: '单曲循环' },
 }
 
+const REACTION_OPTIONS = ['🌹', '💐', '❤️', '👏', '🔥', '😂']
+
 export default function GlobalMusicPlayer() {
-  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin } = useMusicPlayer()
+  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin, listenTogether, partnerOnline, pendingSync, reactions, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction } = useMusicPlayer()
   const pathname = usePathname()
   const onMusicPage = pathname === '/music-player'
   const [isOpen, setIsOpen] = useState(false)
@@ -84,6 +90,7 @@ export default function GlobalMusicPlayer() {
   // <iframe> has no onEnded event, which is why auto-next silently did nothing before.
   const ytReady = useYouTubeApiReady()
   const ytIframeRef = useRef<HTMLIFrameElement>(null)
+  const ytPlayerRef = useRef<YTPlayer | null>(null)
   const handleTrackEndedRef = useRef(handleTrackEnded)
   useEffect(() => { handleTrackEndedRef.current = handleTrackEnded }, [handleTrackEnded])
   useEffect(() => {
@@ -95,8 +102,36 @@ export default function GlobalMusicPlayer() {
         },
       },
     })
-    return () => player.destroy()
+    ytPlayerRef.current = player
+    return () => { player.destroy(); ytPlayerRef.current = null }
   }, [ytReady, currentSong?.id, currentSong?.source])
+
+  // Poll YouTube's own playhead into shared `currentTime` — an <iframe> gives us no
+  // onTimeUpdate, but "listen together" needs a real position to sync with the partner.
+  const reportPositionRef = useRef(reportPosition)
+  useEffect(() => { reportPositionRef.current = reportPosition }, [reportPosition])
+  useEffect(() => {
+    if (currentSong?.source !== 'youtube') return
+    const interval = setInterval(() => {
+      const seconds = ytPlayerRef.current?.getCurrentTime()
+      if (typeof seconds === 'number' && Number.isFinite(seconds)) reportPositionRef.current(seconds)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [currentSong?.id, currentSong?.source])
+
+  // Apply a sync update pushed by the partner: seek whichever media element is actually
+  // playing to where they are (plus elapsed time since their update, if they're playing).
+  useEffect(() => {
+    if (!pendingSync || !currentSong) return
+    const elapsed = pendingSync.isPlaying ? (Date.now() - pendingSync.receivedAt) / 1000 : 0
+    const target = Math.max(0, pendingSync.positionSeconds + elapsed)
+    if (currentSong.source === 'file' && audioRef.current) {
+      audioRef.current.currentTime = target
+    } else if (currentSong.source === 'youtube' && ytPlayerRef.current) {
+      ytPlayerRef.current.seekTo(target, true)
+    }
+    consumePendingSync()
+  }, [pendingSync, currentSong, audioRef, consumePendingSync])
 
   useEffect(() => {
     if (!lyricsOpen || !currentSong) return
@@ -127,6 +162,34 @@ export default function GlobalMusicPlayer() {
 
   return (
     <>
+      {/* Flying reactions (flowers etc.) — visible on every page, not just while the panel is open,
+          so a "🌹" the partner sends still shows up even if you're browsing away from the player. */}
+      <div className="pointer-events-none fixed bottom-24 right-6 z-[65] h-0 w-0 sm:bottom-24">
+        {reactions.map((reaction) => (
+          <span
+            key={reaction.id}
+            className="reaction-particle absolute bottom-0 right-0 text-3xl"
+            style={{ ['--drift' as string]: `${Math.round((Math.random() - 0.5) * 60)}px` }}
+            aria-hidden="true"
+          >
+            {reaction.emoji}
+          </span>
+        ))}
+      </div>
+      <style jsx global>{`
+        .reaction-particle {
+          animation: reaction-float 2.4s ease-out forwards;
+        }
+        @keyframes reaction-float {
+          0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+          15% { transform: translate(0, 0) scale(1.1); opacity: 1; }
+          100% { transform: translate(var(--drift), -140px) scale(1); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .reaction-particle { animation: none; opacity: 0; }
+        }
+      `}</style>
+
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
@@ -213,6 +276,37 @@ export default function GlobalMusicPlayer() {
               )}
             </div>
 
+            <div className="flex items-center justify-between gap-2 border-b border-pink-50 px-3 py-1.5">
+              <button
+                type="button"
+                onClick={toggleListenTogether}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                  listenTogether ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                }`}
+                aria-pressed={listenTogether}
+                title={listenTogether ? '正在一起听：播放/暂停/切歌会同步给对方' : '开启后你和对方会同步播放进度'}
+              >
+                <span aria-hidden="true">🎧</span>
+                一起听
+                {listenTogether && (
+                  <span className={`h-1.5 w-1.5 rounded-full ${partnerOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} aria-hidden="true" />
+                )}
+              </button>
+              <div className="flex items-center gap-1">
+                {REACTION_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => sendReaction(emoji)}
+                    className="rounded-full p-1 text-base transition-transform hover:scale-125"
+                    aria-label={`发送 ${emoji} 反应`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="min-h-0 flex-1 overflow-y-auto">
               {/* Lyrics is just an overlay of visibility — the media below stays mounted so toggling it never interrupts playback. */}
               <div className={lyricsOpen ? '' : 'hidden'}>
@@ -294,13 +388,13 @@ export default function GlobalMusicPlayer() {
                         const rect = event.currentTarget.getBoundingClientRect()
                         const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
                         audio.currentTime = ratio * duration
-                        setCurrentTime(audio.currentTime)
+                        reportSeek(audio.currentTime)
                       }}
                       onKeyDown={(event) => {
                         const audio = audioRef.current
                         if (!audio || !duration) return
-                        if (event.key === 'ArrowRight') { audio.currentTime = Math.min(duration, audio.currentTime + 5); setCurrentTime(audio.currentTime) }
-                        if (event.key === 'ArrowLeft') { audio.currentTime = Math.max(0, audio.currentTime - 5); setCurrentTime(audio.currentTime) }
+                        if (event.key === 'ArrowRight') { audio.currentTime = Math.min(duration, audio.currentTime + 5); reportSeek(audio.currentTime) }
+                        if (event.key === 'ArrowLeft') { audio.currentTime = Math.max(0, audio.currentTime - 5); reportSeek(audio.currentTime) }
                       }}
                     >
                       <div className="h-1.5 rounded-full bg-pink-500 transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />

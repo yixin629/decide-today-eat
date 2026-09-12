@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { supabase } from '@/lib/supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface Song {
   id: string
@@ -20,8 +21,31 @@ export interface Song {
 
 export type RepeatMode = 'off' | 'all' | 'one'
 
+export interface PendingSync {
+  positionSeconds: number
+  isPlaying: boolean
+  receivedAt: number
+}
+
+export interface Reaction {
+  id: string
+  emoji: string
+  at: number
+}
+
+interface SyncRow {
+  id: string
+  song_id: string | null
+  position_seconds: number
+  is_playing: boolean
+  updated_by: string | null
+  updated_at: string
+}
+
 const REPEAT_STORAGE_KEY = 'music-player-repeat-mode'
 const LAST_SONG_STORAGE_KEY = 'music-player-last-song-id'
+const LISTEN_TOGETHER_STORAGE_KEY = 'music-player-listen-together'
+const REACTION_LIFETIME_MS = 4000
 
 function sortSongs(list: Song[]) {
   return [...list].sort((a, b) => {
@@ -43,6 +67,10 @@ interface MusicPlayerContextValue {
   repeatMode: RepeatMode
   pinnedArtists: string[]
   audioRef: RefObject<HTMLAudioElement | null>
+  listenTogether: boolean
+  partnerOnline: boolean
+  pendingSync: PendingSync | null
+  reactions: Reaction[]
   setCurrentTime: (value: number) => void
   setDuration: (value: number) => void
   setIsPlaying: (value: boolean) => void
@@ -58,6 +86,11 @@ interface MusicPlayerContextValue {
   togglePin: (id: string) => Promise<void>
   togglePinnedArtist: (artist: string) => Promise<void>
   loadSongs: () => Promise<void>
+  toggleListenTogether: () => void
+  reportSeek: (seconds: number) => void
+  reportPosition: (seconds: number) => void
+  consumePendingSync: () => void
+  sendReaction: (emoji: string) => void
 }
 
 const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null)
@@ -73,12 +106,33 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
   const [duration, setDuration] = useState(0)
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all')
   const [pinnedArtists, setPinnedArtists] = useState<string[]>([])
+  const [listenTogether, setListenTogether] = useState(false)
+  const [partnerOnline, setPartnerOnline] = useState(false)
+  const [pendingSync, setPendingSync] = useState<PendingSync | null>(null)
+  const [reactions, setReactions] = useState<Reaction[]>([])
   const hasRestoredLastSong = useRef(false)
+
+  // Tags our own realtime writes so the sync subscription can ignore its own echo. Lazily
+  // initialized state (not a ref) so reading it during render doesn't trip react-hooks/refs;
+  // it's mirrored into a ref right below since callbacks only ever need the current value.
+  const [clientId] = useState(() => (typeof crypto !== 'undefined' ? crypto.randomUUID() : Math.random().toString(36)))
+  const clientIdRef = useRef(clientId)
+
+  const currentSongIdRef = useRef(currentSongId)
+  useEffect(() => { currentSongIdRef.current = currentSongId }, [currentSongId])
+  const isPlayingRef = useRef(isPlaying)
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
+  const currentTimeRef = useRef(currentTime)
+  useEffect(() => { currentTimeRef.current = currentTime }, [currentTime])
+  const listenTogetherRef = useRef(listenTogether)
+  useEffect(() => { listenTogetherRef.current = listenTogether }, [listenTogether])
 
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(REPEAT_STORAGE_KEY)
       if (stored === 'off' || stored === 'all' || stored === 'one') setRepeatMode(stored)
+      const storedListen = window.localStorage.getItem(LISTEN_TOGETHER_STORAGE_KEY)
+      if (storedListen === '1') setListenTogether(true)
     } catch {
       // localStorage unavailable (private mode etc.) — keep default
     }
@@ -91,6 +145,81 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
       return next
     })
   }, [])
+
+  // Pushes "what I'm doing" to the shared single-row sync table, tagged with our client id
+  // so the realtime handler below can tell our own echo apart from the partner's changes.
+  const pushSync = useCallback((partial: { songId?: string | null; positionSeconds?: number; isPlaying?: boolean }) => {
+    if (!listenTogetherRef.current) return
+    supabase.from('music_sync_session').upsert({
+      id: 'default',
+      song_id: partial.songId ?? currentSongIdRef.current,
+      position_seconds: partial.positionSeconds ?? currentTimeRef.current,
+      is_playing: partial.isPlaying ?? isPlayingRef.current,
+      updated_by: clientIdRef.current,
+      updated_at: new Date().toISOString(),
+    }).then(({ error }) => {
+      if (error) console.warn('Listen-together sync push failed (has the migration been run?):', error)
+    })
+  }, [])
+
+  const toggleListenTogether = useCallback(() => {
+    setListenTogether((value) => {
+      const next = !value
+      try { window.localStorage.setItem(LISTEN_TOGETHER_STORAGE_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      if (next) {
+        // Announce our current state immediately on opting in, so the partner catches up.
+        supabase.from('music_sync_session').upsert({
+          id: 'default',
+          song_id: currentSongIdRef.current,
+          position_seconds: currentTimeRef.current,
+          is_playing: isPlayingRef.current,
+          updated_by: clientIdRef.current,
+          updated_at: new Date().toISOString(),
+        }).then(({ error }) => {
+          if (error) console.warn('Listen-together sync push failed (has the migration been run?):', error)
+        })
+      }
+      return next
+    })
+  }, [])
+
+  const reportSeek = useCallback((seconds: number) => {
+    setCurrentTime(seconds)
+    pushSync({ positionSeconds: seconds })
+  }, [pushSync])
+
+  const reportPosition = useCallback((seconds: number) => {
+    setCurrentTime(seconds)
+  }, [])
+
+  const sendReaction = useCallback((emoji: string) => {
+    const reaction: Reaction = { id: crypto.randomUUID(), emoji, at: Date.now() }
+    setReactions((prev) => [...prev, reaction])
+    supabase.channel('music-reactions').send({ type: 'broadcast', event: 'reaction', payload: reaction })
+  }, [])
+
+  // Reactions (flowers etc.) — a broadcast-only channel, no table needed, works whether or
+  // not "listen together" is on. The partner's channel.send above and our own optimistic
+  // add above both land here; broadcast doesn't echo back to the sender by default.
+  useEffect(() => {
+    const channel = supabase
+      .channel('music-reactions')
+      .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+        const reaction = payload as Reaction
+        setReactions((prev) => [...prev, reaction])
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  useEffect(() => {
+    if (reactions.length === 0) return
+    const timer = setTimeout(() => {
+      const cutoff = Date.now() - REACTION_LIFETIME_MS
+      setReactions((prev) => prev.filter((reaction) => reaction.at > cutoff))
+    }, REACTION_LIFETIME_MS)
+    return () => clearTimeout(timer)
+  }, [reactions])
 
   const loadSongs = useCallback(async () => {
     try {
@@ -145,6 +274,49 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [loadSongs, loadPinnedArtists])
 
+  // "Listen together": subscribe to the shared sync row + presence only while opted in.
+  useEffect(() => {
+    if (!listenTogether) { setPartnerOnline(false); return }
+
+    let channel: RealtimeChannel | null = null
+    channel = supabase
+      .channel('music-party', { config: { presence: { key: clientIdRef.current } } })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'music_sync_session', filter: 'id=eq.default' }, (payload) => {
+        const row = payload.new as SyncRow | undefined
+        if (!row || row.updated_by === clientIdRef.current) return
+        if (row.song_id && row.song_id !== currentSongIdRef.current) {
+          setCurrentSongId(row.song_id)
+          setDuration(0)
+        }
+        setIsPlaying(row.is_playing)
+        setCurrentTime(Number(row.position_seconds) || 0)
+        setPendingSync({ positionSeconds: Number(row.position_seconds) || 0, isPlaying: row.is_playing, receivedAt: Date.now() })
+      })
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel?.presenceState() ?? {}
+        const others = Object.keys(state).filter((key) => key !== clientIdRef.current)
+        setPartnerOnline(others.length > 0)
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') channel?.track({ online_at: Date.now() })
+      })
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+      setPartnerOnline(false)
+    }
+  }, [listenTogether])
+
+  // Heartbeat: while listening together and actively playing, periodically re-announce our
+  // position so a partner joining mid-song (or one that drifted) can catch up.
+  useEffect(() => {
+    if (!listenTogether || !isPlaying || !currentSongId) return
+    const interval = setInterval(() => pushSync({}), 5000)
+    return () => clearInterval(interval)
+  }, [listenTogether, isPlaying, currentSongId, pushSync])
+
+  const consumePendingSync = useCallback(() => setPendingSync(null), [])
+
   // Restore the last-played track (paused) after a hard page reload, so the floating
   // player doesn't just vanish — currentSongId otherwise only lives in memory and a
   // full refresh (not a client-side Link navigation) wipes it.
@@ -191,17 +363,18 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     setCurrentTime(0)
     setDuration(0)
     if (autoplay) setIsPlaying(true)
-  }, [])
+    pushSync({ songId: id, positionSeconds: 0, isPlaying: autoplay })
+  }, [pushSync])
 
   const togglePlay = useCallback(() => {
+    const next = !isPlaying
     if (currentSong?.source === 'file' && audioRef.current) {
       if (isPlaying) audioRef.current.pause()
       else audioRef.current.play()
-      setIsPlaying(!isPlaying)
-    } else {
-      setIsPlaying(!isPlaying)
     }
-  }, [currentSong, isPlaying])
+    setIsPlaying(next)
+    pushSync({ isPlaying: next })
+  }, [currentSong, isPlaying, pushSync])
 
   const playNext = useCallback(() => {
     if (songs.length === 0) return
@@ -217,8 +390,8 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     selectSong(songs[prevIndex].id)
   }, [songs, currentSongIndex, selectSong])
 
-  // Wired to the file <audio>'s onEnded. (YouTube/Spotify iframes don't expose an end event
-  // without their JS APIs, so repeat-one/auto-advance only apply to uploaded MP3s for now.)
+  // Wired to the file <audio>'s onEnded. (YouTube auto-advance is wired separately through the
+  // IFrame Player API in GlobalMusicPlayer; Spotify's plain iframe still has no such event.)
   const handleTrackEnded = useCallback(() => {
     if (repeatMode === 'one') {
       const audio = audioRef.current
@@ -254,6 +427,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
       setCurrentTime(0)
       setDuration(0)
       setIsPlaying(true)
+      pushSync({ songId: newSong.id, positionSeconds: 0, isPlaying: true })
 
       await loadSongs()
       return newSong
@@ -261,7 +435,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
       console.error('Add song failed:', error)
       return null
     }
-  }, [loadSongs])
+  }, [loadSongs, pushSync])
 
   const removeSong = useCallback(async (id: string) => {
     const { error } = await supabase.from('songs').delete().eq('id', id)
@@ -325,6 +499,10 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     repeatMode,
     pinnedArtists,
     audioRef,
+    listenTogether,
+    partnerOnline,
+    pendingSync,
+    reactions,
     setCurrentTime,
     setDuration,
     setIsPlaying,
@@ -340,7 +518,12 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
     togglePin,
     togglePinnedArtist,
     loadSongs,
-  }), [songs, currentSong, currentSongIndex, isPlaying, currentTime, duration, repeatMode, pinnedArtists, selectSong, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, addSong, removeSong, toggleLike, togglePin, togglePinnedArtist, loadSongs])
+    toggleListenTogether,
+    reportSeek,
+    reportPosition,
+    consumePendingSync,
+    sendReaction,
+  }), [songs, currentSong, currentSongIndex, isPlaying, currentTime, duration, repeatMode, pinnedArtists, listenTogether, partnerOnline, pendingSync, reactions, selectSong, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, addSong, removeSong, toggleLike, togglePin, togglePinnedArtist, loadSongs, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction])
 
   return <MusicPlayerContext.Provider value={value}>{children}</MusicPlayerContext.Provider>
 }
