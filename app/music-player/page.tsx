@@ -1,37 +1,16 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import BackButton from '@/app/components/ui/BackButton'
 import { useToast } from '@/app/components/feedback/ToastProvider'
-import { supabase } from '@/lib/supabase'
-import { getYouTubeEmbedUrl, parseYouTubeUrl } from './lib/youtube'
-
-interface Song {
-  id: string
-  title: string
-  artist: string
-  url: string
-  cover?: string
-  source: 'file' | 'spotify' | 'youtube'
-  added_by?: string
-  created_at?: string
-}
+import { useMusicPlayer } from '@/app/components/music/MusicPlayerContext'
+import { parseYouTubeUrl } from './lib/youtube'
 
 interface SearchResult { videoId: string; title: string; artist: string; thumbnail: string | null }
 
 export default function MusicPlayerPage() {
   const toast = useToast()
-  const audioRef = useRef<HTMLAudioElement>(null)
-
-  // State
-  const [songs, setSongs] = useState<Song[]>([])
-  const [currentSongIndex, setCurrentSongIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  // Playback Modes
-  const isRepeat = false
-  const isShuffle = false
+  const { songs, currentSongIndex, selectSong, addSong, removeSong } = useMusicPlayer()
 
   // UI State
   const [showAddSong, setShowAddSong] = useState(false)
@@ -44,40 +23,6 @@ export default function MusicPlayerPage() {
   const [newSongTitle, setNewSongTitle] = useState('')
   const [newSongArtist, setNewSongArtist] = useState('')
   const [detectedSource, setDetectedSource] = useState<'file' | 'spotify' | 'youtube'>('file')
-
-  // Load songs from Supabase
-  const loadSongs = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('songs')
-        .select('*')
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      setSongs(data || [])
-    } catch (error) {
-      console.error('Failed to load songs:', error)
-      toast.error('加载歌单失败')
-    } finally {
-    }
-  }, [toast])
-
-  // Initial Load & Realtime Subscription
-  useEffect(() => {
-    loadSongs()
-
-    const channel = supabase
-      .channel('songs_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'songs' }, () => {
-        loadSongs()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadSongs])
 
   // Detect Source when URL changes
   useEffect(() => {
@@ -92,9 +37,6 @@ export default function MusicPlayerPage() {
     }
   }, [newSongUrl])
 
-  // Current Song
-  const currentSong = songs[currentSongIndex]
-
   // Add Song
   const handleAddSong = async () => {
     if (!newSongUrl) {
@@ -107,38 +49,18 @@ export default function MusicPlayerPage() {
       return
     }
 
-    try {
-      const finalUrl = newSongUrl
-      let finalCover = '🎵'
+    let finalCover = '🎵'
+    if (detectedSource === 'spotify') finalCover = '🟢'
+    else if (detectedSource === 'youtube') finalCover = '🔴'
 
-      // Process Links
-      if (detectedSource === 'spotify') {
-        finalCover = '🟢' // Spotify Icon
-        // Extract Track ID if needed, or store full URL.
-        // Spotify Embed works with full URL usually.
-      } else if (detectedSource === 'youtube') {
-        finalCover = '🔴' // YouTube Icon
-        // Convert watch URL to embed URL if necessary, but we can do it at render time.
-      }
-
-      const { error } = await supabase.from('songs').insert({
-        title: newSongTitle || '未知歌曲',
-        artist: newSongArtist || '未知歌手',
-        url: finalUrl,
-        source: detectedSource,
-        cover: finalCover,
-        added_by: 'user', // In real app, get current user
-      })
-
-      if (error) throw error
-
+    const success = await addSong({ title: newSongTitle, artist: newSongArtist, url: newSongUrl, source: detectedSource, cover: finalCover })
+    if (success) {
       toast.success('添加成功！')
       setNewSongUrl('')
       setNewSongTitle('')
       setNewSongArtist('')
       setShowAddSong(false)
-    } catch (error) {
-      console.error('Add song failed:', error)
+    } else {
       toast.error('添加失败')
     }
   }
@@ -159,162 +81,22 @@ export default function MusicPlayerPage() {
   }
 
   const addSearchResult = async (result: SearchResult) => {
-    const { error } = await supabase.from('songs').insert({ title: result.title, artist: result.artist, url: `https://www.youtube.com/watch?v=${result.videoId}`, source: 'youtube', cover: '🔴', added_by: 'user' })
-    if (error) toast.error('加入歌单失败')
-    else toast.success(`已加入：${result.title}`)
+    const success = await addSong({ title: result.title, artist: result.artist, url: `https://www.youtube.com/watch?v=${result.videoId}`, source: 'youtube', cover: '🔴' })
+    if (success) toast.success(`已加入：${result.title}`)
+    else toast.error('加入歌单失败')
   }
 
-  // Remove Song
-  const removeSong = async (id: string) => {
+  const handleRemoveSong = async (id: string) => {
     try {
-      const { error } = await supabase.from('songs').delete().eq('id', id)
-      if (error) throw error
+      await removeSong(id)
       toast.success('已移除')
-
-      // Adjust index
-      if (currentSongIndex >= songs.length - 1) {
-        setCurrentSongIndex(Math.max(0, songs.length - 2))
-      }
     } catch {
       toast.error('移除失败')
     }
   }
 
-  // Play Controls
-  const togglePlay = () => {
-    if (currentSong?.source === 'file' && audioRef.current) {
-      if (isPlaying) audioRef.current.pause()
-      else audioRef.current.play()
-      setIsPlaying(!isPlaying)
-    } else {
-      // For Iframe players, we can't easily control play/pause from outside without API
-      // So we just toggle state to update UI, but user has to click the iframe usually.
-      setIsPlaying(!isPlaying)
-    }
-  }
-
-  const playNext = () => {
-    if (songs.length === 0) return
-    const nextIndex = isShuffle
-      ? Math.floor(Math.random() * songs.length)
-      : (currentSongIndex + 1) % songs.length
-    setCurrentSongIndex(nextIndex)
-    setIsPlaying(true)
-  }
-
-  const playPrev = () => {
-    if (songs.length === 0) return
-    let prevIndex = currentSongIndex - 1
-    if (prevIndex < 0) prevIndex = songs.length - 1
-    setCurrentSongIndex(prevIndex)
-    setIsPlaying(true)
-  }
-
-  // Helper to render Player
-  const renderPlayer = () => {
-    if (!currentSong) return null
-
-    if (currentSong.source === 'spotify') {
-      // Convert URL to Embed URL
-      // https://open.spotify.com/track/ID?si=... -> https://open.spotify.com/embed/track/ID
-      let embedUrl = currentSong.url
-      if (!embedUrl.includes('/embed/')) {
-        embedUrl = embedUrl.replace('spotify.com/', 'spotify.com/embed/')
-      }
-      return (
-        <iframe
-          className="w-full h-80 rounded-xl"
-          src={embedUrl}
-          allow="encrypted-media"
-          title="Spotify"
-        />
-      )
-    }
-
-    if (currentSong.source === 'youtube') {
-      const embedUrl = getYouTubeEmbedUrl(currentSong.url)
-      if (embedUrl) {
-        return (
-          <div>
-            <iframe
-            className="aspect-video w-full rounded-xl"
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            title={`${currentSong.title} - YouTube 播放器`}
-          />
-            <p className="mt-3 text-center text-xs text-gray-500">请点击播放器内的播放按钮。若视频禁止嵌入，可在 YouTube 中打开。</p>
-            <a href={currentSong.url} target="_blank" rel="noreferrer" className="mx-auto mt-2 block w-fit text-sm font-semibold text-primary hover:underline">在 YouTube / YouTube Music 打开 ↗</a>
-          </div>
-        )
-      } else {
-        return <div className="text-red-500">无法解析 YouTube 链接</div>
-      }
-    }
-
-    // Default File Player
-    return (
-      <div className="text-center">
-        <div className="text-6xl mb-4 animate-pulse">{currentSong.cover || '🎵'}</div>
-        <h2 className="text-xl font-bold text-gray-800">{currentSong.title}</h2>
-        <p className="text-gray-600 mb-6">{currentSong.artist}</p>
-
-        {/* Audio Element */}
-        <audio
-          ref={audioRef}
-          src={currentSong.url}
-          onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
-          onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-          onEnded={() => {
-            if (isRepeat) audioRef.current?.play()
-            else playNext()
-          }}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          autoPlay={isPlaying}
-        />
-
-        {/* Simple Progress (Visual Only for now as customizing range is verbose) */}
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-          <div
-            className="bg-pink-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-gray-500 mb-6">
-          <span>
-            {Math.floor(currentTime / 60)}:
-            {Math.floor(currentTime % 60)
-              .toString()
-              .padStart(2, '0')}
-          </span>
-          <span>
-            {Math.floor(duration / 60)}:
-            {Math.floor(duration % 60)
-              .toString()
-              .padStart(2, '0')}
-          </span>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-6">
-          <button onClick={playPrev} className="text-3xl hover:text-primary transition-colors">
-            ⏮️
-          </button>
-          <button onClick={togglePlay} className="text-5xl hover:scale-105 transition-transform">
-            {isPlaying ? '⏸️' : '▶️'}
-          </button>
-          <button onClick={playNext} className="text-3xl hover:text-primary transition-colors">
-            ⏭️
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4 pb-72 md:p-8 md:pb-8">
       <div className="max-w-2xl mx-auto">
         <BackButton href="/" text="返回首页" />
 
@@ -322,19 +104,15 @@ export default function MusicPlayerPage() {
           <h1 className="text-3xl md:text-4xl font-bold text-primary text-center mb-2">
             🎵 共享音乐播放器 (Online)
           </h1>
-          <p className="text-gray-600 text-center mb-6">支持 MP3 / Spotify / YouTube Music • 双方共享歌单</p>
+          <p className="text-gray-600 text-center mb-2">支持 MP3 / Spotify / YouTube Music • 双方共享歌单</p>
+          <p className="text-gray-400 text-center text-xs mb-6">切到其他页面音乐也会继续播放，右下角有迷你播放器</p>
 
-          {/* Player Display */}
-          <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-6 mb-6 shadow-inner min-h-[300px] flex flex-col justify-center">
-            {songs.length > 0 ? (
-              renderPlayer()
-            ) : (
-              <div className="text-center text-gray-400">
-                <p className="text-4xl mb-2">☁️</p>
-                <p>播放列表为空，快添加一首吧！</p>
-              </div>
-            )}
-          </div>
+          {songs.length === 0 && (
+            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-6 mb-6 shadow-inner text-center text-gray-400">
+              <p className="text-4xl mb-2">☁️</p>
+              <p>播放列表为空，快添加一首吧！</p>
+            </div>
+          )}
 
           {/* Playlist Controls */}
           <div className="flex justify-between items-center mb-4">
@@ -402,10 +180,7 @@ export default function MusicPlayerPage() {
             {songs.map((song, index) => (
               <div
                 key={song.id}
-                onClick={() => {
-                  setCurrentSongIndex(index)
-                  setIsPlaying(true)
-                }}
+                onClick={() => selectSong(index)}
                 className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all border ${
                   index === currentSongIndex
                     ? 'bg-white border-primary shadow-md transform scale-[1.02]'
@@ -431,7 +206,7 @@ export default function MusicPlayerPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    removeSong(song.id)
+                    void handleRemoveSong(song.id)
                   }}
                   className="p-2 text-gray-300 hover:text-red-500 transition-colors"
                 >

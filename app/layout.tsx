@@ -10,6 +10,8 @@ import UnifiedThemePanel from '@/app/components/layout/UnifiedThemePanel'
 import HeartParticles from '@/app/components/layout/HeartParticles'
 import RandomSurprise from '@/app/components/layout/RandomSurprise'
 import NotificationCenter from '@/app/components/layout/NotificationCenter'
+import { MusicPlayerProvider } from '@/app/components/music/MusicPlayerContext'
+import GlobalMusicPlayer from '@/app/components/music/GlobalMusicPlayer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -29,19 +31,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} min-h-dvh`}>
         <ToastProvider>
           <AuthGuard>
-            <a href="#main-content" className="skip-link">
-              跳到主要内容
-            </a>
-            <RandomSurprise />
-            <Navigation />
-            <NotificationCenter />
-            <UserAvatar />
-            <div id="main-content" tabIndex={-1}>
-              {children}
-            </div>
-            <AIChatbot />
-            <UnifiedThemePanel />
-            <HeartParticles />
+            <MusicPlayerProvider>
+              <a href="#main-content" className="skip-link">
+                跳到主要内容
+              </a>
+              <RandomSurprise />
+              <Navigation />
+              <NotificationCenter />
+              <UserAvatar />
+              <div id="main-content" tabIndex={-1}>
+                {children}
+              </div>
+              <AIChatbot />
+              <UnifiedThemePanel />
+              <HeartParticles />
+              <GlobalMusicPlayer />
+            </MusicPlayerProvider>
           </AuthGuard>
         </ToastProvider>
       </body>

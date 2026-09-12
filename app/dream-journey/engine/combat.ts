@@ -281,11 +281,13 @@ export function resolveRound(
     } else {
       const fallbackIndex = enemies.findIndex((target) => target.hp > 0)
       const resolvedTargetIndex = enemies[targetIndex]?.hp > 0 ? targetIndex : fallbackIndex
-      const target = enemies[resolvedTargetIndex]
-      const resolvedDamage = target.name === '石甲卫' ? Math.max(1, Math.round(damage * 0.65)) : damage
-      target.hp = Math.max(0, target.hp - resolvedDamage)
-      enemyEffects[resolvedTargetIndex] = { armorBreak: 2 }
-      log.push(`破军斩·${skills.attackLevel}重命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}，并施加 2 回合破甲。`)
+      const target = resolvedTargetIndex >= 0 ? enemies[resolvedTargetIndex] : null
+      if (target) {
+        const resolvedDamage = target.name === '石甲卫' ? Math.max(1, Math.round(damage * 0.65)) : damage
+        target.hp = Math.max(0, target.hp - resolvedDamage)
+        enemyEffects[resolvedTargetIndex] = { armorBreak: 2 }
+        log.push(`破军斩·${skills.attackLevel}重命中${target.name}，造成 ${resolvedDamage} 点伤害${target.name === '石甲卫' ? '（玄岩重甲减伤）' : critical ? '（暴击）' : ''}，并施加 2 回合破甲。`)
+      }
     }
   }
 
