@@ -96,7 +96,7 @@ export default function MusicPlayerPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-72 md:p-8 md:pb-8">
+    <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-2xl mx-auto">
         <BackButton href="/" text="返回首页" />
 
@@ -105,7 +105,7 @@ export default function MusicPlayerPage() {
             🎵 共享音乐播放器 (Online)
           </h1>
           <p className="text-gray-600 text-center mb-2">支持 MP3 / Spotify / YouTube Music • 双方共享歌单</p>
-          <p className="text-gray-400 text-center text-xs mb-6">切到其他页面音乐也会继续播放，右下角有迷你播放器</p>
+          <p className="text-gray-400 text-center text-xs mb-6">播放器已固定在右下角悬浮面板，切到其他页面音乐也会继续播放</p>
 
           {songs.length === 0 && (
             <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl p-6 mb-6 shadow-inner text-center text-gray-400">
