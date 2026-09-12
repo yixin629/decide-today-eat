@@ -34,10 +34,13 @@ export default function GlobalMusicPlayer() {
   const onMusicPage = pathname === '/music-player'
   const [isOpen, setIsOpen] = useState(false)
   const [lyricsOpen, setLyricsOpen] = useState(false)
+  const [isBuffering, setIsBuffering] = useState(false)
   const [lyrics, setLyrics] = useState<LyricsState>({ loading: false, found: false, text: null, error: false })
 
   // Landing on the dedicated page opens the panel automatically; leaving it collapses back to the FAB.
   useEffect(() => { setIsOpen(onMusicPage) }, [onMusicPage])
+
+  useEffect(() => { setIsBuffering(false) }, [currentSong?.id])
 
   const panelOpen = isOpen || onMusicPage
   const hasSong = Boolean(currentSong)
@@ -199,9 +202,41 @@ export default function GlobalMusicPlayer() {
                       onEnded={handleTrackEnded}
                       onPlay={() => setIsPlaying(true)}
                       onPause={() => setIsPlaying(false)}
+                      onWaiting={() => setIsBuffering(true)}
+                      onStalled={() => setIsBuffering(true)}
+                      onPlaying={() => setIsBuffering(false)}
+                      onCanPlay={() => setIsBuffering(false)}
                       autoPlay={isPlaying}
                     />
-                    <div className="mb-1 h-1.5 w-full rounded-full bg-gray-200">
+                    {isBuffering && (
+                      <p className="mb-1 flex items-center gap-1.5 text-[11px] text-gray-400">
+                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-gray-300 border-t-pink-500" aria-hidden="true" />
+                        缓冲中…这段还没加载好，稍等一下
+                      </p>
+                    )}
+                    <div
+                      role="slider"
+                      tabIndex={0}
+                      aria-label="播放进度"
+                      aria-valuemin={0}
+                      aria-valuemax={Math.round(duration) || 0}
+                      aria-valuenow={Math.round(currentTime)}
+                      className="mb-1 h-1.5 w-full cursor-pointer rounded-full bg-gray-200"
+                      onClick={(event) => {
+                        const audio = audioRef.current
+                        if (!audio || !duration) return
+                        const rect = event.currentTarget.getBoundingClientRect()
+                        const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+                        audio.currentTime = ratio * duration
+                        setCurrentTime(audio.currentTime)
+                      }}
+                      onKeyDown={(event) => {
+                        const audio = audioRef.current
+                        if (!audio || !duration) return
+                        if (event.key === 'ArrowRight') { audio.currentTime = Math.min(duration, audio.currentTime + 5); setCurrentTime(audio.currentTime) }
+                        if (event.key === 'ArrowLeft') { audio.currentTime = Math.max(0, audio.currentTime - 5); setCurrentTime(audio.currentTime) }
+                      }}
+                    >
                       <div className="h-1.5 rounded-full bg-pink-500 transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
                     </div>
                     <div className="flex justify-between text-[10px] text-gray-400">
