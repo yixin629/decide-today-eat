@@ -133,7 +133,7 @@ function applyDamage(units: FormationUnit[], targetIds: string[], damageFor: (ta
 }
 
 function actionOrder(units: FormationUnit[]) {
-  return units
+  return [...units]
     .sort((a, b) => b.speed - a.speed)
     .map((unit) => unit.id)
 }
@@ -331,6 +331,11 @@ export function finishFormationBattle(state: FormationBattleState) {
   while (!next.outcome && guard < 240) {
     next = advanceFormationBattle(next).state
     guard += 1
+  }
+  if (!next.outcome) {
+    const allyHp = next.units.filter((unit) => unit.side === 'ally').reduce((sum, unit) => sum + unit.hp, 0)
+    const enemyHp = next.units.filter((unit) => unit.side === 'enemy').reduce((sum, unit) => sum + unit.hp, 0)
+    next = { ...next, outcome: allyHp >= enemyHp ? 'victory' : 'defeat' }
   }
   return next
 }

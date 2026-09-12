@@ -466,7 +466,7 @@ export default function GameCanvas({
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
               <div className="h-full bg-amber-400 transition-all" style={{ width: `${assetProgress.loaded / TOTAL_ASSETS * 100}%` }} />
             </div>
-            <p className="mt-2 text-xs text-slate-400">{assetProgress.loaded}/{TOTAL_ASSETS} 个地图与动画资源</p>
+            <p className="mt-2 text-xs text-slate-400">{assetProgress.loaded}/{TOTAL_ASSETS} 个地图与动画资源{assetProgress.failed > 0 ? `（${assetProgress.failed} 个失败）` : ''}</p>
           </div>
         </div>
       )}

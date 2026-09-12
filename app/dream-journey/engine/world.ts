@@ -45,8 +45,10 @@ export const PORTALS: readonly PortalDefinition[] = [
   { id: 'east-dock', name: '东海渡口', x: 2035, y: 2215, destination: { x: 140, y: 665 }, destinationName: '西林驿站' },
 ]
 
+const NPCS_WITH_BOSS: readonly NpcDefinition[] = [...NPCS, BOSS]
+
 export function getWorldEntities(stage: QuestStage): readonly NpcDefinition[] {
-  return stage === 'boss-ready' ? [...NPCS, BOSS] : NPCS
+  return stage === 'boss-ready' ? NPCS_WITH_BOSS : NPCS
 }
 
 export function getSceneName(point: Point) {
