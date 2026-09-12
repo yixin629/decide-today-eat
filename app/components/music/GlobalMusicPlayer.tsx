@@ -11,11 +11,13 @@ interface YTPlayer {
   destroy: () => void
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   getCurrentTime: () => number
+  playVideo: () => void
+  pauseVideo: () => void
 }
-interface YTPlayerEvent { data: number }
+interface YTPlayerEvent { data: number; target: YTPlayer }
 interface YTNamespace {
-  Player: new (target: HTMLElement, options: { events: { onStateChange: (event: YTPlayerEvent) => void } }) => YTPlayer
-  PlayerState: { ENDED: number }
+  Player: new (elementId: string, options: { events: { onReady?: (event: YTPlayerEvent) => void; onStateChange: (event: YTPlayerEvent) => void } }) => YTPlayer
+  PlayerState: { ENDED: number; PLAYING: number; PAUSED: number }
 }
 declare global {
   interface Window {
@@ -69,7 +71,7 @@ const REPEAT_LABELS: Record<string, { icon: string; label: string }> = {
 const REACTION_OPTIONS = ['🌹', '💐', '❤️', '👏', '🔥', '😂']
 
 export default function GlobalMusicPlayer() {
-  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin, listenTogether, partnerOnline, pendingSync, reactions, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction } = useMusicPlayer()
+  const { currentSong, isPlaying, currentTime, duration, repeatMode, audioRef, setCurrentTime, setDuration, setIsPlaying, togglePlay, playNext, playPrev, handleTrackEnded, cycleRepeatMode, toggleLike, togglePin, listenTogether, partnerOnline, pendingSync, reactions, partyInvite, dismissPartyInvite, toggleListenTogether, reportSeek, reportPosition, consumePendingSync, sendReaction } = useMusicPlayer()
   const pathname = usePathname()
   const onMusicPage = pathname === '/music-player'
   const [isOpen, setIsOpen] = useState(false)
@@ -91,20 +93,33 @@ export default function GlobalMusicPlayer() {
   const ytReady = useYouTubeApiReady()
   const ytIframeRef = useRef<HTMLIFrameElement>(null)
   const ytPlayerRef = useRef<YTPlayer | null>(null)
+  const [ytPlayerInstanceReady, setYtPlayerInstanceReady] = useState(0)
   const handleTrackEndedRef = useRef(handleTrackEnded)
   useEffect(() => { handleTrackEndedRef.current = handleTrackEnded }, [handleTrackEnded])
+  const ytElementId = currentSong?.source === 'youtube' ? `yt-player-${currentSong.id}` : undefined
   useEffect(() => {
-    if (!ytReady || currentSong?.source !== 'youtube' || !ytIframeRef.current || !window.YT) return
-    const player = new window.YT.Player(ytIframeRef.current, {
+    if (!ytReady || !ytElementId || !window.YT || !document.getElementById(ytElementId)) return
+    // Passing the iframe's id (not the element) is the documented way to "adopt" an
+    // existing embed — the constructor's own return value isn't reliably control-ready
+    // yet, so we grab the real instance from onReady instead.
+    const player = new window.YT.Player(ytElementId, {
       events: {
+        onReady: (event) => { ytPlayerRef.current = event.target; setYtPlayerInstanceReady((value) => value + 1) },
         onStateChange: (event) => {
           if (window.YT && event.data === window.YT.PlayerState.ENDED) handleTrackEndedRef.current()
         },
       },
     })
-    ytPlayerRef.current = player
     return () => { player.destroy(); ytPlayerRef.current = null }
-  }, [ytReady, currentSong?.id, currentSong?.source])
+  }, [ytReady, ytElementId])
+
+  // Drive actual play/pause on the YouTube player when `isPlaying` changes — mirrors the
+  // <audio> effect below, since an <iframe> has no play/pause props of its own either.
+  useEffect(() => {
+    if (currentSong?.source !== 'youtube' || !ytPlayerRef.current) return
+    if (isPlaying) ytPlayerRef.current.playVideo()
+    else ytPlayerRef.current.pauseVideo()
+  }, [isPlaying, currentSong?.id, currentSong?.source, ytPlayerInstanceReady])
 
   // Poll YouTube's own playhead into shared `currentTime` — an <iframe> gives us no
   // onTimeUpdate, but "listen together" needs a real position to sync with the partner.
@@ -162,6 +177,36 @@ export default function GlobalMusicPlayer() {
 
   return (
     <>
+      {/* Invite banner: fires the moment the partner turns on "一起听" as the session host,
+          so joining is one tap instead of "hope they notice the toggle exists". */}
+      {partyInvite && (
+        <div
+          role="status"
+          className="fixed inset-x-3 top-20 z-[80] mx-auto flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur-xl animate-fade-in sm:left-auto sm:right-4"
+        >
+          <span className="text-2xl" aria-hidden="true">🎧</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-gray-800">对方开启了&ldquo;一起听&rdquo;</p>
+            <p className="truncate text-xs text-gray-500">{partyInvite.songTitle ? `正在听：${partyInvite.songTitle}` : '一起同步听歌吧'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { toggleListenTogether(); dismissPartyInvite() }}
+            className="shrink-0 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600"
+          >
+            加入
+          </button>
+          <button
+            type="button"
+            onClick={dismissPartyInvite}
+            className="shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            aria-label="忽略邀请"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Flying reactions (flowers etc.) — visible on every page, not just while the panel is open,
           so a "🌹" the partner sends still shows up even if you're browsing away from the player. */}
       <div className="pointer-events-none fixed bottom-24 right-6 z-[65] h-0 w-0 sm:bottom-24">
@@ -276,35 +321,42 @@ export default function GlobalMusicPlayer() {
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-b border-pink-50 px-3 py-1.5">
-              <button
-                type="button"
-                onClick={toggleListenTogether}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                  listenTogether ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'
-                }`}
-                aria-pressed={listenTogether}
-                title={listenTogether ? '正在一起听：播放/暂停/切歌会同步给对方' : '开启后你和对方会同步播放进度'}
-              >
-                <span aria-hidden="true">🎧</span>
-                一起听
-                {listenTogether && (
-                  <span className={`h-1.5 w-1.5 rounded-full ${partnerOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} aria-hidden="true" />
-                )}
-              </button>
-              <div className="flex items-center gap-1">
-                {REACTION_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => sendReaction(emoji)}
-                    className="rounded-full p-1 text-base transition-transform hover:scale-125"
-                    aria-label={`发送 ${emoji} 反应`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+            <div className="border-b border-pink-50 px-3 py-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={toggleListenTogether}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                    listenTogether ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                  }`}
+                  aria-pressed={listenTogether}
+                  title="双方都要点开才会同步：谁开着谁的播放/暂停/切歌/进度会实时发给对方"
+                >
+                  <span aria-hidden="true">🎧</span>
+                  一起听
+                  {listenTogether && (
+                    <span className={`h-1.5 w-1.5 rounded-full ${partnerOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} aria-hidden="true" />
+                  )}
+                </button>
+                <div className="flex items-center gap-1">
+                  {REACTION_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => sendReaction(emoji)}
+                      className="rounded-full p-1 text-base transition-transform hover:scale-125"
+                      aria-label={`发送 ${emoji} 反应`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {listenTogether && (
+                <p className="mt-1 text-[10px] text-gray-400">
+                  {partnerOnline ? '对方也开着一起听，播放已同步 ✓' : '对方还没打开"一起听"——两边都开了才会同步'}
+                </p>
+              )}
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -325,6 +377,7 @@ export default function GlobalMusicPlayer() {
                   return embedUrl ? (
                     <iframe
                       ref={ytIframeRef}
+                      id={ytElementId}
                       key={currentSong.id}
                       className="aspect-video w-full"
                       src={`${embedUrl}${autoplayParam}${jsApiParams}`}
