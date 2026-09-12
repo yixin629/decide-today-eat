@@ -21,6 +21,7 @@ export interface Song {
 export type RepeatMode = 'off' | 'all' | 'one'
 
 const REPEAT_STORAGE_KEY = 'music-player-repeat-mode'
+const LAST_SONG_STORAGE_KEY = 'music-player-last-song-id'
 
 function sortSongs(list: Song[]) {
   return [...list].sort((a, b) => {
@@ -72,6 +73,7 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
   const [duration, setDuration] = useState(0)
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all')
   const [pinnedArtists, setPinnedArtists] = useState<string[]>([])
+  const hasRestoredLastSong = useRef(false)
 
   useEffect(() => {
     try {
@@ -142,6 +144,31 @@ export function MusicPlayerProvider({ children }: { children: React.ReactNode })
       supabase.removeChannel(artistsChannel)
     }
   }, [loadSongs, loadPinnedArtists])
+
+  // Restore the last-played track (paused) after a hard page reload, so the floating
+  // player doesn't just vanish — currentSongId otherwise only lives in memory and a
+  // full refresh (not a client-side Link navigation) wipes it.
+  useEffect(() => {
+    if (hasRestoredLastSong.current || currentSongId || songs.length === 0) return
+    hasRestoredLastSong.current = true
+    try {
+      const storedId = window.localStorage.getItem(LAST_SONG_STORAGE_KEY)
+      if (storedId && songs.some((song) => song.id === storedId)) {
+        setCurrentSongId(storedId)
+      }
+    } catch {
+      // ignore
+    }
+  }, [songs, currentSongId])
+
+  useEffect(() => {
+    try {
+      if (currentSongId) window.localStorage.setItem(LAST_SONG_STORAGE_KEY, currentSongId)
+      else window.localStorage.removeItem(LAST_SONG_STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+  }, [currentSongId])
 
   const currentSong = songs.find((song) => song.id === currentSongId) ?? null
   const currentSongIndex = currentSong ? songs.indexOf(currentSong) : -1
