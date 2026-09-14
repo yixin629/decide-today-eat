@@ -11,6 +11,8 @@ interface YTPlayer {
   destroy: () => void
   seekTo: (seconds: number, allowSeekAhead: boolean) => void
   getCurrentTime: () => number
+  getDuration: () => number
+  getPlayerState: () => number
   playVideo: () => void
   pauseVideo: () => void
 }
@@ -97,6 +99,10 @@ export default function GlobalMusicPlayer() {
   const [ytPlayerInstanceReady, setYtPlayerInstanceReady] = useState(0)
   const handleTrackEndedRef = useRef(handleTrackEnded)
   useEffect(() => { handleTrackEndedRef.current = handleTrackEnded }, [handleTrackEnded])
+  // Guards against double-firing handleTrackEnded from both onStateChange's ENDED event and
+  // the redundant near-duration poll below (see that effect's comment for why both exist).
+  const hasTriggeredEndRef = useRef(false)
+  useEffect(() => { hasTriggeredEndRef.current = false }, [currentSong?.id])
   const ytElementId = currentSong?.source === 'youtube' ? `yt-player-${currentSong.id}` : undefined
   useEffect(() => {
     if (!ytReady || !ytElementId || !window.YT || !document.getElementById(ytElementId)) return
@@ -107,7 +113,10 @@ export default function GlobalMusicPlayer() {
       events: {
         onReady: (event) => { ytPlayerRef.current = event.target; setYtPlayerInstanceReady((value) => value + 1) },
         onStateChange: (event) => {
-          if (window.YT && event.data === window.YT.PlayerState.ENDED) handleTrackEndedRef.current()
+          if (window.YT && event.data === window.YT.PlayerState.ENDED && !hasTriggeredEndRef.current) {
+            hasTriggeredEndRef.current = true
+            handleTrackEndedRef.current()
+          }
         },
       },
     })
@@ -124,16 +133,47 @@ export default function GlobalMusicPlayer() {
 
   // Poll YouTube's own playhead into shared `currentTime` — an <iframe> gives us no
   // onTimeUpdate, but "listen together" needs a real position to sync with the partner.
+  // The same poll doubles as a *redundant* end-of-track detector: onStateChange's ENDED
+  // event depends on the postMessage handshake actually working, which has turned out to
+  // be unreliable in practice, so we also just watch the playhead catch up to the duration.
   const reportPositionRef = useRef(reportPosition)
   useEffect(() => { reportPositionRef.current = reportPosition }, [reportPosition])
   useEffect(() => {
     if (currentSong?.source !== 'youtube') return
     const interval = setInterval(() => {
-      const seconds = ytPlayerRef.current?.getCurrentTime()
+      const player = ytPlayerRef.current
+      if (!player) return
+      const seconds = player.getCurrentTime()
       if (typeof seconds === 'number' && Number.isFinite(seconds)) reportPositionRef.current(seconds)
+      const total = player.getDuration()
+      if (!hasTriggeredEndRef.current && total > 0 && seconds > 0 && total - seconds < 1) {
+        hasTriggeredEndRef.current = true
+        handleTrackEndedRef.current()
+      }
     }, 1000)
     return () => clearInterval(interval)
   }, [currentSong?.id, currentSong?.source])
+
+  // Some browsers block the *unmuted* autoplay that follows an auto-advance (no fresh click
+  // to anchor "user activation" to), especially for a freshly (re)loaded YouTube iframe. If
+  // we intended to keep playing but the media is actually sitting paused a moment later,
+  // surface a one-tap "继续播放" nudge instead of silently doing nothing.
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+  useEffect(() => {
+    setAutoplayBlocked(false)
+    if (!isPlaying || !currentSong) return
+    const timer = setTimeout(() => {
+      if (currentSong.source === 'file' && audioRef.current?.paused) setAutoplayBlocked(true)
+      else if (currentSong.source === 'youtube' && window.YT && ytPlayerRef.current && ytPlayerRef.current.getPlayerState() !== window.YT.PlayerState.PLAYING) setAutoplayBlocked(true)
+    }, 1800)
+    return () => clearTimeout(timer)
+  }, [currentSong?.id, isPlaying, currentSong, audioRef])
+
+  const resumeBlockedPlayback = () => {
+    setAutoplayBlocked(false)
+    if (currentSong?.source === 'file') audioRef.current?.play().catch(() => {})
+    else if (currentSong?.source === 'youtube') ytPlayerRef.current?.playVideo()
+  }
 
   // Apply a sync update pushed by the partner: seek whichever media element is actually
   // playing to where they are (plus elapsed time since their update, if they're playing).
@@ -248,7 +288,8 @@ export default function GlobalMusicPlayer() {
         title={hasSong ? (isPlaying ? `正在播放：${currentSong?.title}` : '音乐播放器') : '音乐播放器'}
       >
         <span aria-hidden="true">{isPlaying ? '🎶' : '🎵'}</span>
-        {isPlaying && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />}
+        {isPlaying && !autoplayBlocked && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />}
+        {autoplayBlocked && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-white bg-amber-400" aria-hidden="true" />}
       </button>
 
       {panelOpen && !onMusicPage && (
@@ -286,6 +327,15 @@ export default function GlobalMusicPlayer() {
         )}
         {currentSong && (
           <>
+            {autoplayBlocked && (
+              <button
+                type="button"
+                onClick={resumeBlockedPlayback}
+                className="flex items-center justify-center gap-2 border-b border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100"
+              >
+                ⚠️ 浏览器拦下了自动播放 · 点击继续播放 ▶
+              </button>
+            )}
             <div className="flex items-center gap-2 border-b border-pink-50 px-3 py-2">
               <span className="text-lg">{currentSong.cover || '🎵'}</span>
               <div className="min-w-0 flex-1">
