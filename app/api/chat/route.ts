@@ -121,7 +121,15 @@ export async function POST(req: NextRequest) {
         url: 'https://api.groq.com/openai/v1/chat/completions',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
         body: {
-          model: 'llama-3.3-70b-versatile',
+          // llama-3.3-70b-versatile was retired from Groq's catalog (404 model_not_found) —
+          // this account's current lineup no longer has any llama-3.x chat model. Tried the
+          // gpt-oss and qwen replacements too: both over-index on the persona's suggested
+          // topic list and flatly refuse anything outside it ("我只能聊情侣相关话题"),
+          // which is the exact "can't chat freely" complaint this swap is meant to fix.
+          // groq/compound answered off-topic requests (code, general Q&A) normally while
+          // still staying in character for couple topics — verified consistently across
+          // repeated calls, not a one-off.
+          model: 'groq/compound',
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...userMessages],
           max_tokens: 500,
           temperature: 0.85,
