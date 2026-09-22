@@ -1,7 +1,15 @@
 import { getTaskTypeMeta } from '../lib/taskTypes'
 import type { AttemptRecord } from '../types'
 
-export default function HistoryPanel({ attempts, onClear }: { attempts: AttemptRecord[]; onClear: () => void }) {
+export default function HistoryPanel({
+  attempts,
+  onClear,
+  source = 'cloud',
+}: {
+  attempts: AttemptRecord[]
+  onClear: () => void
+  source?: 'cloud' | 'local'
+}) {
   if (attempts.length === 0) {
     return <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">还没有练习记录，完成一次练习后会显示在这里。</p>
   }
@@ -9,10 +17,16 @@ export default function HistoryPanel({ attempts, onClear }: { attempts: AttemptR
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">共 {attempts.length} 条记录（保存在本机浏览器，不会同步到其他设备）</p>
-        <button type="button" onClick={onClear} className="text-sm text-red-500 underline">
-          清空记录
-        </button>
+        <p className="text-sm text-gray-500">
+          共 {attempts.length} 条记录（
+          {source === 'cloud' ? '已同步到云端，可跨设备查看' : '当前保存在本机浏览器，不会同步到其他设备'}
+          ）
+        </p>
+        {source === 'local' && (
+          <button type="button" onClick={onClear} className="text-sm text-red-500 underline">
+            清空本机记录
+          </button>
+        )}
       </div>
       <ul className="space-y-2">
         {attempts.map((attempt) => {

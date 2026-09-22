@@ -132,4 +132,17 @@ export interface AttemptRecord {
   dimensions: ScoreDimensionResult[]
   summary: string
   isEstimate: true
+  /** 记录归属的网站身份（'zyx' | 'zly'）。云端记录一定有值；本地回退记录可能缺失。 */
+  userId?: string
+}
+
+export interface PracticeComment {
+  id: string
+  itemId: string
+  taskType: TaskType
+  userId: string
+  body: string
+  examLocation: string | null
+  examDate: string | null
+  createdAt: string
 }

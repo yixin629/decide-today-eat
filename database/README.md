@@ -61,6 +61,7 @@
 | 星座           | `horoscope_readings`             | `migrations/horoscope-table.sql`                                | 独立迁移                                                                                                                          |
 | 穿搭记录       | `outfit_records`                 | `migrations/outfit-records-table.sql`                           | 独立迁移                                                                                                                          |
 | PTE 备考计划   | `pte_plans`、`pte_templates`     | `migrations/pte-plans-table.sql` + `migrations/pte-templates-table.sql` | 按网站登录身份保存多个计划、逐题记录和个人模板                                                                                |
+| PTE 练习平台   | `pte_practice_items`、`pte_practice_attempts`、`pte_practice_comments` | `migrations/pte-practice-items-table.sql` + `migrations/pte-practice-attempts-table.sql` + `migrations/pte-practice-comments-table.sql` | 题库云端存储（seed 迁移自 `questionBank.ts`，前端离线回退用）、按 zyx/zly 分用户的练习记录（Realtime，供"练习集锦"）、按题目留言与"在哪里/哪天考过"标记（Realtime）。三者可任意顺序执行，`pte_practice_comments.item_id`/`pte_practice_attempts.item_id` 仅为软引用（TEXT），不设外键 |
 | 双人陪伴功能   | `decision_options`、`food_options`、`memory_places`、`couple_growth`、`couple_gifts`、`couple_notifications` | `migrations/couple-companion-features.sql` + `migrations/expand-decision-wheel-options.sql` | 万能转盘（保留旧食物库并扩充其他主题）、共同养成、回忆地图、礼物、PTE 鼓励与实时通知 |
 | 互动功能包     | 见下表                           | `migrations/supabase-new-features.sql`                          | 包含默认数据和遗留表，不能默认重复执行                                                                                            |
 
@@ -203,4 +204,5 @@
 - `photos`、`songs`、`love_notes` 的页面会使用 Realtime，但对应脚本尚未统一加入 publication。
 - `photos`、`avatars` Storage bucket 及其策略需要在 Supabase 控制台单独配置。
 - `pte_plans` 沿用网站自定义的 `zyx` / `zly` 前端身份；在迁移到 Supabase Auth 前，RLS 无法提供基于 `auth.uid()` 的强用户隔离。
+- `pte_practice_attempts`、`pte_practice_comments` 同样沿用 `zyx` / `zly` 前端身份，RLS 无法验证调用者真实身份；`pte_practice_items` 的 SELECT 对所有角色开放（练习题面内容不敏感），INSERT/UPDATE/DELETE 未对 anon/authenticated 开放，题库更新只能通过新增迁移文件完成。
 - 任何 SQL 都先在测试项目验证；仓库维护过程不会自动连接或修改线上数据库。
