@@ -19,7 +19,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "date-fns": "^3.0.0",
-    "next": "^16.2.12",
+    "next": "^16.3.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-markdown": "^10.1.0",
@@ -45,6 +45,6 @@
       "minimatch": "10.2.6"
     },
     "postcss": "$postcss",
-    "sharp": "0.35.3"
+    "sharp": "0.35.4"
   }
 }
