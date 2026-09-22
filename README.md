@@ -5,7 +5,7 @@
 ## 主要功能
 
 - 生活记录：照片、日记、留言、心情、纪念日、签到、穿搭和共同账本
-- 共同计划：日程、倒计时、心愿清单、愿望清单、时光胶囊和 PTE 智能备考计划
+- 共同计划：日程、倒计时、心愿清单、愿望清单、时光胶囊、PTE 智能备考计划和 PTE 练习平台
 - 双人互动：聊天、情书、甜言蜜语、情侣测试、答案之书、真心话大冒险
 - 游戏娱乐：五子棋、麻将、你画我猜、记忆翻牌、石头剪刀布等
 - 个性体验：个人资料、主题设置、音乐播放器、塔罗和星座
@@ -49,6 +49,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 ```
 
 如需 AI 聊天或音乐播放器的 YouTube 站内搜索，再按 `.env.local.example` 配置相应服务端 API Key。不要提交 `.env.local` 或任何真实密钥。
+
+PTE 练习平台（`/pte-practice`）的口语朗读发音评分与写作语法评分依赖一套可选的
+自托管开源评分服务，通过 `PTE_SCORING_SERVICE_URL`、`PTE_SCORING_SERVICE_TOKEN`
+两个服务端环境变量接入；不配置时会自动回退到本地启发式估分，网站其余功能不受
+影响。部署方式见 [`pte-scoring-service/README.md`](./pte-scoring-service/README.md)。
 
 ### 3. 初始化数据库
 
@@ -114,6 +119,7 @@ npm start
 │   └── reports/            # 历史实现与优化报告
 ├── scripts/                # 本地项目验证辅助脚本
 ├── patches/                # 第三方依赖兼容补丁
+├── pte-scoring-service/    # PTE 练习平台的可选自托管评分服务（Docker，独立部署，不随网站发布）
 ├── eslint.config.mjs       # ESLint Flat Config
 ├── cloudflare-env.d.ts     # Wrangler 生成的 Worker 类型
 ├── AGENTS.md               # AI/自动化开发协作规范

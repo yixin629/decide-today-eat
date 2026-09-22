@@ -232,6 +232,221 @@ export function scoreWriting({ item, text, secondsUsed, timeLimitSeconds }: Writ
   return results
 }
 
+// ---------------------------------------------------------------------------
+// 基于自托管开源评分服务（见仓库根目录 pte-scoring-service/）的可选真实信号。
+//
+// 服务未配置（PTE_SCORING_SERVICE_URL 为空）或请求失败/超时时，下面的
+// scoreReadAloudAsync / scoreWritingAsync 会静默回退到上面已有的
+// scoreReadAloud / scoreWriting 启发式函数 —— 那两个函数保持完全不变，
+// 继续作为离线/服务不可用时的默认路径。
+//
+// 即使评分服务可用，这里给出的也只是"基于开源模型/工具的估算"，不是 Pearson
+// 官方评分算法，也未经官方认证，因此这里返回的 isHeuristic 恒为 true，
+// note 会明确写"基于开源评分服务的估算，仍非 Pearson 官方评分"，与纯本地
+// 估算的措辞（"本地估算（评分服务未配置/不可用）"）区分开。
+// ---------------------------------------------------------------------------
+
+interface ReadAloudServiceResponse {
+  transcript?: string
+  contentScore?: number
+  pronunciationScore?: number
+  fluencyScore?: number
+  details?: unknown
+}
+
+interface WritingServiceResponse {
+  grammarIssues?: unknown[]
+  spellingIssues?: unknown[]
+  grammarScore?: number
+  spellingScore?: number
+  vocabularyDiversity?: number
+  contentKeywordCoverage?: number
+}
+
+async function fetchJsonWithTimeout(input: RequestInfo, init: RequestInit, timeoutMs = 20000): Promise<Response | null> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+/** 简单的类符比（Type-Token Ratio），用作词汇多样性的本地兜底计算。 */
+function typeTokenRatio(text: string): number {
+  const words = text.toLowerCase().split(/\s+/).map(normalizeWord).filter(Boolean)
+  if (words.length === 0) return 0
+  const unique = new Set(words)
+  return unique.size / words.length
+}
+
+/** 与源文本/题目的关键词覆盖率，用作 Content 维度的本地兜底计算。 */
+function keywordCoverage(sourceText: string, answerText: string): number {
+  const sourceWords = new Set(sourceText.split(/\s+/).map(normalizeWord).filter((word) => word.length > 3))
+  if (sourceWords.size === 0) return 0
+  const answerWords = new Set(answerText.split(/\s+/).map(normalizeWord).filter(Boolean))
+  let matched = 0
+  sourceWords.forEach((word) => {
+    if (answerWords.has(word)) matched += 1
+  })
+  return matched / sourceWords.size
+}
+
+/**
+ * Read Aloud 的异步打分：优先调用自托管评分服务（OpenPronounce 发音评分 +
+ * faster-whisper 转写 + 与原文的内容覆盖率），服务不可用时回退到
+ * scoreReadAloud() 的启发式逻辑（完全不变）。
+ */
+export async function scoreReadAloudAsync(input: ReadAloudHeuristicInput & { audioBlob?: Blob | null }): Promise<ScoreDimensionResult[]> {
+  const { item, audioBlob } = input
+  const meta = getTaskTypeMeta(item.taskType)
+
+  if (!audioBlob || audioBlob.size === 0) {
+    return scoreReadAloud(input)
+  }
+
+  const formData = new FormData()
+  formData.set('promptText', item.text)
+  formData.set('audio', audioBlob, 'recording.webm')
+
+  const res = await fetchJsonWithTimeout('/api/pte-scoring/read-aloud', { method: 'POST', body: formData })
+  if (!res || !res.ok) {
+    return scoreReadAloud(input)
+  }
+
+  let data: ReadAloudServiceResponse
+  try {
+    data = (await res.json()) as ReadAloudServiceResponse
+  } catch {
+    return scoreReadAloud(input)
+  }
+
+  const content = typeof data.contentScore === 'number' ? clamp(data.contentScore, 0, 5) : null
+  const pronunciation = typeof data.pronunciationScore === 'number' ? clamp(data.pronunciationScore, 0, 5) : null
+  const fluency = typeof data.fluencyScore === 'number' ? clamp(data.fluencyScore, 0, 5) : null
+
+  if (content === null && pronunciation === null && fluency === null) {
+    return scoreReadAloud(input)
+  }
+
+  const fallback = scoreReadAloud(input)
+  const serviceNote = (detail: string) => `基于开源评分服务的估算（${detail}），仍非 Pearson 官方评分。`
+
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: content ?? fallback[0].score,
+      maxScore: 5,
+      isHeuristic: true,
+      note:
+        content !== null
+          ? serviceNote(`faster-whisper 转写文本与原文的内容覆盖率${data.transcript ? `，转写结果："${data.transcript.slice(0, 200)}"` : ''}`)
+          : fallback[0].note,
+    },
+    {
+      id: 'pronunciation',
+      label: meta.scoringDimensions[1].label,
+      score: pronunciation ?? fallback[1].score,
+      maxScore: 5,
+      isHeuristic: true,
+      note: pronunciation !== null ? serviceNote('OpenPronounce 音素级发音比对') : fallback[1].note,
+    },
+    {
+      id: 'fluency',
+      label: meta.scoringDimensions[2].label,
+      score: fluency ?? fallback[2].score,
+      maxScore: 5,
+      isHeuristic: true,
+      note: fluency !== null ? serviceNote('转写结果的停顿/语速信号') : fallback[2].note,
+    },
+  ]
+}
+
+/**
+ * Writing（SWT / Essay）的异步打分：Form 维度保持原有的客观规则判定；
+ * Grammar/Spelling 优先使用 LanguageTool 的检查结果；Vocabulary 用本地
+ * 类符比兜底（该指标本地即可算准，不依赖外部服务）；Content 用本地关键词
+ * 覆盖率兜底。服务不可用时整体回退到 scoreWriting() 的启发式逻辑。
+ */
+export async function scoreWritingAsync(input: WritingHeuristicInput): Promise<ScoreDimensionResult[]> {
+  const { item, text } = input
+  const fallback = scoreWriting(input)
+
+  const res = await fetchJsonWithTimeout('/api/pte-scoring/writing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ promptText: item.prompt, sourceText: item.sourceText, text }),
+  })
+  if (!res || !res.ok) return fallback
+
+  let data: WritingServiceResponse
+  try {
+    data = (await res.json()) as WritingServiceResponse
+  } catch {
+    return fallback
+  }
+
+  const vocabularyRatio = typeof data.vocabularyDiversity === 'number' ? clamp(data.vocabularyDiversity, 0, 1) : typeTokenRatio(text)
+  const contentRatio =
+    typeof data.contentKeywordCoverage === 'number' ? clamp(data.contentKeywordCoverage, 0, 1) : keywordCoverage(item.sourceText ?? item.prompt, text)
+  const grammarIssueCount = Array.isArray(data.grammarIssues) ? data.grammarIssues.length : null
+  const spellingIssueCount = Array.isArray(data.spellingIssues) ? data.spellingIssues.length : null
+
+  const serviceNote = (detail: string) => `基于开源评分服务的估算（${detail}），仍非 Pearson 官方评分。`
+
+  return fallback.map((dimension) => {
+    if (dimension.id === 'form') return dimension // 客观判定，保持不变
+    if (dimension.id === 'grammar') {
+      // 网关的 grammarScore 是 0-1 的比例（LanguageTool 问题密度换算），
+      // 这里按维度的官方小分制上限缩放。
+      const grammarScore =
+        typeof data.grammarScore === 'number'
+          ? clamp(data.grammarScore, 0, 1) * dimension.maxScore
+          : grammarIssueCount !== null
+            ? clamp(dimension.maxScore * (1 - Math.min(grammarIssueCount, 10) / 10), 0, dimension.maxScore)
+            : null
+      if (grammarScore === null) return dimension
+      return {
+        ...dimension,
+        score: Math.round(grammarScore * 10) / 10,
+        note: serviceNote(`LanguageTool 检测到 ${grammarIssueCount ?? '未知数量'} 处语法问题`),
+      }
+    }
+    if (dimension.id === 'vocabulary') {
+      return {
+        ...dimension,
+        score: Math.round(vocabularyRatio * dimension.maxScore * 10) / 10,
+        note: serviceNote(`词汇类符比（Type-Token Ratio）约 ${(vocabularyRatio * 100).toFixed(0)}%，本地计算，非外部服务依赖`),
+      }
+    }
+    if (dimension.id === 'content') {
+      return {
+        ...dimension,
+        score: Math.round(contentRatio * dimension.maxScore * 10) / 10,
+        note: serviceNote(
+          `与${item.sourceText ? '原文' : '题目'}的关键词覆盖率约 ${(contentRatio * 100).toFixed(0)}%，本地计算，不代表真实语义评分`
+        ),
+      }
+    }
+    if (dimension.id === 'structure' && spellingIssueCount !== null) {
+      // Essay 的 structure 维度暂无独立信号，保留启发式占位分，但附加拼写问题数量供参考。
+      return {
+        ...dimension,
+        note: `${dimension.note}（附加信息：LanguageTool 检测到 ${spellingIssueCount} 处拼写问题，供参考，未计入本维度分数）`,
+      }
+    }
+    return dimension
+  })
+}
+
 /**
  * 统一的打分入口：根据任务类型将题目与作答分发给对应的打分函数。
  * 这是唯一需要知道"每种题型如何打分"的地方，UI 组件只需要收集作答并调用它。
@@ -268,5 +483,40 @@ export function scoreAttempt(taskType: TaskType, item: PracticeItem, answer: Ans
       const exhaustiveCheck: never = taskType
       throw new Error(`未知的 PTE 任务类型: ${String(exhaustiveCheck)}`)
     }
+  }
+}
+
+/**
+ * scoreAttempt 的异步版本：客观题型（阅读/听力）与同步版本完全一致，直接
+ * 复用；口语朗读与写作改为调用 scoreReadAloudAsync / scoreWritingAsync，
+ * 因此会发起一次网络请求（若评分服务已配置），调用方应展示加载态。
+ * 评分服务未配置或调用失败时，两个 Async 函数会各自静默回退到原有的
+ * 本地启发式实现，本函数不需要额外处理降级逻辑。
+ */
+export async function scoreAttemptAsync(
+  taskType: TaskType,
+  item: PracticeItem,
+  answer: AnswerPayload,
+  timeLimitSeconds: number
+): Promise<ScoreDimensionResult[]> {
+  switch (taskType) {
+    case 'speaking-read-aloud':
+      if (item.taskType !== 'speaking-read-aloud' || answer.taskType !== 'speaking-read-aloud') throw new Error('题目与作答类型不匹配')
+      return scoreReadAloudAsync({
+        item,
+        recordingSeconds: answer.recordingSeconds,
+        recognizedTranscript: answer.recognizedTranscript,
+        audioBlob: answer.audioBlob ?? null,
+      })
+    case 'writing-summarize-text':
+    case 'writing-essay':
+      if (
+        (item.taskType !== 'writing-summarize-text' && item.taskType !== 'writing-essay') ||
+        (answer.taskType !== 'writing-summarize-text' && answer.taskType !== 'writing-essay')
+      )
+        throw new Error('题目与作答类型不匹配')
+      return scoreWritingAsync({ item, text: answer.text, secondsUsed: answer.secondsUsed, timeLimitSeconds })
+    default:
+      return scoreAttempt(taskType, item, answer, timeLimitSeconds)
   }
 }

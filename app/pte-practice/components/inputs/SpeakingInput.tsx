@@ -33,7 +33,7 @@ export function ReadAloudInput({
   onChange,
 }: {
   item: ReadAloudItem
-  onChange: (payload: { recordingSeconds: number; recognizedTranscript: string | null }) => void
+  onChange: (payload: { recordingSeconds: number; recognizedTranscript: string | null; audioBlob: Blob | null }) => void
 }) {
   const [permissionError, setPermissionError] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
@@ -72,7 +72,7 @@ export function ReadAloudInput({
         stream.getTracks().forEach((track) => track.stop())
         const seconds = (Date.now() - startTimeRef.current) / 1000
         setRecordingSeconds(seconds)
-        onChange({ recordingSeconds: seconds, recognizedTranscript: recognizedTranscriptRef.current })
+        onChange({ recordingSeconds: seconds, recognizedTranscript: recognizedTranscriptRef.current, audioBlob: blob })
       }
       mediaRecorderRef.current = recorder
       startTimeRef.current = Date.now()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { scoreAttempt } from '../engine/scoring'
+import { scoreAttemptAsync } from '../engine/scoring'
 import { saveAttempt } from '../lib/attempt-repository'
 import { loadItemById } from '../lib/item-repository'
 import { getTaskTypeMeta } from '../lib/taskTypes'
@@ -39,7 +39,7 @@ function emptyAnswerFor(taskType: TaskType): AnswerPayload {
     case 'listening-highlight-summary':
       return { taskType, selectedIndex: null }
     case 'speaking-read-aloud':
-      return { taskType, recordingSeconds: 0, recognizedTranscript: null }
+      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
     case 'writing-summarize-text':
     case 'writing-essay':
       return { taskType, text: '', secondsUsed: 0 }
@@ -72,6 +72,7 @@ export default function PracticeSession({
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [scoringInProgress, setScoringInProgress] = useState(false)
   const [dimensions, setDimensions] = useState<ScoreDimensionResult[]>([])
   const [finalDurationSeconds, setFinalDurationSeconds] = useState(0)
   const answerRef = useRef<AnswerPayload>(emptyAnswerFor(taskType))
@@ -114,7 +115,9 @@ export default function PracticeSession({
     if (answer.taskType === 'writing-summarize-text' || answer.taskType === 'writing-essay') {
       answer = { ...answer, secondsUsed: durationSeconds }
     }
-    const results = scoreAttempt(taskType, item, answer, meta.timeLimitSeconds ?? durationSeconds)
+    setScoringInProgress(true)
+    const results = await scoreAttemptAsync(taskType, item, answer, meta.timeLimitSeconds ?? durationSeconds)
+    setScoringInProgress(false)
     setDimensions(results)
     setFinalDurationSeconds(durationSeconds)
     setSubmitted(true)
@@ -194,8 +197,8 @@ export default function PracticeSession({
         return (
           <ReadAloudInput
             item={item as ReadAloudItem}
-            onChange={({ recordingSeconds, recognizedTranscript }) => {
-              answerRef.current = { taskType: 'speaking-read-aloud', recordingSeconds, recognizedTranscript }
+            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
+              answerRef.current = { taskType: 'speaking-read-aloud', recordingSeconds, recognizedTranscript, audioBlob }
             }}
           />
         )
@@ -263,7 +266,7 @@ export default function PracticeSession({
           disabled={submitting}
           className="w-full rounded-lg bg-primary py-2.5 font-medium text-white disabled:opacity-60 sm:w-auto sm:px-8"
         >
-          {submitting ? '提交中…' : '提交作答'}
+          {scoringInProgress ? '正在评分…' : submitting ? '提交中…' : '提交作答'}
         </button>
       )}
 

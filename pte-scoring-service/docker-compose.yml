@@ -1,0 +1,59 @@
+version: "3.8"
+
+# 私有部署的 PTE 练习开源评分服务栈。这套 compose 要跑在你自己控制的
+# 机器上（VPS / 家用服务器 / NAS），不会也不能部署到 Vercel 或
+# Cloudflare Workers（它们是无服务器/边缘运行时，不支持长驻的
+# Docker 容器、本地磁盘模型缓存或这里用到的 GB 级依赖）。
+#
+# 使用方式见同目录 README.md。
+
+services:
+  languagetool:
+    image: erikvl87/languagetool:latest
+    # 官方维护的 LanguageTool Docker 镜像（DockerHub: erikvl87/languagetool），
+    # 内置 HTTP API，默认监听 8010。启动稍慢是正常现象（要预热语言模型）。
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    # 默认不启用 n-gram 混淆集数据（体积可达数 GB/语言，且需要单独下载），
+    # 基础的语法/拼写检查不依赖它。如果后续想要更强的同音词纠错，可参考
+    # LanguageTool 官方文档挂载 ngrams 数据并设置 langtool_languageModel。
+
+  whisper-service:
+    build: ./whisper-service
+    restart: unless-stopped
+    environment:
+      - WHISPER_MODEL_SIZE=small
+      - WHISPER_DEVICE=cpu
+      - WHISPER_COMPUTE_TYPE=int8
+      - SHARED_TOKEN=${SHARED_TOKEN:-}
+    volumes:
+      - whisper-model-cache:/root/.cache
+    ports:
+      - "8001:8001"
+
+  openpronounce-service:
+    build: ./openpronounce-service
+    restart: unless-stopped
+    # 见 openpronounce-service/Dockerfile 顶部的注释：这个构建是未经验证的
+    # 最佳猜测，部署前请自行核实 OpenPronounce 仓库的实际安装/运行方式。
+    ports:
+      - "8002:8002"
+
+  gateway:
+    build: ./gateway
+    restart: unless-stopped
+    depends_on:
+      - languagetool
+      - whisper-service
+      - openpronounce-service
+    environment:
+      - WHISPER_SERVICE_URL=http://whisper-service:8001
+      - OPENPRONOUNCE_SERVICE_URL=http://openpronounce-service:8002
+      - LANGUAGETOOL_URL=http://languagetool:8010
+      - SHARED_TOKEN=${SHARED_TOKEN:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  whisper-model-cache:

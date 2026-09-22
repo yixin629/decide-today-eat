@@ -120,7 +120,16 @@ export type AnswerPayload =
   | { taskType: 'reading-fill-blanks-drag'; answers: string[] }
   | { taskType: 'listening-fill-blanks-typed'; answers: string[] }
   | { taskType: 'listening-highlight-summary'; selectedIndex: number | null }
-  | { taskType: 'speaking-read-aloud'; recordingSeconds: number; recognizedTranscript: string | null }
+  | {
+      taskType: 'speaking-read-aloud'
+      recordingSeconds: number
+      recognizedTranscript: string | null
+      /**
+       * 录音文件，仅用于临时提交给自托管评分服务（见 pte-scoring-service/）
+       * 做转写与发音评估，不落库、不持久化。评分服务未配置时忽略此字段。
+       */
+      audioBlob?: Blob | null
+    }
   | { taskType: 'writing-summarize-text' | 'writing-essay'; text: string; secondsUsed: number }
 
 export interface AttemptRecord {
