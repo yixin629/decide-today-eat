@@ -184,6 +184,16 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['PTE', '英语', '考试', '移民', '留学', '备考'],
   },
   {
+    name: 'PTE 练习平台',
+    path: '/pte-practice',
+    icon: '📝',
+    description: '按题型练习并查看练习估分反馈，非官方评分',
+    category: 'plans',
+    showOnHome: true,
+    showInNavigation: true,
+    keywords: ['PTE', '英语', '考试', '口语', '写作', '听力', '阅读', '练习'],
+  },
+  {
     name: '共享日程',
     path: '/schedule',
     icon: '📅',
