@@ -368,6 +368,16 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['占卜', '运势'],
   },
   {
+    name: '井字棋',
+    path: '/tic-tac-toe',
+    icon: '⭕',
+    description: '经典三连棋，两个人轮流对战',
+    category: 'play',
+    showOnHome: false,
+    showInNavigation: true,
+    keywords: ['三连棋', 'XO', 'tic tac toe'],
+  },
+  {
     name: '五子棋',
     path: '/gomoku',
     icon: '⚫',
