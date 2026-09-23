@@ -188,7 +188,7 @@ export default function TicTacToePage() {
             <button
               onClick={() => switchMode('local')}
               className={`px-5 py-2 rounded-lg border-2 transition-colors ${
-                mode === 'local' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                mode === 'local' ? 'border-primary bg-primary/10 font-bold' : 'border-gray-300 bg-gray-50'
               }`}
             >
               👫 双人对战（同屏轮流）
@@ -196,7 +196,7 @@ export default function TicTacToePage() {
             <button
               onClick={() => switchMode('cpu')}
               className={`px-5 py-2 rounded-lg border-2 transition-colors ${
-                mode === 'cpu' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                mode === 'cpu' ? 'border-primary bg-primary/10 font-bold' : 'border-gray-300 bg-gray-50'
               }`}
             >
               🤖 单机对战电脑
@@ -209,7 +209,7 @@ export default function TicTacToePage() {
               <button
                 onClick={() => switchHumanMark('X')}
                 className={`px-4 py-1.5 rounded-lg border-2 transition-colors ${
-                  humanMark === 'X' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                  humanMark === 'X' ? 'border-primary bg-primary/10 font-bold' : 'border-gray-300 bg-gray-50'
                 }`}
               >
                 ❌ X（先手）
@@ -217,7 +217,7 @@ export default function TicTacToePage() {
               <button
                 onClick={() => switchHumanMark('O')}
                 className={`px-4 py-1.5 rounded-lg border-2 transition-colors ${
-                  humanMark === 'O' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                  humanMark === 'O' ? 'border-primary bg-primary/10 font-bold' : 'border-gray-300 bg-gray-50'
                 }`}
               >
                 ⭕ O（后手）
@@ -226,15 +226,15 @@ export default function TicTacToePage() {
           )}
 
           <div className="grid grid-cols-3 gap-4 mb-6 max-w-xs mx-auto">
-            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
               <div className="text-sm">{mode === 'local' ? 'zyx（X）' : humanMark === 'X' ? '你' : '电脑'}</div>
               <div className="text-2xl font-bold text-primary">{scores.X}</div>
             </div>
-            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
               <div className="text-sm">平局</div>
               <div className="text-2xl font-bold text-primary">{scores.draws}</div>
             </div>
-            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+            <div className="p-4 rounded-lg border border-gray-200 bg-gray-50">
               <div className="text-sm">{mode === 'local' ? 'zly（O）' : humanMark === 'O' ? '你' : '电脑'}</div>
               <div className="text-2xl font-bold text-primary">{scores.O}</div>
             </div>
@@ -254,7 +254,7 @@ export default function TicTacToePage() {
                   className={`aspect-square rounded-lg text-5xl font-bold flex items-center justify-center transition-all border-2 ${
                     isWinningCell
                       ? 'bg-primary/25 border-primary'
-                      : 'bg-white/5 border-white/20 hover:border-primary/60 hover:bg-primary/10'
+                      : 'bg-gray-50 border-gray-300 hover:border-primary/60 hover:bg-primary/10'
                   } ${cell || winner || isDraw || isCpuTurn ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 >
                   {cell === 'X' && '❌'}
@@ -270,7 +270,7 @@ export default function TicTacToePage() {
             </button>
             <button
               onClick={resetScores}
-              className="px-8 py-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+              className="px-8 py-3 rounded-lg border border-gray-300 bg-gray-100 hover:bg-gray-200 transition-colors"
             >
               🗑️ 清空比分
             </button>
