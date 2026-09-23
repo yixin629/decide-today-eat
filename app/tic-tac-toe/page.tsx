@@ -5,6 +5,7 @@ import BackButton from '@/app/components/ui/BackButton'
 
 type Cell = 'X' | 'O' | null
 type Board = Cell[]
+type GameMode = 'local' | 'cpu'
 
 const WIN_LINES = [
   [0, 1, 2],
@@ -26,6 +27,7 @@ interface Scores {
 }
 
 const SCORES_STORAGE_KEY = 'tic-tac-toe-scores-v1'
+const CPU_MOVE_DELAY_MS = 500
 
 function calculateWinner(board: Board): { winner: 'X' | 'O' | null; line: number[] | null } {
   for (const line of WIN_LINES) {
@@ -37,7 +39,49 @@ function calculateWinner(board: Board): { winner: 'X' | 'O' | null; line: number
   return { winner: null, line: null }
 }
 
+function isBoardFull(board: Board): boolean {
+  return board.every((cell) => cell !== null)
+}
+
+/**
+ * 极小化极大搜索：3x3 棋盘状态空间很小，可以直接穷举，电脑永远不会走出
+ * 会输的一步（要么赢要么逼平），不需要引入外部依赖。
+ */
+function minimax(board: Board, player: 'X' | 'O', cpuMark: 'X' | 'O', humanMark: 'X' | 'O'): number {
+  const { winner } = calculateWinner(board)
+  if (winner === cpuMark) return 10
+  if (winner === humanMark) return -10
+  if (isBoardFull(board)) return 0
+
+  const scores: number[] = []
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] !== null) continue
+    const next = [...board]
+    next[i] = player
+    scores.push(minimax(next, player === 'X' ? 'O' : 'X', cpuMark, humanMark))
+  }
+  return player === cpuMark ? Math.max(...scores) : Math.min(...scores)
+}
+
+function pickCpuMove(board: Board, cpuMark: 'X' | 'O', humanMark: 'X' | 'O'): number {
+  let bestScore = -Infinity
+  let bestMove = -1
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] !== null) continue
+    const next = [...board]
+    next[i] = cpuMark
+    const score = minimax(next, humanMark, cpuMark, humanMark)
+    if (score > bestScore) {
+      bestScore = score
+      bestMove = i
+    }
+  }
+  return bestMove
+}
+
 export default function TicTacToePage() {
+  const [mode, setMode] = useState<GameMode>('local')
+  const [humanMark, setHumanMark] = useState<'X' | 'O'>('X')
   const [board, setBoard] = useState<Board>(EMPTY_BOARD)
   const [isXNext, setIsXNext] = useState(true)
   const [scores, setScores] = useState<Scores>({ X: 0, O: 0, draws: 0 })
@@ -52,7 +96,9 @@ export default function TicTacToePage() {
   }, [])
 
   const { winner, line: winningLine } = calculateWinner(board)
-  const isDraw = !winner && board.every((cell) => cell !== null)
+  const isDraw = !winner && isBoardFull(board)
+  const cpuMark: 'X' | 'O' = humanMark === 'X' ? 'O' : 'X'
+  const isCpuTurn = mode === 'cpu' && !winner && !isDraw && (isXNext ? 'X' : 'O') === cpuMark
 
   const saveScores = (next: Scores) => {
     setScores(next)
@@ -63,22 +109,39 @@ export default function TicTacToePage() {
     }
   }
 
-  const handleCellClick = (index: number) => {
-    if (board[index] || winner || isDraw) return
-
-    const nextBoard = [...board]
-    nextBoard[index] = isXNext ? 'X' : 'O'
+  const applyMove = (nextBoard: Board, mark: 'X' | 'O') => {
     setBoard(nextBoard)
-
     const result = calculateWinner(nextBoard)
     if (result.winner) {
       saveScores({ ...scores, [result.winner]: scores[result.winner] + 1 })
-    } else if (nextBoard.every((cell) => cell !== null)) {
+    } else if (isBoardFull(nextBoard)) {
       saveScores({ ...scores, draws: scores.draws + 1 })
     }
-
-    setIsXNext(!isXNext)
+    setIsXNext(mark === 'X' ? false : true)
   }
+
+  const handleCellClick = (index: number) => {
+    if (board[index] || winner || isDraw || isCpuTurn) return
+    const mark = isXNext ? 'X' : 'O'
+    const nextBoard = [...board]
+    nextBoard[index] = mark
+    applyMove(nextBoard, mark)
+  }
+
+  useEffect(() => {
+    if (!isCpuTurn) return
+    const timer = setTimeout(() => {
+      const move = pickCpuMove(board, cpuMark, humanMark)
+      if (move === -1) return
+      const nextBoard = [...board]
+      nextBoard[move] = cpuMark
+      applyMove(nextBoard, cpuMark)
+    }, CPU_MOVE_DELAY_MS)
+    return () => clearTimeout(timer)
+    // 只在"轮到电脑"这个状态刚变为 true 时触发一次；board/scores 等值
+    // 在触发瞬间已经是最新的，重复声明进依赖会导致电脑重复落子。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCpuTurn])
 
   const resetBoard = () => {
     setBoard(EMPTY_BOARD)
@@ -89,11 +152,28 @@ export default function TicTacToePage() {
     saveScores({ X: 0, O: 0, draws: 0 })
   }
 
+  const switchMode = (nextMode: GameMode) => {
+    setMode(nextMode)
+    resetBoard()
+  }
+
+  const switchHumanMark = (mark: 'X' | 'O') => {
+    setHumanMark(mark)
+    resetBoard()
+  }
+
+  const playerLabel = (mark: 'X' | 'O') => {
+    if (mode === 'local') return mark === 'X' ? 'zyx（X）' : 'zly（O）'
+    return mark === humanMark ? `你（${mark}）` : `电脑（${mark}）`
+  }
+
   const statusText = winner
-    ? `🎉 ${winner === 'X' ? 'zyx（X）' : 'zly（O）'} 获胜！`
+    ? `🎉 ${playerLabel(winner)} 获胜！`
     : isDraw
       ? '🤝 平局！'
-      : `轮到 ${isXNext ? 'zyx（X）' : 'zly（O）'}`
+      : isCpuTurn
+        ? '🤖 电脑思考中…'
+        : `轮到 ${playerLabel(isXNext ? 'X' : 'O')}`
 
   return (
     <div className="min-h-screen p-8">
@@ -102,19 +182,60 @@ export default function TicTacToePage() {
 
         <div className="card text-center">
           <h1 className="text-4xl font-bold mb-2">⭕ 井字棋 ❌</h1>
-          <p className="text-gray-400 mb-8">两个人轮流点击同一块屏幕来对战</p>
+          <p className="text-sm mb-6">选择对战模式，然后轮流点击棋盘</p>
+
+          <div className="flex gap-3 justify-center mb-6 flex-wrap">
+            <button
+              onClick={() => switchMode('local')}
+              className={`px-5 py-2 rounded-lg border-2 transition-colors ${
+                mode === 'local' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+              }`}
+            >
+              👫 双人对战（同屏轮流）
+            </button>
+            <button
+              onClick={() => switchMode('cpu')}
+              className={`px-5 py-2 rounded-lg border-2 transition-colors ${
+                mode === 'cpu' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+              }`}
+            >
+              🤖 单机对战电脑
+            </button>
+          </div>
+
+          {mode === 'cpu' && (
+            <div className="flex gap-3 justify-center mb-6 items-center text-sm">
+              <span>你执：</span>
+              <button
+                onClick={() => switchHumanMark('X')}
+                className={`px-4 py-1.5 rounded-lg border-2 transition-colors ${
+                  humanMark === 'X' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                }`}
+              >
+                ❌ X（先手）
+              </button>
+              <button
+                onClick={() => switchHumanMark('O')}
+                className={`px-4 py-1.5 rounded-lg border-2 transition-colors ${
+                  humanMark === 'O' ? 'border-primary bg-primary/10 font-bold' : 'border-white/20 bg-white/5'
+                }`}
+              >
+                ⭕ O（后手）
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-4 mb-6 max-w-xs mx-auto">
-            <div className="p-4 rounded-lg bg-blue-500/20">
-              <div className="text-sm text-gray-400">zyx（X）</div>
+            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+              <div className="text-sm">{mode === 'local' ? 'zyx（X）' : humanMark === 'X' ? '你' : '电脑'}</div>
               <div className="text-2xl font-bold text-primary">{scores.X}</div>
             </div>
-            <div className="p-4 rounded-lg bg-white/10">
-              <div className="text-sm text-gray-400">平局</div>
-              <div className="text-2xl font-bold">{scores.draws}</div>
+            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+              <div className="text-sm">平局</div>
+              <div className="text-2xl font-bold text-primary">{scores.draws}</div>
             </div>
-            <div className="p-4 rounded-lg bg-pink-500/20">
-              <div className="text-sm text-gray-400">zly（O）</div>
+            <div className="p-4 rounded-lg border border-white/20 bg-white/5">
+              <div className="text-sm">{mode === 'local' ? 'zly（O）' : humanMark === 'O' ? '你' : '电脑'}</div>
               <div className="text-2xl font-bold text-primary">{scores.O}</div>
             </div>
           </div>
@@ -128,16 +249,16 @@ export default function TicTacToePage() {
                 <button
                   key={index}
                   onClick={() => handleCellClick(index)}
-                  disabled={!!cell || !!winner || isDraw}
+                  disabled={!!cell || !!winner || isDraw || isCpuTurn}
                   aria-label={`第 ${index + 1} 格${cell ? `，已是 ${cell}` : '，空'}`}
                   className={`aspect-square rounded-lg text-5xl font-bold flex items-center justify-center transition-all border-2 ${
                     isWinningCell
-                      ? 'bg-primary/30 border-primary'
+                      ? 'bg-primary/25 border-primary'
                       : 'bg-white/5 border-white/20 hover:border-primary/60 hover:bg-primary/10'
-                  } ${cell || winner || isDraw ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${cell || winner || isDraw || isCpuTurn ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 >
-                  {cell === 'X' && <span className="text-blue-400">❌</span>}
-                  {cell === 'O' && <span className="text-pink-400">⭕</span>}
+                  {cell === 'X' && '❌'}
+                  {cell === 'O' && '⭕'}
                 </button>
               )
             })}
