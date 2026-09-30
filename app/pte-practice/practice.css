@@ -163,11 +163,24 @@
 .pte-answer-review dl { display: grid; gap: 14px; margin-top: 14px; }
 .pte-answer-review dt { color: var(--pte-muted); font-size: 11px; margin-bottom: 5px; }
 .pte-answer-review dd { font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; white-space: pre-wrap; }
-.dark .pte-page { background: #171c1d; }
-.dark .pte-app { --pte-accent: #5dcbb7; --pte-soft: #243b35; --pte-text: #e8efed; --pte-muted: #a7b7b3; --pte-line: #374441; --pte-surface: #202826; --pte-bg: #1b2220; --color-primary: #268f7c; --color-primary-rgb: 38 143 124; }
-.dark .pte-button.primary { background: #187867; }
-.dark .pte-app .pte-notice { color: #ecd494; background: #3b3526; }
-.dark .pte-app .bookmarked { color: #edc279; background: #3a3022; }
+/*
+ * 深色模式选择器说明：这个网站切换深色模式时，是往 <html> 上加 `dark-mode`
+ * 这个类名（见 app/globals.css 和 UnifiedThemePanel.tsx），不是常见 Tailwind
+ * 项目里默认的 `.dark`。这里原来写的是 `.dark .pte-app`，选择器永远不会命中，
+ * 导致这个页面切换深色模式完全没有视觉变化——这是实测发现的真实 bug，已改成
+ * 正确的类名。护眼模式（`.eye-care-mode`）原来完全没有处理，也一并补上，
+ * 配色取自 app/globals.css 里 `.eye-care-mode` 的暖色调色板，保持全站一致。
+ */
+.dark-mode .pte-page { background: #171c1d; }
+.dark-mode .pte-app { --pte-accent: #5dcbb7; --pte-soft: #243b35; --pte-text: #e8efed; --pte-muted: #a7b7b3; --pte-line: #374441; --pte-surface: #202826; --pte-bg: #1b2220; --color-primary: #268f7c; --color-primary-rgb: 38 143 124; }
+.dark-mode .pte-button.primary { background: #187867; }
+.dark-mode .pte-app .pte-notice { color: #ecd494; background: #3b3526; }
+.dark-mode .pte-app .bookmarked { color: #edc279; background: #3a3022; }
+
+.eye-care-mode .pte-page { background: #eeecdf; }
+.eye-care-mode .pte-app { --pte-accent: #087f72; --pte-soft: #e4ecdd; --pte-text: #292c27; --pte-muted: #686d62; --pte-line: #d5d2c2; --pte-surface: #faf8ed; --pte-bg: #efeddf; --color-primary: #087f72; --color-primary-rgb: 8 127 114; }
+.eye-care-mode .pte-app .pte-notice { color: #7a5a1f; background: #f3e9c8; }
+.eye-care-mode .pte-app .bookmarked { color: #7a5a1f; background: #f3e9c8; }
 @media (min-width: 1481px) { .pte-page { padding-inline: 30px; } }
 @media (max-width: 1150px) {
   .pte-shell { grid-template-columns: 177px minmax(0, 1fr); }

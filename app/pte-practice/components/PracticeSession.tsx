@@ -99,6 +99,7 @@ export default function PracticeSession({
   userId,
   onExit,
   onQuit,
+  onNext,
   onAttemptSaved,
   exitLabel = '返回题型列表',
   hideCommentThread = false,
@@ -108,6 +109,12 @@ export default function PracticeSession({
   userId: string | null
   /** 提交后"下一题/查看结果/返回"按钮的行为。 */
   onExit: () => void
+  /**
+   * 题库/收藏/错题复习等"连续做题队列"场景下，提交后额外展示一个"下一题"
+   * 按钮，直接进入队列里的下一道题（不同于 onExit——onExit 通常是"返回列表"，
+   * onNext 是"留在做题界面，换下一题"）。不传则不展示这个按钮。
+   */
+  onNext?: () => void
   /**
    * 顶部"退出"按钮（提交前随时可见）的行为。单独练习场景下退出即是返回题库，
    * 与 onExit 语义相同，因此不传时默认退回 onExit；但在模拟考试等连续流程里，
@@ -458,6 +465,11 @@ export default function PracticeSession({
             </div>
           )}
           <div className="flex gap-3">
+            {onNext && (
+              <button type="button" onClick={onNext} className="btn-primary">
+                下一题
+              </button>
+            )}
             <button type="button" onClick={onExit} className="btn-secondary">
               {exitLabel}
             </button>
