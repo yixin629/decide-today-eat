@@ -113,10 +113,18 @@ export default function PtePlanner() {
         const cloudPlans = await loadCloudPlans(user)
         if (cancelled) return
 
-        setSyncedVersions(Object.fromEntries(cloudPlans.map((plan) => [plan.id, plan.updatedAt])))
         const resolvedPlans = cloudPlans
           .map(ensureAllTaskCoverage)
           .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        // 用"补全后"的 updatedAt（而不是云端原始的 updatedAt）初始化 syncedVersions：
+        // ensureAllTaskCoverage 只是给旧计划补全新增题型覆盖率的只读时迁移，会把
+        // updatedAt 刷新成当前时间，如果拿云端原始时间戳去比对，会被自动保存的
+        // effect 误判成"用户改过了"，从而在用户只是打开页面看一眼时就静默触发一次
+        // 写回数据库——这不仅是多余的写操作，还会和"删除计划"竞态：如果这次静默
+        // 自动保存的请求还没返回，用户就删除了该计划，请求返回时可能把刚删除的
+        // 计划重新插回去。用补全后的时间戳标记为"已同步"，可以避免这次自动
+        // 迁移本身触发任何网络写入；真正的用户编辑之后依然会正常触发同步。
+        setSyncedVersions(Object.fromEntries(resolvedPlans.map((plan) => [plan.id, plan.updatedAt])))
         const active = resolvedPlans[0] ?? null
         setPlans(resolvedPlans)
         setActivePlanId(active?.id ?? null)
@@ -630,17 +638,22 @@ export default function PtePlanner() {
                   onChange={(event) => selectPlan(event.target.value)}
                 >
                   {!activePlanId && <option value="">正在创建新方案</option>}
-                  {plans.map((plan) => (
+                  {plans.map((plan, index) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.name || '未命名计划'}
+                      {' · '}
+                      {format(parseISO(plan.updatedAt), 'MM-dd HH:mm:ss', { locale: zhCN })}
+                      {' · #'}
+                      {plan.id.slice(-4)}
+                      {index === 0 ? '（最新）' : ''}
                     </option>
                   ))}
                 </select>
-                {plans.length === 1 && (
-                  <span className="mt-1 block text-[11px] text-slate-500">
-                    当前只有一个方案，复制或新建后即可切换
-                  </span>
-                )}
+                <span className="mt-1 block text-[11px] text-slate-500">
+                  {plans.length === 1
+                    ? '当前只有一个方案，复制或新建后即可切换'
+                    : '名字后面固定跟着更新时间和一个不会重复的编号，同名计划也能分清是哪一份'}
+                </span>
               </label>
               <label>
                 <span className="label-primary">当前计划名称</span>
