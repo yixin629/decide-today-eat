@@ -24,6 +24,17 @@ export default function AudioOrTranscript({ text, revealText }: { text: string; 
     setSupported(typeof window !== 'undefined' && 'speechSynthesis' in window)
   }, [])
 
+  // speechSynthesis 是浏览器全局 API，朗读一旦开始不会因为这个组件被卸载
+  // （比如用户点"退出"离开这道题，或切到下一题）而自动停止——之前没有这个
+  // 清理逻辑，导致退出练习后语音还在继续朗读。组件卸载时主动 cancel 一次。
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [])
+
   function play() {
     if (!supported) return
     window.speechSynthesis.cancel()

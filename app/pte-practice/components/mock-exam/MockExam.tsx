@@ -44,7 +44,9 @@ export default function MockExam({ userId }: { userId: string | null }) {
         run={view.run}
         userId={userId}
         onFinish={(results) => setView({ name: 'results', results })}
-        onAbort={() => setView({ name: 'entry' })}
+        onAbort={(partialResults) =>
+          setView(partialResults.length > 0 ? { name: 'results', results: partialResults } : { name: 'entry' })
+        }
       />
     )
   }

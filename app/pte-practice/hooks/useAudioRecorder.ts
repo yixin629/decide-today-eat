@@ -47,6 +47,7 @@ export function useAudioRecorder(onChange: (result: AudioRecorderResult) => void
   const [recognizedTranscript, setRecognizedTranscript] = useState<string | null>(null)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const startTimeRef = useRef<number>(0)
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null)
@@ -56,6 +57,18 @@ export function useAudioRecorder(onChange: (result: AudioRecorderResult) => void
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl)
       recognitionRef.current?.stop()
+      // 如果用户在录音过程中直接退出（没点"停止录音"），麦克风流之前会一直
+      // 挂着不释放——getUserMedia 的 stream 是浏览器级资源，不会因为这个
+      // React 组件卸载就自动关闭，必须显式 stop 每个 track。这里不等
+      // MediaRecorder 的 onstop 回调（那个回调里的 setState/onChange 是给
+      // 正常"停止录音"流程用的，组件都卸载了不需要再触发它，也应避免在已
+      // 卸载组件上调用 setState），改成先摘掉 onstop 处理器，再直接 stop
+      // recorder 和底层的 stream track。
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.onstop = null
+        mediaRecorderRef.current.stop()
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -65,6 +78,7 @@ export function useAudioRecorder(onChange: (result: AudioRecorderResult) => void
     setRecognizedTranscript(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaStreamRef.current = stream
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
       recorder.ondataavailable = (event) => {
@@ -75,6 +89,7 @@ export function useAudioRecorder(onChange: (result: AudioRecorderResult) => void
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
         stream.getTracks().forEach((track) => track.stop())
+        mediaStreamRef.current = null
         const seconds = (Date.now() - startTimeRef.current) / 1000
         setRecordingSeconds(seconds)
         onChange({ recordingSeconds: seconds, recognizedTranscript: recognizedTranscriptRef.current, audioBlob: blob })
