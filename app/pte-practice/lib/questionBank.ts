@@ -26,9 +26,11 @@ import type {
  * 原创示例题库（非 Pearson 官方真题，非"机经"）。
  *
  * 本文件内容均为参考 PTE 公开题型格式自行编写的练习素材，仅用于演示各任务
- * 类型的交互与打分维度展示，每种题型保持在 10 题以内。结构约定：本文件只
- * 导出按题型分组的纯数据数组，不包含任何 UI 或评分逻辑，因此可以整体替换
- * 或扩展为从远端/本地 JSON 加载，而不需要改动组件代码。
+ * 类型的交互与打分维度展示。2026-09-30 起每种题型已扩充到约 15-20 题左右
+ * （此前每种题型仅 4-8 题），仍远未达到商业级题库的数千题规模，后续可继续
+ * 分批扩充。结构约定：本文件只导出按题型分组的纯数据数组，不包含任何 UI
+ * 或评分逻辑，因此可以整体替换或扩展为从远端/本地 JSON 加载，而不需要改动
+ * 组件代码。
  */
 
 const readingMcqSingle: McqSingleItem[] = [
@@ -119,6 +121,92 @@ const readingMcqSingle: McqSingleItem[] = [
     options: ['一致认为毫无价值', '意见不一，有人看重其针对性技能，有人仍更看重完整学位', '一致认为比学位更重要', '完全没有被调查到'],
     correctIndex: 1,
   },
+  {
+    id: 'r-mcq-9',
+    taskType: 'reading-mcq-single',
+    passage:
+      'The Apollo program\'s success depended heavily on early, unglamorous unmanned test flights that exposed critical flaws in heat shields and guidance software long before any astronaut boarded a capsule. Historians argue that this willingness to fail cheaply and often, rather than the more celebrated moon landing itself, was the program\'s real engineering achievement.',
+    question: '历史学家认为阿波罗计划真正的工程成就是什么？',
+    options: ['登月本身的画面', '愿意通过廉价、频繁的无人测试及早暴露缺陷', '拥有当时最先进的火箭发动机', '完全没有经历过失败'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-10',
+    taskType: 'reading-mcq-single',
+    passage:
+      'A common assumption is that older workers are less adaptable to new technology than younger colleagues. Longitudinal workplace data complicates this picture: while younger employees often pick up new software faster initially, older employees tend to close the gap within a few months and report higher long-term retention of the skills learned.',
+    question: '纵向职场数据揭示了什么？',
+    options: [
+      '年长员工完全无法学习新技术',
+      '年长员工初期学得快但很快遗忘',
+      '年轻员工初期上手更快，但年长员工几个月后追平且长期记忆更好',
+      '年龄与技能学习完全无关的结论尚无数据支持',
+    ],
+    correctIndex: 2,
+  },
+  {
+    id: 'r-mcq-11',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Traditional crop rotation, long dismissed by some as an outdated practice ill-suited to industrial farming, is being reconsidered as soil scientists document its role in naturally suppressing pests and replenishing nitrogen, potentially reducing the need for costly synthetic fertilizers.',
+    question: '土壤科学家重新评估轮作制度的原因是什么？',
+    options: ['它能生产更高产量的单一作物', '它有助于天然抑制病虫害并补充氮元素，可减少化肥使用', '它比工业化农业更快', '它完全不需要任何人力投入'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-12',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Public speaking anxiety is often attributed to fear of judgment, but cognitive behavioral researchers note that a significant portion of the discomfort stems from an exaggerated sense of how much an audience actually notices small mistakes, a phenomenon closely related to what psychologists call the "spotlight effect."',
+    question: '认知行为研究者认为公开演讲焦虑的部分原因是什么？',
+    options: ['听众普遍非常严厉', '人们高估了听众对自己小失误的关注程度，即"聚光灯效应"', '演讲者天生缺乏语言能力', '焦虑与听众人数完全无关'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-13',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Streaming services initially promised to reduce piracy by making legal content more convenient than illegal downloads. However, as the number of competing subscription platforms has grown, some analysts note that fragmented content libraries may be reviving the very inconvenience that once drove consumers toward piracy.',
+    question: '一些分析师担忧什么？',
+    options: ['流媒体平台数量太少', '订阅平台数量增多导致内容分散，可能重新造成不便，助长盗版', '所有观众都已完全放弃合法平台', '盗版问题已经彻底消失'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-14',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Excavations at a Bronze Age settlement revealed grain silos far larger than the local population could have needed, leading archaeologists to propose that the community functioned as a regional trading hub rather than a purely self-sufficient village.',
+    question: '考古学家据此提出了什么假设？',
+    options: ['这个聚落人口远超预期', '该聚落可能是区域贸易枢纽，而非单纯自给自足的村庄', '粮仓的规模纯属建筑失误', '这个聚落从未储存过粮食'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-15',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Noise-cancelling headphones work by generating a sound wave that is the inverse of ambient noise, effectively cancelling it out before it reaches the ear. This technique is most effective against low, constant frequencies like engine hum, but far less effective against sudden, unpredictable sounds such as a dog barking.',
+    question: '降噪耳机对哪种声音效果较差？',
+    options: ['低沉持续的引擎噪音', '突然且不可预测的声音，例如狗叫', '所有类型的声音都同样有效', '完全没有降噪效果'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-16',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Many nutrition guidelines have shifted away from labeling individual foods as simply "good" or "bad," instead emphasizing overall dietary patterns. This shift followed research suggesting that focusing on single nutrients or foods often leads people to compensate elsewhere in ways that cancel out any benefit.',
+    question: '营养指南为什么转向强调整体饮食模式？',
+    options: ['单一食物完全不再重要', '过度关注单一营养素或食物容易导致其他方面的补偿行为抵消收益', '这样可以让食品公司更容易营销', '整体模式比单一食物更便宜'],
+    correctIndex: 1,
+  },
+  {
+    id: 'r-mcq-17',
+    taskType: 'reading-mcq-single',
+    passage:
+      'Second-language acquisition research increasingly emphasizes comprehensible input — exposure to language slightly above a learner\'s current level — over rote grammar drills. Advocates argue this mirrors how children acquire their first language, though critics note that adult learners may still benefit from some explicit grammar instruction.',
+    question: '批评者对"可理解输入"理论提出了什么保留意见？',
+    options: ['儿童完全不需要语言输入', '成年学习者可能仍然需要一些明确的语法讲解', '这一理论已被完全推翻', '语法练习对任何人都毫无用处'],
+    correctIndex: 1,
+  },
 ]
 
 const readingReorder: ReorderItem[] = [
@@ -174,6 +262,116 @@ const readingReorder: ReorderItem[] = [
       'Many companies report that overall employee burnout increased noticeably following the shift to widespread remote work.',
       'Surveys attributed part of this burnout to the blurring of boundaries between work and personal time.',
       'Early adopters of the shorter week report mixed but generally positive effects on both productivity and reported wellbeing.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-6',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'To address this, several hospitals have introduced dedicated interpreter services available around the clock.',
+      'Language barriers between patients and medical staff have been linked to higher rates of misdiagnosis and medication errors.',
+      'Without a shared language, subtle but clinically important details are often lost during consultations.',
+      'Early data suggests that hospitals using these services see fewer repeat visits caused by miscommunication.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-7',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'As a result, some record labels have begun releasing albums exclusively on vinyl before making them available digitally.',
+      'Vinyl record sales have risen for over a decade even as streaming dominates how most people listen to music.',
+      'Collectors and younger listeners alike cite the physical ritual and tactile packaging as part of vinyl\'s appeal.',
+      'Whether this trend will continue to grow or has already reached its natural ceiling remains a matter of debate among industry analysts.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-8',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'This discrepancy prompted researchers to examine whether sample selection, rather than diet itself, explained the conflicting results.',
+      'Nutrition studies on the health effects of a single food item frequently produce contradictory findings from one year to the next.',
+      'Participants who volunteer for such studies often differ systematically from the general population in income, education, and existing health habits.',
+      'Subsequent studies that controlled more carefully for these factors found far smaller effects than the original headlines suggested.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-9',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'In response, several airlines began experimenting with dynamic boarding groups assigned only minutes before departure.',
+      'Boarding a full passenger aircraft efficiently has remained a surprisingly difficult logistical problem for decades.',
+      'Fixed boarding-group systems often lead to bottlenecks in the aisle as passengers all try to store luggage at once.',
+      'Early trials of the dynamic system report modest reductions in average boarding time, though results vary by aircraft size.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-10',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'Consequently, conservationists have begun releasing captive-bred individuals into carefully selected, predator-free habitats.',
+      'Several amphibian species have suffered dramatic population declines linked to a fast-spreading fungal disease.',
+      'The fungus disrupts the skin function amphibians rely on for breathing and water regulation, often proving fatal.',
+      'Early monitoring of the released populations shows encouraging survival rates, though long-term success is not yet guaranteed.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-11',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'To reduce this risk, financial regulators in several countries now require lenders to verify income more rigorously before approving loans.',
+      'In the years leading up to the global financial crisis, many mortgage lenders approved loans with minimal verification of a borrower\'s actual income.',
+      'This practice contributed to a sharp rise in loans that borrowers were ultimately unable to repay.',
+      'Critics argue the stricter rules, while safer, have also made it harder for some creditworthy first-time buyers to qualify.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-12',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'This led some theaters to introduce dynamic pricing, charging more for popular showtimes and less for weekday matinees.',
+      'Cinema attendance has fluctuated considerably since the widespread adoption of home streaming services.',
+      'Industry data shows that ticket prices had remained largely flat for years despite rising operating costs.',
+      'Early results suggest dynamic pricing has modestly improved attendance during previously under-booked time slots.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-13',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'To address this shortfall, several universities have partnered directly with local manufacturers to design apprenticeship-style courses.',
+      'Employers in advanced manufacturing frequently report difficulty finding technicians with the specific skills their machinery requires.',
+      'Traditional engineering degrees, while rigorous, often do not cover the exact equipment used on a specific factory floor.',
+      'Graduates of the new partnership programs report faster hiring and higher starting wages than peers from conventional programs.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-14',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'As a result, several national parks now use timed-entry ticketing to spread visitor arrivals more evenly throughout the day.',
+      'Some of the world\'s most popular national parks have struggled with overcrowding during peak tourist seasons.',
+      'Overcrowding has been linked to trail erosion, wildlife disturbance, and a diminished experience for visitors themselves.',
+      'Visitor surveys since the introduction of timed entry report higher satisfaction despite the added step of advance booking.',
+    ],
+    correctOrder: [1, 2, 0, 3],
+  },
+  {
+    id: 'r-reorder-15',
+    taskType: 'reading-reorder',
+    paragraphs: [
+      'In response, some cities have begun offering free transit passes during declared air-quality emergencies.',
+      'Air pollution in several major cities spikes sharply during specific weather conditions that trap emissions close to the ground.',
+      'During these episodes, hospitals typically report a measurable rise in respiratory-related emergency visits.',
+      'Preliminary data suggests the free-transit measure modestly reduces car use during the affected days, though the effect fades once passes expire.',
     ],
     correctOrder: [1, 2, 0, 3],
   },
@@ -245,6 +443,136 @@ const readingFillBlanksDrag: FillBlanksDragItem[] = [
     wordBank: ['seasonal', 'reliable', 'season', 'unstable', 'annual'],
     correctAnswers: ['reliable', 'seasonal', 'season'],
   },
+  {
+    id: 'r-fillblank-6',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Volcanic soil is prized by farmers for its ',
+      ' mineral content, which can make surrounding regions remarkably ',
+      ' for agriculture despite the ',
+      ' risk posed by future eruptions.',
+    ],
+    blankCount: 3,
+    wordBank: ['rich', 'fertile', 'ongoing', 'poor', 'temporary'],
+    correctAnswers: ['rich', 'fertile', 'ongoing'],
+  },
+  {
+    id: 'r-fillblank-7',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Urban planners increasingly favor mixed-use ',
+      ' that combine housing, shops, and offices within walking ',
+      ', arguing this reduces the daily reliance on ',
+      ' transport.',
+    ],
+    blankCount: 3,
+    wordBank: ['zoning', 'distance', 'private', 'height', 'public'],
+    correctAnswers: ['zoning', 'distance', 'private'],
+  },
+  {
+    id: 'r-fillblank-8',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Ancient trade routes did more than move goods; they also ',
+      ' the spread of ideas, languages, and religious ',
+      ' across vast distances, leaving a ',
+      ' influence still visible today.',
+    ],
+    blankCount: 3,
+    wordBank: ['facilitated', 'practices', 'cultural', 'blocked', 'temporary'],
+    correctAnswers: ['facilitated', 'practices', 'cultural'],
+  },
+  {
+    id: 'r-fillblank-9',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Wearable fitness trackers can ',
+      ' heart rate and sleep patterns continuously, giving users ',
+      ' feedback that was once only available through expensive ',
+      ' equipment.',
+    ],
+    blankCount: 3,
+    wordBank: ['monitor', 'immediate', 'clinical', 'ignore', 'outdated'],
+    correctAnswers: ['monitor', 'immediate', 'clinical'],
+  },
+  {
+    id: 'r-fillblank-10',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Because deep-sea organisms live under extreme pressure and near-total darkness, many have evolved highly ',
+      ' adaptations, including bioluminescence used to ',
+      ' prey or communicate with ',
+      ' of the same species.',
+    ],
+    blankCount: 3,
+    wordBank: ['specialized', 'attract', 'members', 'generic', 'repel'],
+    correctAnswers: ['specialized', 'attract', 'members'],
+  },
+  {
+    id: 'r-fillblank-11',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Central banks raise interest rates primarily to ',
+      ' inflation, even though doing so risks ',
+      ' economic growth and increasing the cost of ',
+      ' for households and businesses alike.',
+    ],
+    blankCount: 3,
+    wordBank: ['curb', 'slowing', 'borrowing', 'boosting', 'ignoring'],
+    correctAnswers: ['curb', 'slowing', 'borrowing'],
+  },
+  {
+    id: 'r-fillblank-12',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Restorative justice programs aim to ',
+      ' victims and offenders in a supervised dialogue, focusing on ',
+      ' rather than punishment as the primary measure of ',
+      '.',
+    ],
+    blankCount: 3,
+    wordBank: ['bring together', 'accountability', 'success', 'separate', 'revenge'],
+    correctAnswers: ['bring together', 'accountability', 'success'],
+  },
+  {
+    id: 'r-fillblank-13',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Traditional apprenticeships allowed skills to be passed down through direct ',
+      ' rather than formal classroom instruction, a model that some vocational programs are now ',
+      ' in response to persistent ',
+      ' shortages.',
+    ],
+    blankCount: 3,
+    wordBank: ['observation', 'reviving', 'skills', 'abandoning', 'funding'],
+    correctAnswers: ['observation', 'reviving', 'skills'],
+  },
+  {
+    id: 'r-fillblank-14',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Migratory shorebirds rely on a small number of ',
+      ' wetland sites to rest and refuel; the loss of even one such site can ',
+      ' disrupt migration routes spanning thousands of ',
+      '.',
+    ],
+    blankCount: 3,
+    wordBank: ['critical', 'severely', 'kilometres', 'minor', 'briefly'],
+    correctAnswers: ['critical', 'severely', 'kilometres'],
+  },
+  {
+    id: 'r-fillblank-15',
+    taskType: 'reading-fill-blanks-drag',
+    textSegments: [
+      'Historians studying propaganda posters note that their ',
+      ' impact often depended less on factual accuracy than on ',
+      ' imagery designed to provoke an immediate emotional ',
+      '.',
+    ],
+    blankCount: 3,
+    wordBank: ['persuasive', 'striking', 'response', 'neutral', 'delayed'],
+    correctAnswers: ['persuasive', 'striking', 'response'],
+  },
 ]
 
 const listeningFillBlanksTyped: ListeningFillBlanksItem[] = [
@@ -307,6 +635,126 @@ const listeningFillBlanksTyped: ListeningFillBlanksItem[] = [
       ' to disease.',
     ],
     correctAnswers: ['expel', 'vulnerable'],
+  },
+  {
+    id: 'l-fillblank-6',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Let\'s turn to the economics of vending machines. Operators must carefully balance the price of each item against foot traffic, since a machine placed in a low-traffic corridor rarely generates enough turnover to justify the cost of restocking it.',
+    textSegments: [
+      'Operators must carefully balance the price of each item against foot ',
+      ', since a machine placed in a low-traffic corridor rarely generates enough turnover to justify the cost of ',
+      ' it.',
+    ],
+    correctAnswers: ['traffic', 'restocking'],
+  },
+  {
+    id: 'l-fillblank-7',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Today we examine why some bridges hum in strong wind. Certain wind speeds can excite a bridge deck at its natural resonant frequency, causing oscillations that engineers must dampen using specially designed tuned mass dampers.',
+    textSegments: [
+      'Certain wind speeds can excite a bridge deck at its natural resonant ',
+      ', causing oscillations that engineers must dampen using specially designed tuned mass ',
+      '.',
+    ],
+    correctAnswers: ['frequency', 'dampers'],
+  },
+  {
+    id: 'l-fillblank-8',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'This lecture covers the domestication of the cat. Unlike dogs, cats were never selectively bred for obedience, and geneticists note that the modern house cat remains genetically very close to its wild ancestor.',
+    textSegments: [
+      'Unlike dogs, cats were never selectively bred for ',
+      ', and geneticists note that the modern house cat remains genetically very close to its wild ',
+      '.',
+    ],
+    correctAnswers: ['obedience', 'ancestor'],
+  },
+  {
+    id: 'l-fillblank-9',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Let\'s discuss why some fruit ripens faster near other fruit. Ripening fruit releases a gas called ethylene, which can trigger nearby produce to ripen more quickly, a fact food retailers now use deliberately to manage inventory.',
+    textSegments: [
+      'Ripening fruit releases a gas called ',
+      ', which can trigger nearby produce to ripen more quickly, a fact food retailers now use deliberately to manage ',
+      '.',
+    ],
+    correctAnswers: ['ethylene', 'inventory'],
+  },
+  {
+    id: 'l-fillblank-10',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Today\'s topic is the history of paper money. Early paper currency in medieval China was initially met with suspicion, since merchants were accustomed to trusting only coins made of precious metal with intrinsic value.',
+    textSegments: [
+      'Early paper currency in medieval China was initially met with ',
+      ', since merchants were accustomed to trusting only coins made of precious metal with intrinsic ',
+      '.',
+    ],
+    correctAnswers: ['suspicion', 'value'],
+  },
+  {
+    id: 'l-fillblank-11',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Let\'s look at why cast iron pans last for generations. A well-seasoned cast iron surface develops a natural, slightly rough layer of polymerized oil that becomes increasingly non-stick the more the pan is used.',
+    textSegments: [
+      'A well-seasoned cast iron surface develops a natural, slightly rough layer of polymerized oil that becomes increasingly ',
+      ' the more the pan is ',
+      '.',
+    ],
+    correctAnswers: ['non-stick', 'used'],
+  },
+  {
+    id: 'l-fillblank-12',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'This morning\'s lecture concerns the psychology of procrastination. Contrary to popular belief, procrastination is rarely about poor time management; researchers instead link it to difficulty regulating negative emotions associated with a task.',
+    textSegments: [
+      'Contrary to popular belief, procrastination is rarely about poor time ',
+      '; researchers instead link it to difficulty regulating negative ',
+      ' associated with a task.',
+    ],
+    correctAnswers: ['management', 'emotions'],
+  },
+  {
+    id: 'l-fillblank-13',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Today we\'ll explore why some deserts are cold rather than hot. A desert is technically defined by low precipitation rather than temperature, which is why certain high-altitude or high-latitude regions qualify as deserts despite freezing conditions.',
+    textSegments: [
+      'A desert is technically defined by low ',
+      ' rather than temperature, which is why certain high-altitude or high-latitude regions qualify as deserts despite freezing ',
+      '.',
+    ],
+    correctAnswers: ['precipitation', 'conditions'],
+  },
+  {
+    id: 'l-fillblank-14',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'This lecture examines the rise of citizen science projects. Volunteers with no formal training now contribute meaningfully to astronomy and ecology research by classifying images online, dramatically increasing the volume of data researchers can process.',
+    textSegments: [
+      'Volunteers with no formal training now contribute meaningfully to astronomy and ecology research by ',
+      ' images online, dramatically increasing the volume of data researchers can ',
+      '.',
+    ],
+    correctAnswers: ['classifying', 'process'],
+  },
+  {
+    id: 'l-fillblank-15',
+    taskType: 'listening-fill-blanks-typed',
+    transcript:
+      'Let\'s talk about why shipping containers standardized global trade. Before a uniform container size was adopted, loading and unloading cargo ships required enormous manual labor, making international shipping slow and comparatively expensive.',
+    textSegments: [
+      'Before a uniform container size was adopted, loading and unloading cargo ships required enormous manual ',
+      ', making international shipping slow and comparatively ',
+      '.',
+    ],
+    correctAnswers: ['labor', 'expensive'],
   },
 ]
 
@@ -381,6 +829,146 @@ const listeningHighlightSummary: HighlightSummaryItem[] = [
     ],
     correctIndex: 0,
   },
+  {
+    id: 'l-summary-6',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A long-term study of night-shift workers found significantly higher rates of metabolic disorders compared with daytime workers, even after controlling for diet and exercise, leading researchers to focus on circadian rhythm disruption as a likely cause.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '研究发现夜班工人代谢紊乱发生率明显更高，研究者认为可能与昼夜节律紊乱有关',
+      '夜班工人的饮食习惯是导致代谢紊乱的唯一原因',
+      '白班和夜班工人的健康状况完全没有差异',
+      '这项研究主要关于夜班工人的薪资水平',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-7',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'City archives digitized over the past decade have made it far easier for amateur historians to trace family lineages online, though archivists note that many older handwritten records remain difficult for automated text-recognition software to read accurately.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '数字化城市档案让业余历史爱好者更容易追溯家族历史，但手写记录仍难以被自动识别软件准确读取',
+      '所有历史档案现已完全实现自动化识别，不再需要人工核对',
+      '数字化项目已经完全停止，没有任何进展',
+      '这段录音主要讨论如何修复损坏的纸质文件',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-8',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A survey of small business owners found that those who adopted basic cloud accounting software reported saving several hours per week on bookkeeping, though many said the initial learning curve was steeper than expected and required outside help to get started.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '采用云端记账软件的小企业主每周节省了记账时间，但很多人表示初期学习曲线较陡，需要外部帮助',
+      '云端记账软件对小企业完全没有任何帮助',
+      '所有小企业主都轻松掌握了云端记账软件，没有遇到任何困难',
+      '这段录音主要讨论小企业的税务问题',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-9',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'Ecologists reintroducing beavers to river systems have observed a cascade of benefits, including the creation of new wetland habitat and reduced downstream flooding, though a small number of landowners have reported localized damage to trees and irrigation channels.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '重新引入河狸带来了湿地栖息地增加、下游洪水减少等一系列好处，但少数土地所有者报告了局部损害',
+      '重新引入河狸完全没有产生任何生态影响',
+      '所有土地所有者都强烈反对河狸重新引入计划',
+      '这段录音主要讨论如何捕猎河狸'
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-10',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'Researchers comparing translation quality found that professional human translators still outperform machine translation on texts requiring cultural nuance or humor, while machine translation now performs comparably well on straightforward technical documentation.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '人工翻译在需要文化细腻处理或幽默的文本上仍优于机器翻译，而机器翻译在技术文档上已表现相当',
+      '机器翻译在所有类型的文本上都已完全超越人工翻译',
+      '人工翻译已经被完全淘汰，不再被使用',
+      '这段录音主要讨论翻译行业的薪资水平',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-11',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A field experiment testing different classroom seating arrangements found that students in semicircular layouts participated in discussion more frequently than those in traditional rows, though test scores showed no significant difference between the two groups.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '半圆形座位安排的学生课堂参与度更高，但两组学生的考试成绩没有显著差异',
+      '座位安排对课堂参与度和考试成绩都毫无影响',
+      '传统排排坐的学生参与度明显更高',
+      '这段录音主要讨论如何设计教室的照明系统',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-12',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A review of home energy audits found that simple measures like sealing air leaks and adding insulation typically deliver a faster financial payback than installing new heating systems, even though the latter tends to receive more attention in advertising.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '密封漏风和加装保温层等简单措施通常比更换供暖系统回本更快，尽管后者在广告中更受关注',
+      '更换供暖系统永远是最具成本效益的选择',
+      '家庭节能审计对回本时间完全没有影响',
+      '这段录音主要讨论如何选择供暖系统品牌',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-13',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A study of hospital scheduling found that reducing the length of overnight shifts for junior doctors, without reducing total hours worked, was associated with fewer reported medical errors, prompting several hospitals to redesign their rotation systems.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '缩短初级医生夜班时长（总工时不变）与医疗差错减少有关，促使多家医院重新设计轮班制度',
+      '延长夜班时长可以显著减少医疗差错',
+      '医院轮班制度与医疗差错完全无关',
+      '这段录音主要讨论医生的薪酬结构',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-14',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'Linguists studying endangered languages note that community-led documentation projects, which train local speakers to record and archive their own language, tend to produce richer and more culturally accurate records than projects led entirely by outside academics.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '由社区主导、训练本地使用者记录本族语言的项目，往往比完全由外部学者主导的项目更丰富、更贴近文化',
+      '外部学者主导的记录项目总是质量更高',
+      '濒危语言的记录工作已经完全没有必要',
+      '这段录音主要讨论如何为濒危语言申请政府资金',
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-summary-15',
+    taskType: 'listening-highlight-summary',
+    transcript:
+      'A comparison of public bike-share programs found that systems allowing riders to leave bikes at any location, rather than at fixed docking stations, saw higher usage rates but also higher rates of bikes left in inconvenient or unsafe places.',
+    question: '以下哪一项最准确地概括了这段录音的内容？',
+    options: [
+      '无桩共享单车系统使用率更高，但也更容易出现车辆被随意停放在不便或不安全地点的问题',
+      '有固定停车桩的共享单车系统使用率总是更高',
+      '共享单车项目已被证明完全没有使用需求',
+      '这段录音主要讨论共享单车的定价策略',
+    ],
+    correctIndex: 0,
+  },
 ]
 
 const speakingReadAloud: ReadAloudItem[] = [
@@ -413,6 +1001,51 @@ const speakingReadAloud: ReadAloudItem[] = [
     id: 's-ra-6',
     taskType: 'speaking-read-aloud',
     text: 'A balanced diet, regular physical activity, and sufficient sleep remain the three factors most consistently linked to long-term health across large-scale population studies.',
+  },
+  {
+    id: 's-ra-7',
+    taskType: 'speaking-read-aloud',
+    text: 'Historians studying trade networks in the ancient world have found evidence of goods travelling thousands of kilometres long before any single empire controlled the entire route.',
+  },
+  {
+    id: 's-ra-8',
+    taskType: 'speaking-read-aloud',
+    text: 'Urban planners are increasingly designing neighborhoods around pedestrians and cyclists rather than cars, hoping to reduce both traffic congestion and carbon emissions.',
+  },
+  {
+    id: 's-ra-9',
+    taskType: 'speaking-read-aloud',
+    text: 'Financial analysts caution that short-term market fluctuations rarely reflect the underlying health of an economy and should not drive long-term investment decisions.',
+  },
+  {
+    id: 's-ra-10',
+    taskType: 'speaking-read-aloud',
+    text: 'Wildlife photographers often spend days waiting in a single location, relying on patience and a deep understanding of animal behavior to capture a single memorable image.',
+  },
+  {
+    id: 's-ra-11',
+    taskType: 'speaking-read-aloud',
+    text: 'Language teachers increasingly encourage students to practice speaking from the very first lesson, arguing that early mistakes are a necessary part of building genuine fluency.',
+  },
+  {
+    id: 's-ra-12',
+    taskType: 'speaking-read-aloud',
+    text: 'Advances in materials science have led to lighter, stronger alloys that are now used extensively in aircraft manufacturing to improve fuel efficiency.',
+  },
+  {
+    id: 's-ra-13',
+    taskType: 'speaking-read-aloud',
+    text: 'Psychologists studying motivation have found that intrinsic rewards, such as personal satisfaction, often sustain effort longer than external incentives like money or praise.',
+  },
+  {
+    id: 's-ra-14',
+    taskType: 'speaking-read-aloud',
+    text: 'Community theatre groups continue to thrive in many small towns, offering residents an accessible way to engage with the performing arts close to home.',
+  },
+  {
+    id: 's-ra-15',
+    taskType: 'speaking-read-aloud',
+    text: 'Marine engineers designing offshore wind turbines must account for extreme weather, corrosive salt water, and the enormous mechanical stress of constant motion.',
   },
 ]
 
@@ -462,6 +1095,96 @@ const writingSummarizeText: WritingItem[] = [
     minWords: 5,
     maxWords: 75,
   },
+  {
+    id: 'w-swt-6',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Archaeologists excavating a Bronze Age site recently uncovered evidence of long-distance trade in amber and tin, materials not naturally found within hundreds of kilometres of the settlement. The find challenges earlier assumptions that communities of this period were largely isolated, suggesting instead the existence of extensive, organized trade networks far earlier than previously believed.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-7',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'A growing body of research suggests that regular exposure to green spaces, even brief walks in a city park, measurably reduces cortisol levels and self-reported stress. City planners citing this evidence have begun prioritizing small, accessible pocket parks over a single large park located far from most residents, aiming to maximize the number of people who benefit regularly.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-8',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Online reviews have become a dominant factor in consumer purchasing decisions, yet studies show a significant share of reviews are either fabricated or paid for. Several countries are now considering regulations that would require platforms to verify that a reviewer actually purchased the product, though enforcement across international platforms remains a significant practical challenge.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-9',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Researchers tracking the spread of an invasive insect species found that its expansion closely followed major highway corridors rather than spreading evenly outward, suggesting that vehicles, rather than natural dispersal, are the primary means by which the species is establishing new populations. This finding has prompted several transport agencies to consider inspection checkpoints along the busiest routes.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-10',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'A decade-long study of household recycling habits found that clear, simple labeling on bins had a far greater effect on correct sorting than public awareness campaigns or financial penalties for contamination. Researchers concluded that reducing the everyday friction of a behavior often changes habits more effectively than trying to persuade people through information alone.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-11',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Economists studying the gig economy note that while flexible, on-demand work arrangements appeal to many workers seeking autonomy, the same workers often lack access to benefits such as paid leave or employer-sponsored retirement savings that are standard in traditional employment, raising longer-term questions about financial security for this growing segment of the workforce.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-12',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'A survey of hospital patients found that those who received a brief, clear explanation of their treatment plan from a nurse reported significantly less anxiety before surgery than patients who received the same information in writing alone, suggesting that the format and personal delivery of medical information can matter as much as its content.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-13',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Climate scientists modeling future rainfall patterns warn that some regions currently reliant on predictable seasonal rains may face both longer droughts and more intense flooding within the same decade, complicating agricultural planning far more than a simple overall decrease or increase in total rainfall would.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-14',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'A study comparing children who attended museums regularly with those who did not found modestly higher scores in observational and descriptive vocabulary tasks among the museum-going group, though the researchers caution that families who visit museums frequently may differ from other families in ways the study could not fully account for.',
+    minWords: 5,
+    maxWords: 75,
+  },
+  {
+    id: 'w-swt-15',
+    taskType: 'writing-summarize-text',
+    prompt: '请用一个句子（不超过 75 词）概括下面这段文字的主旨。',
+    sourceText:
+      'Manufacturers of household appliances are increasingly designing products to be repaired rather than replaced, partly in response to new regulations requiring spare parts to remain available for a decade after a product\'s release, a shift consumer advocates hope will reduce electronic waste and give buyers better long-term value.',
+    minWords: 5,
+    maxWords: 75,
+  },
 ]
 
 const writingEssay: WritingItem[] = [
@@ -502,6 +1225,86 @@ const writingEssay: WritingItem[] = [
     taskType: 'writing-essay',
     prompt:
       'Some believe that standardized testing is the fairest way to evaluate students, while others argue it fails to capture a student\'s true abilities. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-6',
+    taskType: 'writing-essay',
+    prompt:
+      'Some people think governments should invest primarily in public transportation, while others believe money is better spent improving roads for private vehicles. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-7',
+    taskType: 'writing-essay',
+    prompt:
+      'Some argue that historical monuments connected to a troubled past should be removed from public spaces, while others believe they should remain as a reminder of history. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-8',
+    taskType: 'writing-essay',
+    prompt:
+      'Some people believe that children should begin learning a foreign language as early as possible, while others think it is better to focus first on their native language. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-9',
+    taskType: 'writing-essay',
+    prompt:
+      'Some believe that space exploration is a worthwhile use of public funds, while others argue that the money would be better spent addressing problems on Earth. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-10',
+    taskType: 'writing-essay',
+    prompt:
+      'Some people think employees should be required to disconnect from work communications outside office hours, while others believe this reduces flexibility and harms productivity. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-11',
+    taskType: 'writing-essay',
+    prompt:
+      'Some argue that tourism brings essential economic benefits to local communities, while others believe it damages the environment and erodes local culture. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-12',
+    taskType: 'writing-essay',
+    prompt:
+      'Some people believe zoos play an important role in conservation and education, while others think keeping wild animals in captivity is unethical. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-13',
+    taskType: 'writing-essay',
+    prompt:
+      'Some believe that grades and exams are necessary to motivate students, while others argue they create unnecessary pressure and discourage genuine learning. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-14',
+    taskType: 'writing-essay',
+    prompt:
+      'Some people think large corporations should be primarily responsible for reducing carbon emissions, while others believe individual consumers bear the greater responsibility. Discuss both views and give your own opinion.',
+    minWords: 200,
+    maxWords: 300,
+  },
+  {
+    id: 'w-essay-15',
+    taskType: 'writing-essay',
+    prompt:
+      'Some argue that traditional print newspapers remain essential for reliable journalism, while others believe online news sources have made them unnecessary. Discuss both views and give your own opinion.',
     minWords: 200,
     maxWords: 300,
   },
@@ -551,6 +1354,96 @@ const readingMcqMultiple: McqMultipleItem[] = [
       'Supporters of congestion pricing in city centers argue it reduces traffic jams, cuts air pollution, and can fund public transit improvements with the revenue collected. Opponents worry it disproportionately affects lower-income drivers who cannot easily switch to other forms of transport.',
     question: '根据文章，支持拥堵收费的理由有哪些？（选出所有正确答案）',
     options: ['减少交通拥堵', '降低空气污染', '收入可用于改善公共交通', '对所有收入群体的影响完全相同'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-6',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Advocates for open-plan offices argue they encourage spontaneous collaboration and reduce construction costs compared with individual offices. However, a growing body of research links open-plan layouts to higher noise levels and, somewhat counterintuitively, fewer face-to-face conversations as employees retreat to messaging apps to avoid being overheard.',
+    question: '根据文章，开放式办公室存在哪些问题？（选出所有正确答案）',
+    options: ['噪音水平更高', '面对面交流反而减少', '建造成本更低', '完全不影响员工的沟通方式'],
+    correctIndexes: [0, 1],
+  },
+  {
+    id: 'r-mcqm-7',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Proponents of urban composting programs highlight reduced landfill methane emissions, nutrient-rich soil for community gardens, and lower municipal waste-hauling costs. Skeptics note that poorly managed compost bins can attract pests and produce unpleasant odors in dense residential areas.',
+    question: '根据文章，城市堆肥计划的支持者提到了哪些好处？（选出所有正确答案）',
+    options: ['减少垃圾填埋场的甲烷排放', '为社区花园提供富含营养的土壤', '降低市政垃圾清运成本', '完全不会产生任何异味'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-8',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Studies of bilingual children report cognitive advantages including improved task-switching ability and better performance on tests requiring the suppression of irrelevant information. Researchers stress, however, that these advantages are modest and should not be mistaken for a general boost in overall intelligence.',
+    question: '根据文章，研究发现双语儿童具有哪些认知优势？（选出所有正确答案）',
+    options: ['更好的任务切换能力', '更擅长抑制无关信息的干扰', '整体智力显著高于单语儿童', '这些优势幅度较小，并非整体智力提升'],
+    correctIndexes: [0, 1],
+  },
+  {
+    id: 'r-mcqm-9',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Supporters of carbon capture technology point to its potential to allow existing power plants to keep operating while cutting emissions, and to create a new industry around underground storage. Critics counter that the technology remains expensive at scale and may delay investment in renewable alternatives.',
+    question: '根据文章，碳捕获技术的支持者提出了哪些理由？（选出所有正确答案）',
+    options: ['允许现有电厂继续运营同时减少排放', '催生地下封存相关的新产业', '目前在大规模应用中成本低廉', '完全不会影响可再生能源的投资'],
+    correctIndexes: [0, 1],
+  },
+  {
+    id: 'r-mcqm-10',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Proponents of school uniforms argue they reduce visible economic disparity among students, simplify morning routines for families, and, according to some surveys, modestly reduce bullying related to clothing choices. Opponents argue uniforms suppress individual expression without solid evidence of academic benefit.',
+    question: '根据文章，校服支持者提出的理由包括哪些？（选出所有正确答案）',
+    options: ['减少学生间可见的经济差距', '简化家庭的晨间准备流程', '有调查显示可适度减少与穿着相关的欺凌', '已被证实能显著提高学习成绩'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-11',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Wildlife corridors connecting fragmented habitats have been shown to increase genetic diversity within isolated animal populations and reduce roadkill by guiding animals away from highways. Building them, however, often requires costly land acquisition and years of negotiation with multiple landowners.',
+    question: '根据文章，野生动物廊道带来的好处有哪些？（选出所有正确答案）',
+    options: ['增加孤立种群的遗传多样性', '通过引导动物远离公路减少路杀', '建设成本几乎为零', '不需要与任何土地所有者协商'],
+    correctIndexes: [0, 1],
+  },
+  {
+    id: 'r-mcqm-12',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Defenders of open-source software argue it allows for greater transparency, faster identification of security vulnerabilities through community review, and freedom from vendor lock-in. Detractors note that ongoing maintenance can suffer without a company\'s financial backing, and support can be less predictable than commercial software.',
+    question: '根据文章，开源软件的支持者提出的优势包括哪些？（选出所有正确答案）',
+    options: ['更高的透明度', '通过社区审查更快发现安全漏洞', '不受单一供应商锁定', '维护和支持永远比商业软件更稳定'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-13',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Researchers evaluating meditation apps found modest improvements in self-reported stress and sleep quality among regular users, alongside increased daily mindfulness practice. They caution the apps are not a substitute for treatment of clinical anxiety or depression.',
+    question: '根据文章，冥想应用的常规使用者报告了哪些变化？（选出所有正确答案）',
+    options: ['自评压力有所改善', '睡眠质量有所改善', '日常正念练习增加', '可以完全替代临床焦虑症的治疗'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-14',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Proponents of nuclear power point to its low operational carbon emissions and ability to provide constant baseload electricity regardless of weather. Opponents raise concerns about long-term radioactive waste storage and the high upfront capital cost of building new plants.',
+    question: '根据文章，反对核电的人提出了哪些担忧？（选出所有正确答案）',
+    options: ['长期放射性废物的储存问题', '新建电厂的前期资本成本高昂', '核电的运营碳排放极高', '核电无法提供稳定的基载电力'],
+    correctIndexes: [0, 1],
+  },
+  {
+    id: 'r-mcqm-15',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Supporters of telehealth expansion cite improved access for patients in rural areas, reduced travel time and cost, and the ability to monitor chronic conditions remotely between visits. Some physicians note that certain diagnoses still require hands-on examination that video consultations cannot replace.',
+    question: '根据文章，远程医疗的支持者提出了哪些理由？（选出所有正确答案）',
+    options: ['改善农村地区患者的医疗可及性', '减少患者的出行时间和费用', '能够在就诊间隔远程监测慢性病', '可以完全取代所有需要手动检查的诊断'],
     correctIndexes: [0, 1, 2],
   },
 ]
@@ -636,6 +1529,166 @@ const readingFillBlanksDropdown: FillBlanksDropdownItem[] = [
     ],
     correctAnswers: ['sensitive', 'bleaching', 'vulnerable'],
   },
+  {
+    id: 'r-dropdown-6',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'The invention of the printing press ',
+      ' the cost of producing a book, making written knowledge accessible to a far ',
+      ' audience than the wealthy elite who had previously ',
+      ' access to manuscripts.',
+    ],
+    blankOptions: [
+      ['reduced', 'increased', 'ignored'],
+      ['wider', 'narrower', 'identical'],
+      ['monopolized', 'shared', 'destroyed'],
+    ],
+    correctAnswers: ['reduced', 'wider', 'monopolized'],
+  },
+  {
+    id: 'r-dropdown-7',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because bees ',
+      ' a large share of global food crops, a sustained decline in their population could ',
+      ' significant disruption to agricultural ',
+      '.',
+    ],
+    blankOptions: [
+      ['pollinate', 'ignore', 'consume'],
+      ['cause', 'prevent', 'reverse'],
+      ['supply chains', 'weather', 'furniture'],
+    ],
+    correctAnswers: ['pollinate', 'cause', 'supply chains'],
+  },
+  {
+    id: 'r-dropdown-8',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Behavioral scientists have found that people are more likely to ',
+      ' a habit when it is tied to an existing routine, a principle now widely ',
+      ' in the design of health and fitness ',
+      '.',
+    ],
+    blankOptions: [
+      ['maintain', 'forget', 'avoid'],
+      ['applied', 'rejected', 'ignored'],
+      ['apps', 'accidents', 'surveys'],
+    ],
+    correctAnswers: ['maintain', 'applied', 'apps'],
+  },
+  {
+    id: 'r-dropdown-9',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because tectonic plates move only a few centimetres a year, the resulting geological changes are typically ',
+      ' over human timescales but can become ',
+      ' when they trigger a sudden earthquake or ',
+      ' eruption.',
+    ],
+    blankOptions: [
+      ['imperceptible', 'obvious', 'reversed'],
+      ['catastrophic', 'irrelevant', 'invisible'],
+      ['volcanic', 'quiet', 'financial'],
+    ],
+    correctAnswers: ['imperceptible', 'catastrophic', 'volcanic'],
+  },
+  {
+    id: 'r-dropdown-10',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Supply chain analysts note that a single disruption at a major port can ',
+      ' through an entire global network, ',
+      ' shortages of unrelated goods thousands of kilometres ',
+      '.',
+    ],
+    blankOptions: [
+      ['ripple', 'disappear', 'improve'],
+      ['causing', 'preventing', 'ignoring'],
+      ['away', 'nearby', 'underground'],
+    ],
+    correctAnswers: ['ripple', 'causing', 'away'],
+  },
+  {
+    id: 'r-dropdown-11',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Archivists preserving old film reels must carefully control humidity and temperature, since even minor fluctuations can ',
+      ' the chemical decay process and permanently ',
+      ' footage considered historically ',
+      '.',
+    ],
+    blankOptions: [
+      ['accelerate', 'halt', 'reverse'],
+      ['damage', 'restore', 'protect'],
+      ['valuable', 'worthless', 'recent'],
+    ],
+    correctAnswers: ['accelerate', 'damage', 'valuable'],
+  },
+  {
+    id: 'r-dropdown-12',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because peer review relies on unpaid volunteer experts, journals have struggled to ',
+      ' reviewers quickly enough, causing publication delays that some scientists argue ',
+      ' the pace of important ',
+      '.',
+    ],
+    blankOptions: [
+      ['recruit', 'reject', 'ignore'],
+      ['slow', 'accelerate', 'ignore'],
+      ['discoveries', 'buildings', 'holidays'],
+    ],
+    correctAnswers: ['recruit', 'slow', 'discoveries'],
+  },
+  {
+    id: 'r-dropdown-13',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Urban rivers once used primarily as sewage channels are now being ',
+      ' as public amenities, with several cities investing heavily in cleanup efforts to make the water ',
+      ' enough for recreational ',
+      '.',
+    ],
+    blankOptions: [
+      ['reimagined', 'ignored', 'polluted'],
+      ['clean', 'dirty', 'warm'],
+      ['swimming', 'drilling', 'mining'],
+    ],
+    correctAnswers: ['reimagined', 'clean', 'swimming'],
+  },
+  {
+    id: 'r-dropdown-14',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because most smartphone batteries degrade fastest when kept at ',
+      ' charge for long periods, manufacturers now recommend keeping the battery between roughly twenty and eighty percent to ',
+      ' its usable ',
+      '.',
+    ],
+    blankOptions: [
+      ['full', 'medium', 'zero'],
+      ['extend', 'shorten', 'ignore'],
+      ['lifespan', 'color', 'weight'],
+    ],
+    correctAnswers: ['full', 'extend', 'lifespan'],
+  },
+  {
+    id: 'r-dropdown-15',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because migratory whales rely on acoustic signals to communicate across vast distances, rising ocean noise from shipping traffic may ',
+      ' their ability to locate mates and could ultimately ',
+      ' breeding success across affected ',
+      '.',
+    ],
+    blankOptions: [
+      ['impair', 'improve', 'ignore'],
+      ['reduce', 'increase', 'guarantee'],
+      ['populations', 'ships', 'harbors'],
+    ],
+    correctAnswers: ['impair', 'reduce', 'populations'],
+  },
 ]
 
 const listeningMcqSingle: ListeningMcqSingleItem[] = [
@@ -682,6 +1735,96 @@ const listeningMcqSingle: ListeningMcqSingleItem[] = [
       'Let\'s look at why bamboo grows so fast. Unlike trees, bamboo doesn\'t need to build new cells to grow taller each day; the segments of the stem are all fully formed at the base and simply extend rapidly by expanding cells that are already there.',
     question: '根据讲座，竹子生长快的原因是什么？',
     options: ['它不断长出新细胞', '茎的分段已在基部形成，通过已有细胞的扩张快速伸长', '它几乎不需要阳光', '它的根系特别浅'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-6',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s consider why airplane windows are rounded rather than square. Early jet aircraft with square windows suffered catastrophic structural failures because sharp corners concentrate stress; rounded windows distribute that stress far more evenly across the fuselage.',
+    question: '根据讲座，飞机窗户为什么是圆角的？',
+    options: ['圆角窗户更便宜', '圆角能更均匀地分散机身受到的应力，避免应力集中在尖角处', '圆角窗户视野更好', '这只是设计上的审美选择'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-7',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'This morning I want to explain why we get goosebumps when cold. The reaction is a leftover from our evolutionary ancestors, whose body hair would stand up to trap a layer of warm air, even though modern humans lack enough hair for the response to be useful.',
+    question: '根据讲座，人类起鸡皮疙瘩的原因是什么？',
+    options: ['这是一种全新的进化适应', '这是祖先遗留下来的反应，原本用于竖起体毛保暖，但现代人体毛不足以起作用', '这只是心理作用，与生理无关', '这只发生在极端寒冷天气'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-8',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Today\'s topic is why bread goes stale even in a sealed bag. Staling is not primarily about moisture loss; it is mainly caused by starch molecules gradually recrystallizing into a firmer structure, a process that can actually be slowed by freezing rather than refrigerating the bread.',
+    question: '根据讲座，面包变硬的主要原因是什么？',
+    options: ['水分完全蒸发', '淀粉分子逐渐重新结晶形成更硬的结构', '冷藏能有效防止面包变硬', '面包变硬只发生在夏天'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-9',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s discuss why some coins have ridged edges. The ridges, known as reeding, were originally introduced to prevent people from shaving off small amounts of precious metal from the edge of a gold or silver coin without it being noticeable.',
+    question: '根据讲座，硬币边缘做成锯齿状的最初原因是什么？',
+    options: ['方便硬币叠放', '防止有人从贵金属硬币边缘偷削金属而不被察觉', '增加硬币的美观度', '让硬币更容易生产'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-10',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'This lecture covers why some spiders build webs each night rather than repairing old ones. Fresh silk is stickier and more effective at catching prey, and rebuilding also lets the spider recycle the protein from the previous web by eating it first.',
+    question: '根据讲座，蜘蛛为什么每晚重新织网？',
+    options: ['旧网已经完全无法修复', '新丝黏性更强且更有效，重建还能让蜘蛛回收旧网中的蛋白质', '这是一种纯粹的本能行为，没有实际功能', '重新织网比修补旧网更省时间'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-11',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Now, why does helium make your voice sound higher? Sound travels faster through helium than through normal air because helium molecules are lighter, which raises the resonant frequencies in your vocal tract without actually changing your vocal cords.',
+    question: '根据讲座，吸入氦气后声音变尖的原因是什么？',
+    options: ['氦气改变了声带的振动方式', '氦气中声速更快，提高了声道的共振频率，而声带本身没有变化', '氦气使声带暂时麻痹', '这只是一种心理错觉'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-12',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s look at why some countries drive on the left while others drive on the right. Historians trace the left-hand tradition to mounted travelers who kept their sword hand free on the right side to greet or defend against oncoming riders, a custom that persisted long after swords disappeared.',
+    question: '根据讲座，靠左行驶传统的历史起源是什么？',
+    options: ['是现代交通法规规定的', '源于骑马者习惯将右手（持剑手）空出以应对迎面而来的骑手', '与马车的构造有关，与骑手无关', '这一传统没有任何历史依据'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-13',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Today we\'ll examine why cats often knead soft surfaces with their paws. The behavior is believed to originate in kittenhood, when kneading against a mother cat stimulated milk flow, and many adult cats retain the instinct as a sign of comfort and contentment.',
+    question: '根据讲座，猫踩奶行为的起源是什么？',
+    options: ['这是一种攻击性行为', '源于幼猫时期刺激母猫泌乳的动作，成年后作为舒适的表现保留下来', '这是猫用来标记领地的方式', '这只发生在受伤的猫身上'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-14',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s discuss why old photographs often appear sepia-toned rather than black and white. Early photographic prints faded quickly, so a chemical toning process using sulfur compounds was applied to convert the silver in the image into a more stable compound, which also happened to produce a brownish hue.',
+    question: '根据讲座，老照片呈现棕褐色调的原因是什么？',
+    options: ['当时的相机只能拍摄棕色调', '为了让影像中的银更稳定而进行的化学调色处理，同时产生了棕褐色', '这是摄影师故意选择的艺术效果', '这是照片年代久远后自然褪色的结果'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-15',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'This morning\'s topic is why deja vu occurs. One leading neurological theory suggests it results from a brief misfire in the brain\'s memory-processing circuits, causing a new experience to be mistakenly tagged as familiar even though it has never actually occurred before.',
+    question: '根据讲座，一种主流的神经学理论如何解释既视感（deja vu）？',
+    options: ['它是超自然现象的证据', '大脑记忆处理回路短暂"误判"，将全新的经历错误标记为熟悉的记忆', '它只发生在睡眠不足的人身上', '它是由眼睛的生理缺陷引起的'],
     correctIndex: 1,
   },
 ]
@@ -732,6 +1875,96 @@ const listeningMcqMultiple: ListeningMcqMultipleItem[] = [
     options: ['引入有益菌群', '提高部分营养素的可消化性', '与情绪的适度改善有关', '完全替代所有药物治疗'],
     correctIndexes: [0, 1, 2],
   },
+  {
+    id: 'l-mcqm-6',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A study of public libraries found that visitors who used quiet study rooms reported higher concentration, that circulation of physical books remained surprisingly stable despite e-book availability, and that community programs for children drove a large share of overall foot traffic.',
+    question: '根据讲座，研究发现了图书馆的哪些情况？（选出所有正确答案）',
+    options: ['安静自习室使用者报告专注力更高', '实体书借阅量尽管有电子书仍保持稳定', '儿童社区活动带来了大量客流', '所有图书馆的儿童活动已被完全取消'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-7',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Researchers studying online learning platforms found that students who set specific weekly goals were more likely to complete a course, that video lectures under ten minutes had higher completion rates, and that peer discussion forums modestly improved retention of the material.',
+    question: '根据讲座，研究发现了在线学习的哪些规律？（选出所有正确答案）',
+    options: ['设定具体每周目标的学生更可能完成课程', '十分钟以内的视频讲座完成率更高', '同伴讨论区能适度提高知识留存', '视频时长与完成率完全没有关系'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-8',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A review of urban farming initiatives found that rooftop farms reduced building cooling costs in summer, that community members reported a stronger sense of local identity, and that produce yields, while smaller than rural farms, were often sold at a premium due to freshness.',
+    question: '根据讲座，城市农业带来了哪些结果？（选出所有正确答案）',
+    options: ['降低夏季建筑制冷成本', '增强社区成员的地方认同感', '产量虽小但因新鲜常能以更高价格出售', '产量已经超过传统农村农场'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-9',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A survey of long-distance runners found that most who followed a structured tapering period before a race reported better performance, that hydration strategy varied enormously between individuals, and that pre-race anxiety, contrary to expectation, did not correlate strongly with final finish time.',
+    question: '根据讲座，长跑运动员调查发现了什么？（选出所有正确答案）',
+    options: ['赛前有序减量训练的选手表现更好', '不同选手的补水策略差异很大', '赛前焦虑与最终成绩没有很强的相关性', '所有选手的补水策略完全相同'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-10',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A study on customer service call centers found that shorter hold-music loops reduced caller frustration, that agents given more autonomy to resolve issues without escalation reported higher job satisfaction, and that call volume peaked predictably at the start of each business day.',
+    question: '根据讲座，呼叫中心研究发现了什么？（选出所有正确答案）',
+    options: ['较短的等待音乐循环能降低来电者的沮丧感', '拥有更多自主处理权的客服人员工作满意度更高', '每个工作日开始时呼叫量会出现可预测的高峰', '呼叫量全天保持完全均匀分布'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-11',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Botanists studying carnivorous plants found that most species evolved in nutrient-poor soils, that their trapping mechanisms are highly specialized to specific types of prey, and that digestion of captured insects can take anywhere from several hours to over a week depending on the species.',
+    question: '根据讲座，食虫植物研究发现了哪些内容？（选出所有正确答案）',
+    options: ['大多数物种进化于养分贫瘠的土壤', '捕食机制高度特化以适应特定猎物', '消化被捕获昆虫所需时间因物种而异', '所有食虫植物的消化速度完全相同'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-12',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'An analysis of household energy use found that appliances left on standby account for a meaningful share of monthly electricity bills, that smart thermostats reduced heating costs modestly, and that peak electricity pricing encouraged some households to shift laundry to off-peak hours.',
+    question: '根据讲座，家庭能源使用分析发现了什么？（选出所有正确答案）',
+    options: ['待机电器占月度电费相当一部分', '智能温控器适度降低了供暖成本', '峰谷电价促使部分家庭将洗衣时间转移到非高峰时段', '待机电器对电费完全没有影响'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-13',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A study of professional orchestras found that blind auditions, where a screen hides the performer from the judges, increased the proportion of women advancing to later rounds, that seating arrangements affected how musicians perceived ensemble timing, and that rehearsal frequency correlated with performance consistency.',
+    question: '根据讲座，职业乐团研究发现了什么？（选出所有正确答案）',
+    options: ['盲选试奏提高了女性晋级后续轮次的比例', '座位安排影响乐手对整体节奏的感知', '排练频率与演出稳定性相关', '盲选试奏对晋级比例完全没有影响'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-14',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Researchers examining traffic accident data found that intersections with dedicated left-turn signals had fewer collisions, that lower posted speed limits near schools correlated with fewer pedestrian injuries, and that roundabouts generally produced less severe crashes than traditional four-way intersections.',
+    question: '根据讲座，交通事故数据研究发现了什么？（选出所有正确答案）',
+    options: ['设有专用左转信号的路口碰撞事故更少', '学校附近较低限速与行人受伤减少相关', '环形交叉路口的事故通常比传统四路交叉口更轻', '限速对行人安全完全没有影响'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-15',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A review of workplace mentorship programs found that mentees reported faster skill development, that mentors themselves often reported renewed engagement with their own work, and that programs with structured, regular check-ins were more effective than informal, occasional pairings.',
+    question: '根据讲座，职场导师制项目回顾发现了什么？（选出所有正确答案）',
+    options: ['受指导者的技能发展速度更快', '导师本人也常常重新获得工作投入感', '有结构化定期沟通的项目比非正式偶尔配对的更有效', '非正式配对的效果总是优于结构化项目'],
+    correctIndexes: [0, 1, 2],
+  },
 ]
 
 const listeningSummarizeSpokenText: ListeningSummarizeItem[] = [
@@ -772,6 +2005,86 @@ const listeningSummarizeSpokenText: ListeningSummarizeItem[] = [
     taskType: 'listening-summarize-spoken-text',
     transcript:
       'This lecture covers recent efforts to restore wetlands that were drained decades ago for agriculture. Restored wetlands have been shown to filter pollutants from water, provide habitat for migratory birds, and reduce flood risk downstream, though restoration projects can take many years to reach full ecological function.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-6',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today\'s lecture concerns the growing interest in edible insects as a protein source. Advocates point to insects\' low land and water requirements compared with cattle farming, alongside comparable protein content. However, widespread adoption in many Western markets faces a significant cultural barrier, as consumer disgust remains the single largest obstacle researchers have identified.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-7',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture examines why some ancient cities were abandoned rather than rebuilt after disasters. Archaeological evidence increasingly points to a combination of factors — soil exhaustion, shifting trade routes, and prolonged drought — rather than any single catastrophic event, challenging the popular assumption that a single dramatic collapse explains most historical abandonments.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-8',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today we\'ll discuss the psychology behind why people persist with sunk-cost investments. Even when continuing is clearly the worse option financially, individuals frequently keep investing time or money into a failing project simply because of what has already been spent, a bias that behavioral economists argue affects both personal finance and corporate decision-making.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-9',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture covers recent efforts to breed drought-resistant crop varieties through selective breeding rather than genetic modification. Researchers have identified wild relatives of staple crops that survive extreme conditions and are cross-breeding these traits into commercial varieties, a slower process than genetic engineering but one that avoids the regulatory hurdles many countries impose on modified crops.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-10',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today\'s topic is the debate over open-plan university dormitories versus traditional individual rooms. Supporters of shared living spaces cite stronger social bonds and lower construction costs, while critics point to increased noise, reduced privacy, and, in some surveys, higher reported stress among students who need quiet space to study.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-11',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture discusses why coral reef restoration projects increasingly rely on "coral gardening," where fragments are grown in underwater nurseries before being transplanted onto damaged reefs. Early results show promising survival rates for transplanted fragments, although scientists caution that restoration cannot outpace ongoing damage unless ocean warming itself is addressed.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-12',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today\'s lecture examines why some companies are experimenting with a shorter probationary period for new hires. Traditional lengthy trial periods, originally intended to protect employers, are increasingly seen as discouraging strong candidates who receive competing offers with faster confirmation, prompting some firms to shorten the process to remain competitive in tight labor markets.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-13',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture covers the resurgence of interest in traditional herbal medicine among pharmaceutical researchers. Rather than dismissing folk remedies, scientists are systematically screening plant compounds used in traditional practice for pharmacological activity, a process that has already led to several promising drug candidates now undergoing clinical trials.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-14',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today we\'ll discuss why some cities are removing highways that once cut through their downtown cores. Studies of cities that replaced elevated highways with boulevards or parks found that surrounding property values rose and local traffic congestion, contrary to fears, did not worsen significantly as some drivers shifted to public transit or alternative routes.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-15',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture examines the growing use of artificial intelligence in translating rare and endangered languages. While machine translation still struggles with limited training data for these languages, researchers are pairing AI tools with community linguists to accelerate documentation, a partnership that has already produced usable translation aids for several previously under-resourced languages.',
     minWords: 50,
     maxWords: 70,
   },
@@ -819,6 +2132,86 @@ const listeningSelectMissingWord: SelectMissingWordItem[] = [
     options: ['verified', 'forgotten', 'sold', 'translated'],
     correctIndex: 0,
   },
+  {
+    id: 'l-missing-6',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The city council postponed the vote after several residents requested more time to review the proposal.',
+    displayedTranscript: 'The city council postponed the vote after several residents requested more time to ____.',
+    options: ['review the proposal', 'buy new furniture', 'watch a film', 'learn a language'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-7',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The factory upgraded its machinery in order to reduce energy consumption.',
+    displayedTranscript: 'The factory upgraded its machinery in order to ____.',
+    options: ['reduce energy consumption', 'hire more staff', 'relocate overseas', 'increase ticket prices'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-8',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'Despite early setbacks, the research team eventually published their results in a respected journal.',
+    displayedTranscript: 'Despite early setbacks, the research team eventually published their results in a respected ____.',
+    options: ['journal', 'restaurant', 'stadium', 'workshop'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-9',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The orchestra rehearsed for weeks before the opening night performance.',
+    displayedTranscript: 'The orchestra rehearsed for weeks before the opening night ____.',
+    options: ['performance', 'election', 'harvest', 'renovation'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-10',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The airline apologized to passengers after the flight was delayed by several hours.',
+    displayedTranscript: 'The airline apologized to passengers after the flight was delayed by several ____.',
+    options: ['hours', 'countries', 'employees', 'languages'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-11',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The university announced a new scholarship for students studying environmental science.',
+    displayedTranscript: 'The university announced a new scholarship for students studying ____.',
+    options: ['environmental science', 'ancient pottery', 'professional cooking', 'competitive sports'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-12',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The chef explained that fresh, locally sourced ingredients make the biggest difference in flavor.',
+    displayedTranscript: 'The chef explained that fresh, locally sourced ingredients make the biggest difference in ____.',
+    options: ['flavor', 'weather', 'traffic', 'budget'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-13',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The engineers tested the bridge design under extreme wind conditions before construction began.',
+    displayedTranscript: 'The engineers tested the bridge design under extreme wind conditions before ____.',
+    options: ['construction began', 'the ceremony ended', 'the museum opened', 'the interview started'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-14',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'Volunteers cleaned up the coastline after the storm left debris scattered along the beach.',
+    displayedTranscript: 'Volunteers cleaned up the coastline after the storm left debris scattered along the ____.',
+    options: ['beach', 'highway', 'library', 'hospital'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-15',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The company reported record profits despite ongoing supply chain challenges.',
+    displayedTranscript: 'The company reported record profits despite ongoing supply chain ____.',
+    options: ['challenges', 'holidays', 'awards', 'festivals'],
+    correctIndex: 0,
+  },
 ]
 
 const listeningHighlightIncorrectWords: HighlightIncorrectWordsItem[] = [
@@ -857,6 +2250,76 @@ const listeningHighlightIncorrectWords: HighlightIncorrectWordsItem[] = [
     displayedWords: ['The', 'airline', 'confirmed', 'that', 'all', 'cancelled', 'flights', 'would', 'resume', 'service', 'by', 'late', 'evening.'],
     incorrectWordIndexes: [5, 11],
   },
+  {
+    id: 'l-highlight-6',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'Farmers reported that the new irrigation system reduced water usage significantly during the summer months.',
+    displayedWords: ['Farmers', 'reported', 'that', 'the', 'new', 'drainage', 'system', 'increased', 'water', 'usage', 'significantly', 'during', 'the', 'summer', 'months.'],
+    incorrectWordIndexes: [5, 7],
+  },
+  {
+    id: 'l-highlight-7',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The government announced plans to build three new hospitals over the next five years.',
+    displayedWords: ['The', 'government', 'announced', 'plans', 'to', 'build', 'two', 'new', 'schools', 'over', 'the', 'next', 'five', 'years.'],
+    incorrectWordIndexes: [6, 8],
+  },
+  {
+    id: 'l-highlight-8',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The chef added a pinch of salt before serving the soup to the guests.',
+    displayedWords: ['The', 'chef', 'added', 'a', 'pinch', 'of', 'sugar', 'before', 'serving', 'the', 'salad', 'to', 'the', 'guests.'],
+    incorrectWordIndexes: [6, 10],
+  },
+  {
+    id: 'l-highlight-9',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The satellite will monitor changes in sea ice thickness across the Arctic region.',
+    displayedWords: ['The', 'satellite', 'will', 'monitor', 'patterns', 'in', 'sea', 'ice', 'thickness', 'across', 'the', 'Antarctic', 'region.'],
+    incorrectWordIndexes: [4, 11],
+  },
+  {
+    id: 'l-highlight-10',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The company plans to launch its new product in early autumn next year.',
+    displayedWords: ['The', 'company', 'plans', 'to', 'launch', 'its', 'new', 'service', 'in', 'early', 'spring', 'next', 'year.'],
+    incorrectWordIndexes: [7, 10],
+  },
+  {
+    id: 'l-highlight-11',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'Doctors recommend at least seven hours of sleep for healthy adults each night.',
+    displayedWords: ['Doctors', 'recommend', 'at', 'least', 'five', 'hours', 'of', 'sleep', 'for', 'young', 'adults', 'each', 'night.'],
+    incorrectWordIndexes: [4, 9],
+  },
+  {
+    id: 'l-highlight-12',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The museum\'s new exhibit features artifacts recovered from a shipwreck near the coast.',
+    displayedWords: ['The', 'museum\'s', 'new', 'exhibit', 'features', 'paintings', 'recovered', 'from', 'a', 'cave', 'near', 'the', 'coast.'],
+    incorrectWordIndexes: [5, 9],
+  },
+  {
+    id: 'l-highlight-13',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The team spent months developing an app that helps users track their spending habits.',
+    displayedWords: ['The', 'team', 'spent', 'months', 'developing', 'an', 'website', 'that', 'helps', 'users', 'track', 'their', 'sleeping', 'habits.'],
+    incorrectWordIndexes: [6, 12],
+  },
+  {
+    id: 'l-highlight-14',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The village relies on a single well for most of its drinking water supply.',
+    displayedWords: ['The', 'village', 'relies', 'on', 'a', 'single', 'river', 'for', 'most', 'of', 'its', 'irrigation', 'water', 'supply.'],
+    incorrectWordIndexes: [6, 11],
+  },
+  {
+    id: 'l-highlight-15',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The professor explained that the experiment needed to be repeated under controlled conditions.',
+    displayedWords: ['The', 'professor', 'explained', 'that', 'the', 'experiment', 'needed', 'to', 'be', 'cancelled', 'under', 'random', 'conditions.'],
+    incorrectWordIndexes: [9, 11],
+  },
 ]
 
 const listeningWriteFromDictation: WriteFromDictationItem[] = [
@@ -866,6 +2329,15 @@ const listeningWriteFromDictation: WriteFromDictationItem[] = [
   { id: 'l-dictation-4', taskType: 'listening-write-from-dictation', sentence: 'The museum extended its hours for the summer exhibition.' },
   { id: 'l-dictation-5', taskType: 'listening-write-from-dictation', sentence: 'Local farmers reported a stronger harvest than last year.' },
   { id: 'l-dictation-6', taskType: 'listening-write-from-dictation', sentence: 'The airport announced new security measures starting Monday.' },
+  { id: 'l-dictation-7', taskType: 'listening-write-from-dictation', sentence: 'The city plans to plant trees along every major street.' },
+  { id: 'l-dictation-8', taskType: 'listening-write-from-dictation', sentence: 'Engineers tested the bridge before it opened to traffic.' },
+  { id: 'l-dictation-9', taskType: 'listening-write-from-dictation', sentence: 'The company hired twenty new employees this quarter.' },
+  { id: 'l-dictation-10', taskType: 'listening-write-from-dictation', sentence: 'Scientists observed the comet through a powerful telescope.' },
+  { id: 'l-dictation-11', taskType: 'listening-write-from-dictation', sentence: 'The teacher praised the students for their creative solutions.' },
+  { id: 'l-dictation-12', taskType: 'listening-write-from-dictation', sentence: 'Volunteers distributed food packages after the flood.' },
+  { id: 'l-dictation-13', taskType: 'listening-write-from-dictation', sentence: 'The factory reduced emissions by installing new filters.' },
+  { id: 'l-dictation-14', taskType: 'listening-write-from-dictation', sentence: 'The orchestra performed a new piece for the first time.' },
+  { id: 'l-dictation-15', taskType: 'listening-write-from-dictation', sentence: 'The bank updated its policy on international transfers.' },
 ]
 
 const speakingRepeatSentence: RepeatSentenceItem[] = [
@@ -875,6 +2347,15 @@ const speakingRepeatSentence: RepeatSentenceItem[] = [
   { id: 's-rs-4', taskType: 'speaking-repeat-sentence', text: 'Researchers are studying how climate change affects coastal cities.' },
   { id: 's-rs-5', taskType: 'speaking-repeat-sentence', text: 'The new policy will take effect at the beginning of next month.' },
   { id: 's-rs-6', taskType: 'speaking-repeat-sentence', text: 'Most students found the workshop both practical and engaging.' },
+  { id: 's-rs-7', taskType: 'speaking-repeat-sentence', text: 'The conference has attracted researchers from more than thirty countries.' },
+  { id: 's-rs-8', taskType: 'speaking-repeat-sentence', text: 'Construction on the new bridge is expected to finish by autumn.' },
+  { id: 's-rs-9', taskType: 'speaking-repeat-sentence', text: 'The committee will announce its final decision on Friday afternoon.' },
+  { id: 's-rs-10', taskType: 'speaking-repeat-sentence', text: 'Farmers in the region reported an unusually dry growing season.' },
+  { id: 's-rs-11', taskType: 'speaking-repeat-sentence', text: 'The airline introduced a new boarding process to save time.' },
+  { id: 's-rs-12', taskType: 'speaking-repeat-sentence', text: 'Volunteers helped clean the beach after the storm passed.' },
+  { id: 's-rs-13', taskType: 'speaking-repeat-sentence', text: 'The hospital expanded its emergency department last year.' },
+  { id: 's-rs-14', taskType: 'speaking-repeat-sentence', text: 'The museum will host a special exhibit next spring.' },
+  { id: 's-rs-15', taskType: 'speaking-repeat-sentence', text: 'The company plans to open three new offices overseas.' },
 ]
 
 const speakingDescribeImage: DescribeImageItem[] = [
@@ -910,6 +2391,94 @@ const speakingDescribeImage: DescribeImageItem[] = [
       'The line chart shows a gradual rise in average annual temperature from 14 degrees in 2000 to 16 degrees in 2024, indicating a consistent warming trend.',
     prepSeconds: 25,
   },
+  {
+    id: 's-di-5',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '某公司季度营收（百万美元）', categories: ['第一季度', '第二季度', '第三季度', '第四季度'], values: [8, 11, 9, 15], unit: '百万美元' },
+    referenceDescription:
+      'The bar chart shows quarterly revenue for a company. Revenue peaked in the fourth quarter at 15 million dollars, dipped slightly in the third quarter to 9 million, and started at 8 million in the first quarter.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-6',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某国互联网普及率变化（%）', categories: ['2005', '2010', '2015', '2020', '2025'], values: [10, 28, 50, 72, 88], unit: '%' },
+    referenceDescription:
+      'The line chart shows internet penetration rising sharply from 10 percent in 2005 to 88 percent in 2025, with the fastest growth occurring between 2010 and 2020.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-7',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '不同年龄段每周阅读时长（小时）', categories: ['18-25岁', '26-40岁', '41-60岁', '60岁以上'], values: [3, 4, 6, 9], unit: '小时' },
+    referenceDescription:
+      'The bar chart shows weekly reading hours by age group, increasing steadily from 3 hours among 18 to 25 year olds to 9 hours among those over 60.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-8',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某湖泊水位变化（米）', categories: ['2000', '2008', '2016', '2024'], values: [12.5, 11.8, 10.2, 8.6], unit: '米' },
+    referenceDescription:
+      'The line chart shows a steady decline in the lake\'s water level, falling from 12.5 metres in 2000 to 8.6 metres in 2024, suggesting an ongoing drying trend.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-9',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '家庭能源消耗来源占比', categories: ['供暖', '热水', '电器', '照明'], values: [40, 25, 25, 10], unit: '%' },
+    referenceDescription:
+      'The bar chart shows household energy consumption by source. Heating accounts for the largest share at 40 percent, followed by hot water and appliances tied at 25 percent each, and lighting at 10 percent.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-10',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某手机品牌全球市场份额（%）', categories: ['2019', '2021', '2023', '2025'], values: [18, 15, 12, 9], unit: '%' },
+    referenceDescription:
+      'The line chart shows a steady decline in the brand\'s global market share, dropping from 18 percent in 2019 to 9 percent in 2025.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-11',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '不同交通方式的平均通勤碳排放（千克/年）', categories: ['步行', '公交', '私家车', '飞机'], values: [0, 120, 800, 2000], unit: '千克' },
+    referenceDescription:
+      'The bar chart compares average annual commuting carbon emissions by transport mode, ranging from near zero for walking to 2000 kilograms for frequent flying, with cars producing significantly more than buses.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-12',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某医院年门诊量变化（万人次）', categories: ['2018', '2020', '2022', '2024'], values: [45, 38, 52, 61], unit: '万人次' },
+    referenceDescription:
+      'The line chart shows outpatient visits at a hospital, dipping in 2020 to 38 units, then recovering and rising steadily to 61 units by 2024.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-13',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '大学新生专业选择占比', categories: ['工程', '商科', '人文', '医学'], values: [30, 28, 18, 24], unit: '%' },
+    referenceDescription:
+      'The bar chart shows the proportion of first-year university students choosing different majors, with engineering slightly ahead at 30 percent, followed closely by business at 28 percent, medicine at 24 percent, and humanities at 18 percent.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-14',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某地区森林覆盖率变化（%）', categories: ['1990', '2000', '2010', '2020'], values: [65, 58, 50, 47], unit: '%' },
+    referenceDescription:
+      'The line chart shows forest cover in a region declining from 65 percent in 1990 to 47 percent in 2020, with the steepest drop occurring in the 1990s.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-15',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '不同年龄段智能手机日均使用时长（小时）', categories: ['13-18岁', '19-30岁', '31-50岁', '50岁以上'], values: [5, 4.5, 3, 1.5], unit: '小时' },
+    referenceDescription:
+      'The bar chart shows average daily smartphone usage by age group, highest among 13 to 18 year olds at 5 hours and lowest among those over 50 at 1.5 hours.',
+    prepSeconds: 25,
+  },
 ]
 
 const speakingRetellLecture: RetellLectureItem[] = [
@@ -941,6 +2510,83 @@ const speakingRetellLecture: RetellLectureItem[] = [
       'Today\'s topic is the domestication of rice. Archaeological evidence suggests rice was first cultivated in the Yangtze River basin thousands of years ago. Over generations, farmers selectively grew plants with larger seeds and less tendency to shatter, eventually producing the rice varieties that became a staple food across much of Asia.',
     prepSeconds: 10,
   },
+  {
+    id: 's-retell-5',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'This lecture examines why honeybee colonies sometimes collapse suddenly. Researchers point to a combination of pesticide exposure, habitat loss, and a parasitic mite that weakens bees\' immune systems, making colonies more vulnerable to disease. No single cause fully explains the phenomenon, which is why beekeepers now use an integrated approach to colony management.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-6',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Let\'s talk about the origins of the modern Olympic Games. Revived in the late nineteenth century after being inspired by the ancient Greek games, the modern Olympics were initially intended to promote international friendship and physical education, though they have since grown into a massive global commercial and media event.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-7',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Today\'s topic is the invention of the elevator safety brake. Before this device, elevators were considered too dangerous for tall buildings because a snapped cable meant a fatal fall. Once a reliable safety brake was demonstrated publicly, architects felt confident building far taller structures, directly enabling the skyscraper era.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-8',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'This lecture covers the history of quarantine practices. The concept originated in medieval port cities, where incoming ships were required to wait offshore for a set period before docking, based on the observation that isolating potentially infected travelers reduced the spread of plague, a principle still used in modern public health today.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-9',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Let\'s discuss why the Amazon rainforest produces so much of its own rainfall. Moisture released by the trees themselves forms clouds that travel inland, effectively recycling rainfall across the basin. Scientists warn that large-scale deforestation could disrupt this cycle, potentially triggering a shift toward a drier, savanna-like ecosystem.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-10',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Today\'s lecture is about the economics of secondhand clothing markets. Rising awareness of the environmental cost of fast fashion has driven strong growth in resale platforms, with some analysts predicting the secondhand market could eventually rival traditional retail in size, though quality control and shipping logistics remain persistent challenges.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-11',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'This lecture explores why some ancient scripts remain undeciphered. Without a bilingual text linking the unknown script to a known language, similar to what the Rosetta Stone provided for Egyptian hieroglyphs, researchers often lack the essential reference point needed to crack the code, even when large quantities of writing survive.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-12',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Let\'s look at how lighthouses were gradually replaced by modern navigation technology. GPS and electronic charts now provide sailors with far more precise positioning than a lighthouse beam ever could, leading many countries to automate or decommission lighthouses, even as some are preserved for historical and tourist value.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-13',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Today\'s topic is the discovery of penicillin. A researcher noticed that mold accidentally contaminating a bacterial culture had killed the surrounding bacteria, a chance observation that, after years of further development by other scientists, led to the first mass-produced antibiotic and transformed the treatment of bacterial infections.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-14',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'This lecture covers the rise of container shipping and its effect on global manufacturing. Standardized containers dramatically cut the cost and time of moving goods internationally, making it economically viable for companies to manufacture components in one country and assemble finished products in another, a shift that reshaped global supply chains.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-15',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Let\'s discuss the psychology behind why people are drawn to nostalgia. Researchers have found that recalling positive memories from the past can boost mood and even reduce feelings of loneliness, suggesting nostalgia serves a genuine psychological function rather than simply being an idle longing for an idealized past.',
+    prepSeconds: 10,
+  },
 ]
 
 const speakingAnswerShortQuestion: AnswerShortQuestionItem[] = [
@@ -950,6 +2596,15 @@ const speakingAnswerShortQuestion: AnswerShortQuestionItem[] = [
   { id: 's-asq-4', taskType: 'speaking-answer-short-question', question: 'What do you call a place where books are borrowed?', acceptableAnswers: ['a library', 'library'] },
   { id: 's-asq-5', taskType: 'speaking-answer-short-question', question: 'What season comes after winter?', acceptableAnswers: ['spring'] },
   { id: 's-asq-6', taskType: 'speaking-answer-short-question', question: 'What instrument is used to measure temperature?', acceptableAnswers: ['a thermometer', 'thermometer'] },
+  { id: 's-asq-7', taskType: 'speaking-answer-short-question', question: 'What do you call a baby dog?', acceptableAnswers: ['a puppy', 'puppy'] },
+  { id: 's-asq-8', taskType: 'speaking-answer-short-question', question: 'What is the opposite of "difficult"?', acceptableAnswers: ['easy', 'simple'] },
+  { id: 's-asq-9', taskType: 'speaking-answer-short-question', question: 'How many months are there in a year?', acceptableAnswers: ['twelve', '12', 'twelve months'] },
+  { id: 's-asq-10', taskType: 'speaking-answer-short-question', question: 'What do you call the study of living organisms?', acceptableAnswers: ['biology'] },
+  { id: 's-asq-11', taskType: 'speaking-answer-short-question', question: 'What do we call a person who teaches students?', acceptableAnswers: ['a teacher', 'teacher'] },
+  { id: 's-asq-12', taskType: 'speaking-answer-short-question', question: 'What is the capital city of France?', acceptableAnswers: ['paris'] },
+  { id: 's-asq-13', taskType: 'speaking-answer-short-question', question: 'What do you call a shop that sells bread?', acceptableAnswers: ['a bakery', 'bakery'] },
+  { id: 's-asq-14', taskType: 'speaking-answer-short-question', question: 'What is the opposite of "empty"?', acceptableAnswers: ['full'] },
+  { id: 's-asq-15', taskType: 'speaking-answer-short-question', question: 'What instrument is used to measure atmospheric pressure?', acceptableAnswers: ['a barometer', 'barometer'] },
 ]
 
 export const QUESTION_BANK: Record<TaskType, PracticeItem[]> = {

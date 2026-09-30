@@ -8,11 +8,12 @@ import { getTaskTypeMeta } from '../lib/taskTypes'
 import type { AttemptRecord, PracticeItem, TaskType } from '../types'
 import CommunityFeed from './CommunityFeed'
 import HistoryPanel from './HistoryPanel'
+import MockExam from './mock-exam/MockExam'
 import PracticeSession from './PracticeSession'
 import TaskDashboard from './TaskDashboard'
 
 type View = { name: 'dashboard' } | { name: 'pick-item'; taskType: TaskType } | { name: 'session'; taskType: TaskType; itemId: string }
-type Tab = 'practice' | 'mine' | 'feed'
+type Tab = 'practice' | 'mock-exam' | 'mine' | 'feed'
 
 export default function PtePractice() {
   const { user } = useAuth()
@@ -28,6 +29,7 @@ export default function PtePractice() {
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
         <TabButton active={tab === 'practice'} onClick={() => setTab('practice')} label="题型练习" />
+        <TabButton active={tab === 'mock-exam'} onClick={() => setTab('mock-exam')} label="模拟考试" />
         <TabButton active={tab === 'mine'} onClick={() => setTab('mine')} label="我的练习" />
         <TabButton active={tab === 'feed'} onClick={() => setTab('feed')} label="练习集锦" />
       </div>
@@ -55,6 +57,8 @@ export default function PtePractice() {
           )}
         </>
       )}
+
+      {tab === 'mock-exam' && <MockExam userId={user} />}
 
       {tab === 'mine' && <MyHistoryTab userId={user} refreshKey={historyRefreshKey} />}
 

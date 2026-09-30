@@ -98,13 +98,30 @@ export default function PracticeSession({
   itemId,
   userId,
   onExit,
+  onQuit,
   onAttemptSaved,
+  exitLabel = '返回题型列表',
+  hideCommentThread = false,
 }: {
   taskType: TaskType
   itemId: string
   userId: string | null
+  /** 提交后"下一题/查看结果/返回"按钮的行为。 */
   onExit: () => void
+  /**
+   * 顶部"退出"按钮（提交前随时可见）的行为。单独练习场景下退出即是返回题库，
+   * 与 onExit 语义相同，因此不传时默认退回 onExit；但在模拟考试等连续流程里，
+   * onExit 实际是"提交后前进到下一题"，如果顶部退出按钮也直接复用它，会让
+   * 用户以为在退出整场考试，实际却只是跳过当前这一题且不计分——这是真实
+   * 出现过的一处交互歧义，因此拆成独立的 onQuit，由调用方决定"退出"到底
+   * 应该做什么（模拟考试场景下应弹确认框并终止整场考试，而不是跳题）。
+   */
+  onQuit?: () => void
   onAttemptSaved: (attempt: AttemptRecord) => void
+  /** 提交后退出按钮文案，模拟考试等连续流程场景下可传入"下一题"/"查看模考结果"。 */
+  exitLabel?: string
+  /** 模拟考试连续作答流程下隐藏题目下方的评论区，避免打断考试节奏。 */
+  hideCommentThread?: boolean
 }) {
   const meta = getTaskTypeMeta(taskType)
   const [item, setItem] = useState<PracticeItem | undefined>(undefined)
@@ -398,7 +415,7 @@ export default function PracticeSession({
           ) : (
             <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">已用时 {elapsedSeconds}s</span>
           )}
-          <button type="button" onClick={onExit} className="text-sm text-gray-500 underline">
+          <button type="button" onClick={onQuit ?? onExit} className="text-sm text-gray-500 underline">
             退出
           </button>
         </div>
@@ -429,10 +446,10 @@ export default function PracticeSession({
           )}
           <div className="flex gap-3">
             <button type="button" onClick={onExit} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
-              返回题型列表
+              {exitLabel}
             </button>
           </div>
-          <CommentThread itemId={itemId} taskType={taskType} userId={userId} />
+          {!hideCommentThread && <CommentThread itemId={itemId} taskType={taskType} userId={userId} />}
         </div>
       )}
     </div>
