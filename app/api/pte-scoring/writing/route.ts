@@ -6,7 +6,10 @@ const SERVICE_URL = process.env.PTE_SCORING_SERVICE_URL
 const SERVICE_TOKEN = process.env.PTE_SCORING_SERVICE_TOKEN
 
 const MAX_TEXT_LENGTH = 8000
-const FETCH_TIMEOUT_MS = 20000
+// 20 秒对 LanguageTool 通常够用，但同一次实测中发现姊妹接口（read-aloud）的
+// 20 秒超时会误杀本该成功的真实评分请求，为保持一致的安全余量，这里也一并
+// 调宽，避免 LanguageTool 冷启动/较长文本检查时出现同样的误判。
+const FETCH_TIMEOUT_MS = 30000
 
 interface WritingScoringBody {
   promptText: string

@@ -432,7 +432,12 @@ interface WritingServiceResponse {
   contentKeywordCoverage?: number
 }
 
-async function fetchJsonWithTimeout(input: RequestInfo, init: RequestInit, timeoutMs = 20000): Promise<Response | null> {
+// 略高于 app/api/pte-scoring/* 路由自己的超时（read-aloud 45s / writing 30s），
+// 让客户端优先等到服务端那个更精确的"超时/网络错误"结构化响应，而不是自己先
+// abort 掉、拿到一个语义模糊的 null。这个默认值曾经是 20000，实测发现
+// faster-whisper+OpenPronounce 链路正常返回耗时能到 20-30 秒，20 秒超时会把
+// 本该成功的真实评分请求误判为不可用，是一次真实验证跑出来的 bug，不是猜的。
+async function fetchJsonWithTimeout(input: RequestInfo, init: RequestInit, timeoutMs = 50000): Promise<Response | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {

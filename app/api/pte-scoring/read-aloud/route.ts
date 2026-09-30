@@ -8,7 +8,12 @@ const SERVICE_TOKEN = process.env.PTE_SCORING_SERVICE_TOKEN
 
 const MAX_PROMPT_LENGTH = 2000
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024 // 15MB，足够容纳 40 秒左右的朗读录音
-const FETCH_TIMEOUT_MS = 20000
+// 实测：faster-whisper 转写 + OpenPronounce 音素比对（CPU 推理，无 GPU）对一句
+// 40 秒左右的朗读，链路总耗时可达 20-30 秒，原来设的 20 秒超时会在真实评分
+// 服务正常返回结果前就先判定为"超时不可用"，白白丢弃掉本该拿到的真实分数、
+// 静默回退成启发式估分——这是实测跑通整条链路后才发现的真实 bug，不是主观
+// 猜测的余量。45 秒是留出安全余量后的值。
+const FETCH_TIMEOUT_MS = 45000
 
 /**
  * 代理口语 Read Aloud 的评分请求到用户自托管的开源评分服务网关（见仓库
