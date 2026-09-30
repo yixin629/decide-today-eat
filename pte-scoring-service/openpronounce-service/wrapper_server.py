@@ -1,19 +1,20 @@
 """
-OpenPronounce 的最小 HTTP 包装层 —— 未经实际验证，需要你对照仓库源码修正。
+OpenPronounce 的最小 HTTP 包装层。
 
-写这个文件时无法联网执行 OpenPronounce 的实际代码，因此下面 `import` 与
-函数调用的具体名字（模块路径、函数签名）是根据其 README 描述的功能
-（Wav2Vec2 + DTW 音素级发音评分）做的合理猜测，不保证与当前仓库版本完全
-一致。部署前请：
+之前这里的 run_pronunciation_assessment() 是未经验证的占位实现（直接抛
+NotImplementedError），已对照实际安装在容器里的 openpronounce 包源码
+（`python -c "import openpronounce, inspect; ..."` 核实过真实函数签名）
+改为调用真实 API：
 
-1. 打开 https://github.com/Halleck45/OpenPronounce 的源码，找到它实际暴露
-   的评分入口函数（可能叫 `score()`、`assess()`、`compare()` 之类）。
-2. 把下面 `run_pronunciation_assessment()` 里的调用替换成真实的函数签名。
-3. 确认它接受的是文件路径、音频字节数组还是其他格式。
+    openpronounce.load_audio(file_path, sr=16000) -> ndarray
+    openpronounce.compare_audio_with_text(audio, text_reference, sampling_rate=16000,
+                                           use_phone_model=None, lang='en') -> dict
+                                           包含 "score"（0-100）等字段
 
-在替换完成之前，这个 wrapper 会在调用失败时返回 501，gateway 会将其视为
-"OpenPronounce 不可用"并把 pronunciationScore 留空，由 gateway 决定是否
-整体回退。
+我们保留这层自己的 /score 端点（而不是直接跑 OpenPronounce 自带的
+server.py），是为了让 gateway 侧的调用契约（reference_text + audio 表单
+字段、返回 0-5 的 pronunciationScore）保持稳定，不随 OpenPronounce 自身
+服务端点的字段命名变化而变化。
 """
 
 import os
@@ -30,22 +31,16 @@ def health() -> dict:
 
 
 def run_pronunciation_assessment(audio_path: str, reference_text: str) -> dict:
-    """
-    需要替换为 OpenPronounce 的真实调用方式。示意性伪代码：
+    from openpronounce import load_audio, compare_audio_with_text
 
-        from openpronounce import PronunciationScorer
-        scorer = PronunciationScorer()
-        result = scorer.score(audio_path=audio_path, reference_text=reference_text)
-        return {
-            "pronunciationScore0to1": result.overall_score,  # 0-1
-            "phonemeDetails": result.phoneme_scores,
-        }
+    audio = load_audio(audio_path, sr=16000)
+    result = compare_audio_with_text(audio, reference_text, sampling_rate=16000, lang="en")
 
-    在确认真实 API 之前，这里先抛出异常，让 /score 端点返回 501。
-    """
-    raise NotImplementedError(
-        "请对照 OpenPronounce 实际源码替换 run_pronunciation_assessment() 的实现"
-    )
+    score_0_to_100 = result.get("score", 0)
+    return {
+        "pronunciationScore0to1": max(0.0, min(1.0, score_0_to_100 / 100)),
+        "phonemeDetails": result.get("differences", {}),
+    }
 
 
 @app.post("/score")

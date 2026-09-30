@@ -1,15 +1,27 @@
 import { getTaskTypeMeta } from '../lib/taskTypes'
 import type {
   AnswerPayload,
+  AnswerShortQuestionItem,
+  DescribeImageItem,
   FillBlanksDragItem,
+  FillBlanksDropdownItem,
+  HighlightIncorrectWordsItem,
   HighlightSummaryItem,
   ListeningFillBlanksItem,
+  ListeningMcqMultipleItem,
+  ListeningMcqSingleItem,
+  ListeningSummarizeItem,
+  McqMultipleItem,
   McqSingleItem,
   PracticeItem,
   ReadAloudItem,
+  RepeatSentenceItem,
   ReorderItem,
+  RetellLectureItem,
   ScoreDimensionResult,
+  SelectMissingWordItem,
   TaskType,
+  WriteFromDictationItem,
   WritingItem,
 } from '../types'
 
@@ -115,6 +127,163 @@ export function scoreHighlightSummary(item: HighlightSummaryItem, selectedIndex:
       maxScore: 1,
       isHeuristic: false,
       note: correct ? '答案正确。' : `答案错误，正确选项为第 ${item.correctIndex + 1} 项。`,
+    },
+  ]
+}
+
+/**
+ * 通用的"多选正确答案"计分规则：每选中一个正确选项 +1，每选中一个错误选项
+ * -1，总分下限为 0，满分为正确选项总数。用于阅读/听力的多选题。
+ */
+function scoreMultipleChoice(selectedIndexes: number[], correctIndexes: number[]): { score: number; max: number; note: string } {
+  const correctSet = new Set(correctIndexes)
+  let correctHits = 0
+  let incorrectHits = 0
+  for (const index of selectedIndexes) {
+    if (correctSet.has(index)) correctHits += 1
+    else incorrectHits += 1
+  }
+  const rawScore = correctHits - incorrectHits
+  const max = correctIndexes.length
+  const score = Math.max(0, Math.min(rawScore, max))
+  return {
+    score,
+    max,
+    note: `选中 ${correctHits} 个正确选项、${incorrectHits} 个错误选项（正确 +1、错误 -1，下限为 0，满分 ${max}）。`,
+  }
+}
+
+export function scoreMcqMultiple(item: McqMultipleItem, selectedIndexes: number[]): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const result = scoreMultipleChoice(selectedIndexes, item.correctIndexes)
+  return [{ id: 'content', label: meta.scoringDimensions[0].label, score: result.score, maxScore: result.max, isHeuristic: false, note: result.note }]
+}
+
+export function scoreListeningMcqMultiple(item: ListeningMcqMultipleItem, selectedIndexes: number[]): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const result = scoreMultipleChoice(selectedIndexes, item.correctIndexes)
+  return [{ id: 'content', label: meta.scoringDimensions[0].label, score: result.score, maxScore: result.max, isHeuristic: false, note: result.note }]
+}
+
+export function scoreListeningMcqSingle(item: ListeningMcqSingleItem, selectedIndex: number | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const correct = selectedIndex === item.correctIndex
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: correct ? 1 : 0,
+      maxScore: 1,
+      isHeuristic: false,
+      note: correct ? '答案正确。' : `答案错误，正确选项为第 ${item.correctIndex + 1} 项。`,
+    },
+  ]
+}
+
+export function scoreFillBlanksDropdown(item: FillBlanksDropdownItem, answers: string[]): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const total = item.correctAnswers.length
+  const correctCount = item.correctAnswers.filter((answer, index) => normalizeWord(answers[index] ?? '') === normalizeWord(answer)).length
+  const ratio = total > 0 ? correctCount / total : 0
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: Math.round(ratio * 100) / 100,
+      maxScore: 1,
+      isHeuristic: false,
+      note: `${correctCount}/${total} 个空格正确。`,
+    },
+  ]
+}
+
+export function scoreSelectMissingWord(item: SelectMissingWordItem, selectedIndex: number | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const correct = selectedIndex === item.correctIndex
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: correct ? 1 : 0,
+      maxScore: 1,
+      isHeuristic: false,
+      note: correct ? '答案正确。' : `答案错误，正确选项为第 ${item.correctIndex + 1} 项。`,
+    },
+  ]
+}
+
+export function scoreHighlightIncorrectWords(item: HighlightIncorrectWordsItem, selectedWordIndexes: number[]): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const incorrectSet = new Set(item.incorrectWordIndexes)
+  let correctHits = 0
+  let falsePositives = 0
+  for (const index of selectedWordIndexes) {
+    if (incorrectSet.has(index)) correctHits += 1
+    else falsePositives += 1
+  }
+  const max = item.incorrectWordIndexes.length
+  const score = Math.max(0, Math.min(correctHits - falsePositives, max))
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score,
+      maxScore: max,
+      isHeuristic: false,
+      note: `正确识别 ${correctHits}/${max} 个不符词，另有 ${falsePositives} 处误选（正确识别数减误选数，下限为 0）。`,
+    },
+  ]
+}
+
+export function scoreWriteFromDictation(item: WriteFromDictationItem, text: string): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const targetWords = item.sentence.split(/\s+/).map(normalizeWord).filter(Boolean)
+  const answerWords = text.split(/\s+/).map(normalizeWord).filter(Boolean)
+  const correctCount = targetWords.filter((word, index) => answerWords[index] === word).length
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: correctCount,
+      maxScore: targetWords.length,
+      isHeuristic: false,
+      note: `${correctCount}/${targetWords.length} 个单词拼写且位置均正确（逐词精确匹配，忽略大小写与标点）。`,
+    },
+  ]
+}
+
+/**
+ * Answer Short Question 的评分：当浏览器语音识别提供了转写文本时，与预设的
+ * 可接受答案列表做精确文本匹配（忽略大小写、标点与首尾空格），命中即视为
+ * 正确；未采集到转写文本时给出占位分。由于依赖浏览器语音识别是否可用及其
+ * 准确性，整体仍标注为启发式，但转写可用时的匹配本身是确定性的。
+ */
+export function scoreAnswerShortQuestion(item: AnswerShortQuestionItem, recognizedTranscript: string | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  if (!recognizedTranscript) {
+    return [
+      {
+        id: 'content',
+        label: meta.scoringDimensions[0].label,
+        score: 0.5,
+        maxScore: 1,
+        isHeuristic: true,
+        note: '当前浏览器未采集到语音转写文本，无法与参考答案匹配，此处为中性占位分，请自行回放录音判断。',
+      },
+    ]
+  }
+  const normalizedTranscript = normalizeWord(recognizedTranscript)
+  const matched = item.acceptableAnswers.some((answer) => normalizedTranscript.includes(normalizeWord(answer)))
+  return [
+    {
+      id: 'content',
+      label: meta.scoringDimensions[0].label,
+      score: matched ? 1 : 0,
+      maxScore: 1,
+      isHeuristic: true,
+      note: matched
+        ? `转写文本"${recognizedTranscript}"与参考答案匹配。`
+        : `转写文本"${recognizedTranscript}"未匹配到任何参考答案，也可能是语音识别转写有误。`,
     },
   ]
 }
@@ -447,6 +616,292 @@ export async function scoreWritingAsync(input: WritingHeuristicInput): Promise<S
   })
 }
 
+export interface ShortSpeakingHeuristicInput {
+  referenceText: string
+  recordingSeconds: number
+  recognizedTranscript: string | null
+  contentMax: number
+  pronunciationMax: number
+  fluencyMax: number
+  contentLabel: string
+  pronunciationLabel: string
+  fluencyLabel: string
+}
+
+/**
+ * Repeat Sentence / Describe Image / Retell Lecture 共用的本地启发式打分结构，
+ * 与 scoreReadAloud 的思路一致（时长匹配估算流利度、转写词汇重合率估算内容、
+ * 发音维度固定为占位分），只是把满分改为各题型自己的小分制。
+ */
+export function scoreShortSpeakingHeuristic(input: ShortSpeakingHeuristicInput): ScoreDimensionResult[] {
+  const { referenceText, recordingSeconds, recognizedTranscript, contentMax, pronunciationMax, fluencyMax, contentLabel, pronunciationLabel, fluencyLabel } =
+    input
+  const wordCount = referenceText.trim().split(/\s+/).filter(Boolean).length
+  const expectedSeconds = wordCount / 2.2
+  const timingRatio = expectedSeconds > 0 ? Math.min(recordingSeconds, expectedSeconds) / Math.max(recordingSeconds, expectedSeconds, 0.01) : 0
+  const fluencyScore = recordingSeconds > 0 ? Math.round(timingRatio * fluencyMax) : 0
+
+  let contentScore = Math.round((contentMax / 2) * 10) / 10
+  let contentNote = '当前浏览器未采集到语音转写文本，无法估算内容匹配度，此处为中性占位分。'
+  if (recognizedTranscript) {
+    const referenceWords = new Set(referenceText.split(/\s+/).map(normalizeWord).filter(Boolean))
+    const recognizedWords = recognizedTranscript.split(/\s+/).map(normalizeWord).filter(Boolean)
+    const matched = recognizedWords.filter((word) => referenceWords.has(word)).length
+    const ratio = referenceWords.size > 0 ? matched / referenceWords.size : 0
+    contentScore = Math.round(ratio * contentMax)
+    contentNote = `基于浏览器语音识别转写文本与参考文本的粗略词汇重合率估算（重合 ${matched}/${referenceWords.size} 个词），非官方评分。`
+  }
+
+  return [
+    { id: 'content', label: contentLabel, score: contentScore, maxScore: contentMax, isHeuristic: true, note: contentNote },
+    {
+      id: 'pronunciation',
+      label: pronunciationLabel,
+      score: Math.round((pronunciationMax / 2) * 10) / 10,
+      maxScore: pronunciationMax,
+      isHeuristic: true,
+      note: '本练习没有音素级发音识别能力，无法给出真实发音评分，此处为占位分，请自行回放录音并对照参考文本自评。',
+    },
+    {
+      id: 'fluency',
+      label: fluencyLabel,
+      score: fluencyScore,
+      maxScore: fluencyMax,
+      isHeuristic: true,
+      note: `录音时长 ${recordingSeconds.toFixed(1)} 秒，参考语速下预期约 ${expectedSeconds.toFixed(1)} 秒，按时长接近程度粗略估算，仅供参考。`,
+    },
+  ]
+}
+
+export function scoreRepeatSentence(item: RepeatSentenceItem, recordingSeconds: number, recognizedTranscript: string | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  return scoreShortSpeakingHeuristic({
+    referenceText: item.text,
+    recordingSeconds,
+    recognizedTranscript,
+    contentMax: meta.scoringDimensions[0].maxScore,
+    pronunciationMax: meta.scoringDimensions[1].maxScore,
+    fluencyMax: meta.scoringDimensions[2].maxScore,
+    contentLabel: meta.scoringDimensions[0].label,
+    pronunciationLabel: meta.scoringDimensions[1].label,
+    fluencyLabel: meta.scoringDimensions[2].label,
+  })
+}
+
+export function scoreDescribeImage(item: DescribeImageItem, recordingSeconds: number, recognizedTranscript: string | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  return scoreShortSpeakingHeuristic({
+    referenceText: item.referenceDescription,
+    recordingSeconds,
+    recognizedTranscript,
+    contentMax: meta.scoringDimensions[0].maxScore,
+    pronunciationMax: meta.scoringDimensions[1].maxScore,
+    fluencyMax: meta.scoringDimensions[2].maxScore,
+    contentLabel: meta.scoringDimensions[0].label,
+    pronunciationLabel: meta.scoringDimensions[1].label,
+    fluencyLabel: meta.scoringDimensions[2].label,
+  })
+}
+
+export function scoreRetellLecture(item: RetellLectureItem, recordingSeconds: number, recognizedTranscript: string | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  return scoreShortSpeakingHeuristic({
+    referenceText: item.transcript,
+    recordingSeconds,
+    recognizedTranscript,
+    contentMax: meta.scoringDimensions[0].maxScore,
+    pronunciationMax: meta.scoringDimensions[1].maxScore,
+    fluencyMax: meta.scoringDimensions[2].maxScore,
+    contentLabel: meta.scoringDimensions[0].label,
+    pronunciationLabel: meta.scoringDimensions[1].label,
+    fluencyLabel: meta.scoringDimensions[2].label,
+  })
+}
+
+export interface ListeningSummarizeHeuristicInput {
+  item: ListeningSummarizeItem
+  text: string
+  secondsUsed: number
+  timeLimitSeconds: number
+}
+
+/**
+ * Summarize Spoken Text 的启发式评估，结构与 scoreWriting 一致：Form 维度
+ * 可客观核对字数范围，其余维度暂无可靠自动语义/语法评分能力，给出占位分。
+ * 这是本题型的同步/离线回退路径；异步版本见下方 scoreListeningSummarizeAsync，
+ * 已接入与 writing-summarize-text / writing-essay 相同的 /api/pte-scoring/writing
+ * 评分服务。
+ */
+export function scoreListeningSummarize({ item, text, secondsUsed, timeLimitSeconds }: ListeningSummarizeHeuristicInput): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const wordCount = countWords(text)
+  const withinRange = wordCount >= item.minWords && wordCount <= item.maxWords
+  const usedTooLong = secondsUsed > timeLimitSeconds
+
+  return meta.scoringDimensions.map((dimension) => {
+    if (dimension.id === 'form') {
+      const formOk = withinRange && !usedTooLong
+      return {
+        id: 'form',
+        label: dimension.label,
+        score: formOk ? dimension.maxScore : 0,
+        maxScore: dimension.maxScore,
+        isHeuristic: false,
+        note: `字数 ${wordCount}（要求 ${item.minWords}-${item.maxWords}），用时 ${Math.round(secondsUsed)} 秒（限时 ${Math.round(timeLimitSeconds)} 秒）。${
+          formOk ? '符合形式要求。' : '不完全符合形式要求，请检查字数或用时。'
+        }`,
+      }
+    }
+    return {
+      id: dimension.id,
+      label: dimension.label,
+      score: Math.round(dimension.maxScore * 0.5 * 10) / 10,
+      maxScore: dimension.maxScore,
+      isHeuristic: true,
+      note: '本练习没有可靠的自动语义/语法评分能力，此处为中性占位分，请对照官方评分维度自行检查内容覆盖、语法准确性、词汇多样性与拼写。',
+    }
+  })
+}
+
+/**
+ * Summarize Spoken Text 的异步打分：结构与 scoreWritingAsync 完全一致，
+ * 复用同一个 /api/pte-scoring/writing 接口——该接口本来就只关心
+ * promptText/sourceText/text 三个纯文本字段，不区分"写作任务"还是"听力后
+ * 转写为文字的任务"。听力原文（transcript）作为 sourceText 传入，用于关键词
+ * 覆盖率计算；Grammar/Spelling 走 LanguageTool，Vocabulary 走本地类符比。
+ * 服务不可用时回退到 scoreListeningSummarize() 的启发式逻辑（完全不变）。
+ */
+export async function scoreListeningSummarizeAsync(input: ListeningSummarizeHeuristicInput): Promise<ScoreDimensionResult[]> {
+  const { item, text } = input
+  const fallback = scoreListeningSummarize(input)
+
+  const res = await fetchJsonWithTimeout('/api/pte-scoring/writing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ promptText: '请概括这段听力材料的要点。', sourceText: item.transcript, text }),
+  })
+  if (!res || !res.ok) return fallback
+
+  let data: WritingServiceResponse
+  try {
+    data = (await res.json()) as WritingServiceResponse
+  } catch {
+    return fallback
+  }
+
+  const vocabularyRatio = typeof data.vocabularyDiversity === 'number' ? clamp(data.vocabularyDiversity, 0, 1) : typeTokenRatio(text)
+  const contentRatio = typeof data.contentKeywordCoverage === 'number' ? clamp(data.contentKeywordCoverage, 0, 1) : keywordCoverage(item.transcript, text)
+  const grammarIssueCount = Array.isArray(data.grammarIssues) ? data.grammarIssues.length : null
+  const spellingIssueCount = Array.isArray(data.spellingIssues) ? data.spellingIssues.length : null
+
+  const serviceNote = (detail: string) => `基于开源评分服务的估算（${detail}），仍非 Pearson 官方评分。`
+
+  return fallback.map((dimension) => {
+    if (dimension.id === 'form') return dimension // 客观判定，保持不变
+    if (dimension.id === 'grammar') {
+      const grammarScore =
+        typeof data.grammarScore === 'number'
+          ? clamp(data.grammarScore, 0, 1) * dimension.maxScore
+          : grammarIssueCount !== null
+            ? clamp(dimension.maxScore * (1 - Math.min(grammarIssueCount, 10) / 10), 0, dimension.maxScore)
+            : null
+      if (grammarScore === null) return dimension
+      return {
+        ...dimension,
+        score: Math.round(grammarScore * 10) / 10,
+        note: serviceNote(`LanguageTool 检测到 ${grammarIssueCount ?? '未知数量'} 处语法问题`),
+      }
+    }
+    if (dimension.id === 'vocabulary') {
+      return {
+        ...dimension,
+        score: Math.round(vocabularyRatio * dimension.maxScore * 10) / 10,
+        note: serviceNote(`词汇类符比（Type-Token Ratio）约 ${(vocabularyRatio * 100).toFixed(0)}%，本地计算，非外部服务依赖`),
+      }
+    }
+    if (dimension.id === 'content') {
+      return {
+        ...dimension,
+        score: Math.round(contentRatio * dimension.maxScore * 10) / 10,
+        note: serviceNote(`与听力原文的关键词覆盖率约 ${(contentRatio * 100).toFixed(0)}%，本地计算，不代表真实语义评分`),
+      }
+    }
+    if (dimension.id === 'spelling' && spellingIssueCount !== null) {
+      const spellingScore =
+        typeof data.spellingScore === 'number' ? clamp(data.spellingScore, 0, 1) * dimension.maxScore : clamp(dimension.maxScore * (1 - Math.min(spellingIssueCount, 10) / 10), 0, dimension.maxScore)
+      return {
+        ...dimension,
+        score: Math.round(spellingScore * 10) / 10,
+        note: serviceNote(`LanguageTool 检测到 ${spellingIssueCount} 处拼写问题`),
+      }
+    }
+    return dimension
+  })
+}
+
+export interface ShortSpeakingAsyncInput {
+  referenceText: string
+  recordingSeconds: number
+  recognizedTranscript: string | null
+  audioBlob?: Blob | null
+  fallback: ScoreDimensionResult[]
+  contentMax: number
+  pronunciationMax: number
+  fluencyMax: number
+}
+
+/**
+ * Repeat Sentence / Describe Image / Retell Lecture 的异步打分：复用与 Read
+ * Aloud 相同的自托管评分服务接口（/api/pte-scoring/read-aloud），把各题型的
+ * 参考文本（原句 / 图表描述关键词 / 讲座原文）作为 promptText 传入，让服务
+ * 端做转写与内容覆盖率估算；服务不可用时回退到 scoreShortSpeakingHeuristic
+ * 的本地启发式结果。由于三个 maxScore 都可能与 Read Aloud 的 5 分不同，这里
+ * 按各自的 maxScore 重新缩放服务返回的 0-5 分。
+ */
+export async function scoreShortSpeakingAsync(input: ShortSpeakingAsyncInput): Promise<ScoreDimensionResult[]> {
+  const { referenceText, audioBlob, fallback, contentMax, pronunciationMax, fluencyMax } = input
+  if (!audioBlob || audioBlob.size === 0) return fallback
+
+  const formData = new FormData()
+  formData.set('promptText', referenceText)
+  formData.set('audio', audioBlob, 'recording.webm')
+
+  const res = await fetchJsonWithTimeout('/api/pte-scoring/read-aloud', { method: 'POST', body: formData })
+  if (!res || !res.ok) return fallback
+
+  let data: ReadAloudServiceResponse
+  try {
+    data = (await res.json()) as ReadAloudServiceResponse
+  } catch {
+    return fallback
+  }
+
+  const rescale = (value: number | undefined, max: number) => (typeof value === 'number' ? clamp(value, 0, 5) * (max / 5) : null)
+  const content = rescale(data.contentScore, contentMax)
+  const pronunciation = rescale(data.pronunciationScore, pronunciationMax)
+  const fluency = rescale(data.fluencyScore, fluencyMax)
+  if (content === null && pronunciation === null && fluency === null) return fallback
+
+  const serviceNote = (detail: string) => `基于开源评分服务的估算（${detail}），仍非 Pearson 官方评分。`
+
+  return fallback.map((dimension, index) => {
+    if (index === 0 && content !== null) {
+      return {
+        ...dimension,
+        score: Math.round(content * 10) / 10,
+        note: serviceNote(`faster-whisper 转写文本与参考文本的内容覆盖率${data.transcript ? `，转写结果："${data.transcript.slice(0, 200)}"` : ''}`),
+      }
+    }
+    if (index === 1 && pronunciation !== null) {
+      return { ...dimension, score: Math.round(pronunciation * 10) / 10, note: serviceNote('OpenPronounce 音素级发音比对') }
+    }
+    if (index === 2 && fluency !== null) {
+      return { ...dimension, score: Math.round(fluency * 10) / 10, note: serviceNote('转写结果的停顿/语速信号') }
+    }
+    return dimension
+  })
+}
+
 /**
  * 统一的打分入口：根据任务类型将题目与作答分发给对应的打分函数。
  * 这是唯一需要知道"每种题型如何打分"的地方，UI 组件只需要收集作答并调用它。
@@ -479,6 +934,43 @@ export function scoreAttempt(taskType: TaskType, item: PracticeItem, answer: Ans
       )
         throw new Error('题目与作答类型不匹配')
       return scoreWriting({ item, text: answer.text, secondsUsed: answer.secondsUsed, timeLimitSeconds })
+    case 'reading-mcq-multiple':
+      if (item.taskType !== 'reading-mcq-multiple' || answer.taskType !== 'reading-mcq-multiple') throw new Error('题目与作答类型不匹配')
+      return scoreMcqMultiple(item, answer.selectedIndexes)
+    case 'reading-fill-blanks-dropdown':
+      if (item.taskType !== 'reading-fill-blanks-dropdown' || answer.taskType !== 'reading-fill-blanks-dropdown') throw new Error('题目与作答类型不匹配')
+      return scoreFillBlanksDropdown(item, answer.answers)
+    case 'listening-mcq-single':
+      if (item.taskType !== 'listening-mcq-single' || answer.taskType !== 'listening-mcq-single') throw new Error('题目与作答类型不匹配')
+      return scoreListeningMcqSingle(item, answer.selectedIndex)
+    case 'listening-mcq-multiple':
+      if (item.taskType !== 'listening-mcq-multiple' || answer.taskType !== 'listening-mcq-multiple') throw new Error('题目与作答类型不匹配')
+      return scoreListeningMcqMultiple(item, answer.selectedIndexes)
+    case 'listening-summarize-spoken-text':
+      if (item.taskType !== 'listening-summarize-spoken-text' || answer.taskType !== 'listening-summarize-spoken-text') throw new Error('题目与作答类型不匹配')
+      return scoreListeningSummarize({ item, text: answer.text, secondsUsed: answer.secondsUsed, timeLimitSeconds })
+    case 'listening-select-missing-word':
+      if (item.taskType !== 'listening-select-missing-word' || answer.taskType !== 'listening-select-missing-word') throw new Error('题目与作答类型不匹配')
+      return scoreSelectMissingWord(item, answer.selectedIndex)
+    case 'listening-highlight-incorrect-words':
+      if (item.taskType !== 'listening-highlight-incorrect-words' || answer.taskType !== 'listening-highlight-incorrect-words')
+        throw new Error('题目与作答类型不匹配')
+      return scoreHighlightIncorrectWords(item, answer.selectedWordIndexes)
+    case 'listening-write-from-dictation':
+      if (item.taskType !== 'listening-write-from-dictation' || answer.taskType !== 'listening-write-from-dictation') throw new Error('题目与作答类型不匹配')
+      return scoreWriteFromDictation(item, answer.text)
+    case 'speaking-repeat-sentence':
+      if (item.taskType !== 'speaking-repeat-sentence' || answer.taskType !== 'speaking-repeat-sentence') throw new Error('题目与作答类型不匹配')
+      return scoreRepeatSentence(item, answer.recordingSeconds, answer.recognizedTranscript)
+    case 'speaking-describe-image':
+      if (item.taskType !== 'speaking-describe-image' || answer.taskType !== 'speaking-describe-image') throw new Error('题目与作答类型不匹配')
+      return scoreDescribeImage(item, answer.recordingSeconds, answer.recognizedTranscript)
+    case 'speaking-retell-lecture':
+      if (item.taskType !== 'speaking-retell-lecture' || answer.taskType !== 'speaking-retell-lecture') throw new Error('题目与作答类型不匹配')
+      return scoreRetellLecture(item, answer.recordingSeconds, answer.recognizedTranscript)
+    case 'speaking-answer-short-question':
+      if (item.taskType !== 'speaking-answer-short-question' || answer.taskType !== 'speaking-answer-short-question') throw new Error('题目与作答类型不匹配')
+      return scoreAnswerShortQuestion(item, answer.recognizedTranscript)
     default: {
       const exhaustiveCheck: never = taskType
       throw new Error(`未知的 PTE 任务类型: ${String(exhaustiveCheck)}`)
@@ -516,6 +1008,54 @@ export async function scoreAttemptAsync(
       )
         throw new Error('题目与作答类型不匹配')
       return scoreWritingAsync({ item, text: answer.text, secondsUsed: answer.secondsUsed, timeLimitSeconds })
+    case 'listening-summarize-spoken-text':
+      if (item.taskType !== 'listening-summarize-spoken-text' || answer.taskType !== 'listening-summarize-spoken-text') throw new Error('题目与作答类型不匹配')
+      return scoreListeningSummarizeAsync({ item, text: answer.text, secondsUsed: answer.secondsUsed, timeLimitSeconds })
+    case 'speaking-repeat-sentence': {
+      if (item.taskType !== 'speaking-repeat-sentence' || answer.taskType !== 'speaking-repeat-sentence') throw new Error('题目与作答类型不匹配')
+      const meta = getTaskTypeMeta(item.taskType)
+      const fallback = scoreRepeatSentence(item, answer.recordingSeconds, answer.recognizedTranscript)
+      return scoreShortSpeakingAsync({
+        referenceText: item.text,
+        recordingSeconds: answer.recordingSeconds,
+        recognizedTranscript: answer.recognizedTranscript,
+        audioBlob: answer.audioBlob ?? null,
+        fallback,
+        contentMax: meta.scoringDimensions[0].maxScore,
+        pronunciationMax: meta.scoringDimensions[1].maxScore,
+        fluencyMax: meta.scoringDimensions[2].maxScore,
+      })
+    }
+    case 'speaking-describe-image': {
+      if (item.taskType !== 'speaking-describe-image' || answer.taskType !== 'speaking-describe-image') throw new Error('题目与作答类型不匹配')
+      const meta = getTaskTypeMeta(item.taskType)
+      const fallback = scoreDescribeImage(item, answer.recordingSeconds, answer.recognizedTranscript)
+      return scoreShortSpeakingAsync({
+        referenceText: item.referenceDescription,
+        recordingSeconds: answer.recordingSeconds,
+        recognizedTranscript: answer.recognizedTranscript,
+        audioBlob: answer.audioBlob ?? null,
+        fallback,
+        contentMax: meta.scoringDimensions[0].maxScore,
+        pronunciationMax: meta.scoringDimensions[1].maxScore,
+        fluencyMax: meta.scoringDimensions[2].maxScore,
+      })
+    }
+    case 'speaking-retell-lecture': {
+      if (item.taskType !== 'speaking-retell-lecture' || answer.taskType !== 'speaking-retell-lecture') throw new Error('题目与作答类型不匹配')
+      const meta = getTaskTypeMeta(item.taskType)
+      const fallback = scoreRetellLecture(item, answer.recordingSeconds, answer.recognizedTranscript)
+      return scoreShortSpeakingAsync({
+        referenceText: item.transcript,
+        recordingSeconds: answer.recordingSeconds,
+        recognizedTranscript: answer.recognizedTranscript,
+        audioBlob: answer.audioBlob ?? null,
+        fallback,
+        contentMax: meta.scoringDimensions[0].maxScore,
+        pronunciationMax: meta.scoringDimensions[1].maxScore,
+        fluencyMax: meta.scoringDimensions[2].maxScore,
+      })
+    }
     default:
       return scoreAttempt(taskType, item, answer, timeLimitSeconds)
   }

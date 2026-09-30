@@ -142,11 +142,17 @@ OpenPronounce 未优化时）可能到几秒甚至十几秒，属于预期行为
 
 - **OpenPronounce 只针对英语校准**，对非英语母语口音（尤其中文母语者的口音特征）
   评分准确度没有第三方验证，仅供参考。
-- **`openpronounce-service/` 是未经实际验证的最佳猜测**：编写这套包装代码时无法
-  联网运行 OpenPronounce 真实代码，只能依据其公开 README 描述编写。部署前请对照
-  [实际仓库源码](https://github.com/Halleck45/OpenPronounce)核实模块名、函数签名和依赖列表，必要时自行修正
-  `openpronounce-service/wrapper_server.py`。就算它一直起不来，网关会把
-  `pronunciationScore` 留空，Next.js 侧会对应回退到本地启发式，不影响其余功能。
+- **`openpronounce-service/` 已用本机 Docker Desktop 实测跑通**：完整走过
+  gateway → whisper-service → openpronounce-service → 汇总返回的链路，用真实
+  合成语音验证过 `/score` 接口能返回非占位的分数和逐音素反馈（`pronunciationScore`、
+  `phonemeDetails.errors` 等字段）。实测中发现并修复了一个真实的环境依赖缺口：
+  Dockerfile 最初只装了 `ffmpeg`，漏装了 OpenPronounce 官方 README 要求的系统依赖
+  `espeak-ng`（音素识别模型在底层依赖它做音素转写），运行时会抛
+  `RuntimeError: espeak not installed on your system`，已在 Dockerfile 里补上。
+  即便如此，这仍是社区维护的第三方模型，模型本身的准确度、非英语口音的适应性
+  仍是下面几条已知局限，没有因为"能跑通"而变成"官方认证的评分"。就算它未来某次
+  因上游仓库改动而起不来，网关会把 `pronunciationScore` 留空，Next.js 侧会对应
+  回退到本地启发式，不影响其余功能。
 - **LanguageTool 不是 Pearson 官方算法**，是通用规则+统计的语法检查器，对学术写作
   中"技术上没错但不够地道"的表达不一定敏感，也可能误报合理但非标准的表达。
 - **faster-whisper 对非母语者口音的转写准确率**是行业共性局限，重音、语速不均、

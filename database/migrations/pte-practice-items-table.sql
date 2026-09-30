@@ -112,3 +112,125 @@ INSERT INTO pte_practice_items (id, task_type, payload) VALUES
 ('w-essay-4', 'writing-essay', '{"prompt":"Some people think social media has made society more connected, while others believe it has made people more isolated and anxious. Discuss both views and give your own opinion.","minWords":200,"maxWords":300}'::jsonb),
 ('w-essay-5', 'writing-essay', '{"prompt":"Some believe that standardized testing is the fairest way to evaluate students, while others argue it fails to capture a student''s true abilities. Discuss both views and give your own opinion.","minWords":200,"maxWords":300}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- 追加迁移：新增 12 种官方 PTE Academic 题型（2026-09-24）。
+--
+-- 影响范围：仅扩大 task_type 的 CHECK 约束取值范围（原 8 种 -> 现 20 种），
+-- 新增对应种子数据。不修改、不删除任何已有行。
+--
+-- 为什么不能直接改 CREATE TABLE 语句：本文件顶部的 CREATE TABLE ... IF NOT
+-- EXISTS 只在表不存在时执行一次；如果这台数据库已经执行过旧版本的本文件
+-- （表已存在，约束还是旧的 8 种），单纯修改上面 CREATE TABLE 里的 CHECK 列表
+-- 不会对已存在的表产生任何效果，旧约束会继续拒绝新题型的 INSERT。因此这里
+-- 用 DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT 显式重建约束，对全新数据库
+-- 和已执行过旧版本的数据库都是幂等、安全的：全新数据库会先建出仅含旧 8 种
+-- 的约束，再被这里立即替换为含 20 种的约束；已存在的数据库会直接把约束从
+-- 旧版本替换为新版本，不影响已有数据行（新增题型的取值范围只会变宽，不会
+-- 让任何已有行变得不合法）。
+--
+-- 对已经执行过本文件旧版本的数据库：只需重新执行整个文件（CREATE TABLE /
+-- INDEX / 策略 / 旧种子数据均为 IF NOT EXISTS 或 ON CONFLICT DO NOTHING，
+-- 重复执行是安全的），即可解锁下方 12 种新题型并写入其种子数据。
+
+ALTER TABLE pte_practice_items DROP CONSTRAINT IF EXISTS pte_practice_items_task_type_check;
+
+ALTER TABLE pte_practice_items ADD CONSTRAINT pte_practice_items_task_type_check CHECK (task_type IN (
+  'reading-mcq-single',
+  'reading-mcq-multiple',
+  'reading-reorder',
+  'reading-fill-blanks-drag',
+  'reading-fill-blanks-dropdown',
+  'listening-fill-blanks-typed',
+  'listening-highlight-summary',
+  'listening-mcq-single',
+  'listening-mcq-multiple',
+  'listening-summarize-spoken-text',
+  'listening-select-missing-word',
+  'listening-highlight-incorrect-words',
+  'listening-write-from-dictation',
+  'speaking-read-aloud',
+  'speaking-repeat-sentence',
+  'speaking-describe-image',
+  'speaking-retell-lecture',
+  'speaking-answer-short-question',
+  'writing-summarize-text',
+  'writing-essay'
+));
+
+-- 种子数据：与 app/pte-practice/lib/questionBank.ts 中新增的原创示例题一一对应。
+
+INSERT INTO pte_practice_items (id, task_type, payload) VALUES
+('r-mcqm-1', 'reading-mcq-multiple', '{"passage":"City councils weighing whether to install more public drinking fountains cite several benefits: reduced plastic bottle waste, free access to water for low-income residents, and lower rates of dehydration-related emergency visits during heat waves. Some councils also note that fountains require ongoing maintenance and water-quality testing, which strains already limited budgets.","question":"根据文章，支持增设饮水台的理由有哪些？（选出所有正确答案）","options":["减少塑料瓶垃圾","为低收入居民提供免费饮水","降低热浪期间脱水就诊率","完全不需要维护成本"],"correctIndexes":[0,1,2]}'::jsonb),
+('r-mcqm-2', 'reading-mcq-multiple', '{"passage":"Proponents of a four-day work week argue it can reduce burnout, lower commuting-related emissions, and, in several pilot studies, maintain or even improve productivity. Skeptics counter that it may not suit every industry, particularly those requiring round-the-clock coverage such as healthcare.","question":"根据文章，支持四天工作制的理由有哪些？（选出所有正确答案）","options":["降低职业倦怠","减少通勤相关排放","在部分试点中维持或提升生产力","适用于所有行业，没有例外"],"correctIndexes":[0,1,2]}'::jsonb),
+('r-mcqm-3', 'reading-mcq-multiple', '{"passage":"Advocates for community gardens point to improved access to fresh produce, opportunities for neighbors to interact, and modest reductions in local food-transport emissions. Critics note that gardens can fail without a committed group of volunteers to maintain them long-term.","question":"根据文章，社区花园的好处包括哪些？（选出所有正确答案）","options":["改善新鲜农产品的获取","为邻里提供交流机会","略微降低本地食物运输排放","完全不需要志愿者维护"],"correctIndexes":[0,1,2]}'::jsonb),
+('r-mcqm-4', 'reading-mcq-multiple', '{"passage":"Digital note-taking apps offer searchable text, easy sharing, and automatic backup, which many students find convenient. Handwriting researchers, however, note that writing by hand has been linked to better recall of material in several studies, likely due to the slower, more deliberate encoding process it requires.","question":"根据文章，数字笔记应用的优势包括哪些？（选出所有正确答案）","options":["可搜索的文本","便于分享","自动备份","已被证明比手写记忆效果更好"],"correctIndexes":[0,1,2]}'::jsonb),
+('r-mcqm-5', 'reading-mcq-multiple', '{"passage":"Supporters of congestion pricing in city centers argue it reduces traffic jams, cuts air pollution, and can fund public transit improvements with the revenue collected. Opponents worry it disproportionately affects lower-income drivers who cannot easily switch to other forms of transport.","question":"根据文章，支持拥堵收费的理由有哪些？（选出所有正确答案）","options":["减少交通拥堵","降低空气污染","收入可用于改善公共交通","对所有收入群体的影响完全相同"],"correctIndexes":[0,1,2]}'::jsonb),
+
+('r-dropdown-1', 'reading-fill-blanks-dropdown', '{"textSegments":["The discovery of antibiotics "," modern medicine, dramatically reducing deaths from infections that were once "," fatal, though overuse has since led to growing concerns about drug ","."],"blankOptions":[["transformed","ignored","delayed"],["routinely","rarely","accidentally"],["resistance","shortage","discovery"]],"correctAnswers":["transformed","routinely","resistance"]}'::jsonb),
+('r-dropdown-2', 'reading-fill-blanks-dropdown', '{"textSegments":["Satellite imagery allows scientists to "," deforestation in near real time, helping "," agencies respond "," to illegal logging."],"blankOptions":[["monitor","ignore","cause"],["environmental","financial","unrelated"],["quickly","slowly","never"]],"correctAnswers":["monitor","environmental","quickly"]}'::jsonb),
+('r-dropdown-3', 'reading-fill-blanks-dropdown', '{"textSegments":["Many economists argue that investing in early childhood education produces one of the highest "," on investment of any public policy, since the benefits "," over a person''s entire working ","."],"blankOptions":[["returns","losses","delays"],["compound","disappear","reverse"],["lifetime","weekend","holiday"]],"correctAnswers":["returns","compound","lifetime"]}'::jsonb),
+('r-dropdown-4', 'reading-fill-blanks-dropdown', '{"textSegments":["Noise pollution in cities has been "," to elevated stress hormones and disrupted sleep, prompting some municipalities to "," stricter limits on construction ","."],"blankOptions":[["linked","unrelated","opposed"],["introduce","abandon","ignore"],["noise","colors","traffic lights"]],"correctAnswers":["linked","introduce","noise"]}'::jsonb),
+('r-dropdown-5', 'reading-fill-blanks-dropdown', '{"textSegments":["Because coral polyps are extremely "," to temperature change, even a rise of one or two degrees can trigger a "," event that leaves reefs "," to disease."],"blankOptions":[["sensitive","immune","indifferent"],["bleaching","cooling","celebration"],["vulnerable","immune","unrelated"]],"correctAnswers":["sensitive","bleaching","vulnerable"]}'::jsonb),
+
+('l-mcqs-1', 'listening-mcq-single', '{"transcript":"Today I want to talk about why honey never spoils. Its low moisture content and naturally acidic pH create an environment where bacteria simply cannot survive, which is why archaeologists have found edible honey in tombs thousands of years old.","question":"根据讲座，蜂蜜为什么不会变质？","options":["因为它含糖量低","因为其低水分含量和酸性环境使细菌无法存活","因为它总是被密封保存","因为蜜蜂会添加防腐剂"],"correctIndex":1}'::jsonb),
+('l-mcqs-2', 'listening-mcq-single', '{"transcript":"Let''s discuss why the sky appears blue during the day. Sunlight contains all colors, but shorter blue wavelengths are scattered far more by the gases in our atmosphere than longer wavelengths like red, so blue light reaches our eyes from all directions.","question":"根据讲座，天空为什么呈现蓝色？","options":["因为大气中含有蓝色气体","因为蓝光波长较短，更容易被大气散射","因为太阳只发出蓝光","因为人眼只能看到蓝光"],"correctIndex":1}'::jsonb),
+('l-mcqs-3', 'listening-mcq-single', '{"transcript":"This morning''s topic is why we yawn when we see someone else yawn. One leading theory suggests contagious yawning is linked to empathy, since studies show it occurs more frequently between people who are emotionally close.","question":"根据讲座，\"传染性打哈欠\"与什么因素有关？","options":["房间的温度","同理心，在情感亲近的人之间更常见","打哈欠的人的年龄","当天的时间"],"correctIndex":1}'::jsonb),
+('l-mcqs-4', 'listening-mcq-single', '{"transcript":"Now, why do onions make us cry? When you cut an onion, it releases a volatile compound that reacts with the moisture in your eyes to form a mild sulfuric acid, triggering your tear glands as a protective response.","question":"根据讲座，切洋葱为什么会让人流泪？","options":["洋葱释放的气体与眼睛水分反应生成刺激性物质","洋葱含有辣椒素","这只是一种心理暗示效应","洋葱的气味太浓烈"],"correctIndex":0}'::jsonb),
+('l-mcqs-5', 'listening-mcq-single', '{"transcript":"Let''s look at why bamboo grows so fast. Unlike trees, bamboo doesn''t need to build new cells to grow taller each day; the segments of the stem are all fully formed at the base and simply extend rapidly by expanding cells that are already there.","question":"根据讲座，竹子生长快的原因是什么？","options":["它不断长出新细胞","茎的分段已在基部形成，通过已有细胞的扩张快速伸长","它几乎不需要阳光","它的根系特别浅"],"correctIndex":1}'::jsonb),
+
+('l-mcqm-1', 'listening-mcq-multiple', '{"transcript":"Researchers studying urban trees found several benefits beyond aesthetics: they lower summer street temperatures by providing shade, reduce stormwater runoff by absorbing rainfall, and can modestly reduce noise from nearby traffic.","question":"根据讲座，城市树木带来的好处有哪些？（选出所有正确答案）","options":["降低夏季街道气温","减少雨水径流","降低交通噪音","完全消除空气污染"],"correctIndexes":[0,1,2]}'::jsonb),
+('l-mcqm-2', 'listening-mcq-multiple', '{"transcript":"A study on workplace lighting found that employees exposed to more natural daylight reported better sleep quality, fewer headaches, and slightly higher self-reported productivity compared with those working under fluorescent lighting alone.","question":"根据讲座，接触更多自然光的员工报告了哪些变化？（选出所有正确答案）","options":["睡眠质量更好","头痛更少","自评生产力略高","视力显著改善"],"correctIndexes":[0,1,2]}'::jsonb),
+('l-mcqm-3', 'listening-mcq-multiple', '{"transcript":"Marine biologists tracking whale migration have found that the animals rely on a combination of ocean currents, water temperature gradients, and possibly the Earth''s magnetic field to navigate thousands of kilometers each year.","question":"根据讲座，鲸鱼迁徙可能依赖哪些导航方式？（选出所有正确答案）","options":["洋流","水温梯度","地球磁场","船只发出的声音"],"correctIndexes":[0,1,2]}'::jsonb),
+('l-mcqm-4', 'listening-mcq-multiple', '{"transcript":"A survey of remote workers identified the top challenges as difficulty separating work from personal life, feelings of isolation from colleagues, and, for some, a lack of suitable home office equipment.","question":"根据讲座，远程办公者面临的挑战有哪些？（选出所有正确答案）","options":["工作与生活边界模糊","与同事的孤立感","缺乏合适的居家办公设备","通勤时间过长"],"correctIndexes":[0,1,2]}'::jsonb),
+('l-mcqm-5', 'listening-mcq-multiple', '{"transcript":"Nutrition researchers note that fermented foods can support gut health by introducing beneficial bacteria, may improve the digestibility of certain nutrients, and in some studies have been linked to modest improvements in mood.","question":"根据讲座，发酵食品可能带来哪些益处？（选出所有正确答案）","options":["引入有益菌群","提高部分营养素的可消化性","与情绪的适度改善有关","完全替代所有药物治疗"],"correctIndexes":[0,1,2]}'::jsonb),
+
+('l-sst-1', 'listening-summarize-spoken-text', '{"transcript":"Today''s lecture examines the rise of urban vertical gardens, which use exterior building walls to grow plants. Proponents highlight improved insulation, reduced urban heat, and added greenery in space-constrained cities. Engineers caution that structural load and irrigation systems must be carefully designed, since a poorly maintained vertical garden can damage the building''s facade over time.","minWords":50,"maxWords":70}'::jsonb),
+('l-sst-2', 'listening-summarize-spoken-text', '{"transcript":"This lecture looks at why some companies are shifting to a four-day work week. Early trials report steady or improved output alongside better employee wellbeing, though the approach appears to suit knowledge-based roles more easily than shift-based industries like manufacturing or healthcare, where continuous coverage is essential.","minWords":50,"maxWords":70}'::jsonb),
+('l-sst-3', 'listening-summarize-spoken-text', '{"transcript":"We''ll discuss the growing use of drones in agriculture. Farmers use them to monitor crop health, apply fertilizer with precision, and detect irrigation problems earlier than ground inspection allows. The main barriers to wider adoption remain the upfront cost of the equipment and the training required to operate it effectively.","minWords":50,"maxWords":70}'::jsonb),
+('l-sst-4', 'listening-summarize-spoken-text', '{"transcript":"Today''s topic is the debate over standardized testing in schools. Supporters argue it provides an objective, comparable measure of student achievement across different schools and regions. Critics counter that it narrows curricula toward test preparation and may fail to capture creativity, critical thinking, or other harder-to-measure skills.","minWords":50,"maxWords":70}'::jsonb),
+('l-sst-5', 'listening-summarize-spoken-text', '{"transcript":"This lecture covers recent efforts to restore wetlands that were drained decades ago for agriculture. Restored wetlands have been shown to filter pollutants from water, provide habitat for migratory birds, and reduce flood risk downstream, though restoration projects can take many years to reach full ecological function.","minWords":50,"maxWords":70}'::jsonb),
+
+('l-missing-1', 'listening-select-missing-word', '{"fullTranscript":"After weeks of drought, the farmers were relieved when the forecast finally predicted heavy rain.","displayedTranscript":"After weeks of drought, the farmers were relieved when the forecast finally predicted ____.","options":["heavy rain","a sunny week","strong winds","a full moon"],"correctIndex":0}'::jsonb),
+('l-missing-2', 'listening-select-missing-word', '{"fullTranscript":"Despite the rising cost of raw materials, the company managed to keep its prices stable.","displayedTranscript":"Despite the rising cost of raw materials, the company managed to keep its prices ____.","options":["stable","doubled","confidential","irrelevant"],"correctIndex":0}'::jsonb),
+('l-missing-3', 'listening-select-missing-word', '{"fullTranscript":"The museum''s new wing was designed specifically to house the growing photography collection.","displayedTranscript":"The museum''s new wing was designed specifically to house the growing photography ____.","options":["collection","cafeteria","parking lot","staff"],"correctIndex":0}'::jsonb),
+('l-missing-4', 'listening-select-missing-word', '{"fullTranscript":"Because the bridge was closed for repairs, commuters had to find an alternative route.","displayedTranscript":"Because the bridge was closed for repairs, commuters had to find an alternative ____.","options":["route","hobby","language","salary"],"correctIndex":0}'::jsonb),
+('l-missing-5', 'listening-select-missing-word', '{"fullTranscript":"The research team published their findings only after the results had been independently verified.","displayedTranscript":"The research team published their findings only after the results had been independently ____.","options":["verified","forgotten","sold","translated"],"correctIndex":0}'::jsonb),
+
+('l-highlight-1', 'listening-highlight-incorrect-words', '{"audioTranscript":"The library will extend its opening hours during the final week of exams to support students.","displayedWords":["The","library","will","reduce","its","closing","hours","during","the","final","week","of","exams","to","support","students."],"incorrectWordIndexes":[3,5]}'::jsonb),
+('l-highlight-2', 'listening-highlight-incorrect-words', '{"audioTranscript":"Scientists discovered that the ancient river had shifted its course several times over the centuries.","displayedWords":["Scientists","discovered","that","the","modern","river","had","shifted","its","course","several","times","over","the","decades."],"incorrectWordIndexes":[4,14]}'::jsonb),
+('l-highlight-3', 'listening-highlight-incorrect-words', '{"audioTranscript":"The company announced that it would open two new factories next spring to meet rising demand.","displayedWords":["The","company","announced","that","it","would","close","two","old","factories","next","spring","to","meet","rising","demand."],"incorrectWordIndexes":[6,8]}'::jsonb),
+('l-highlight-4', 'listening-highlight-incorrect-words', '{"audioTranscript":"Volunteers spent the weekend planting trees along the riverbank to prevent soil erosion.","displayedWords":["Volunteers","spent","the","morning","planting","flowers","along","the","riverbank","to","prevent","soil","erosion."],"incorrectWordIndexes":[3,5]}'::jsonb),
+('l-highlight-5', 'listening-highlight-incorrect-words', '{"audioTranscript":"The airline confirmed that all delayed flights would resume service by early evening.","displayedWords":["The","airline","confirmed","that","all","cancelled","flights","would","resume","service","by","late","evening."],"incorrectWordIndexes":[5,11]}'::jsonb),
+
+('l-dictation-1', 'listening-write-from-dictation', '{"sentence":"The committee will review the proposal next week."}'::jsonb),
+('l-dictation-2', 'listening-write-from-dictation', '{"sentence":"Heavy traffic delayed the morning delivery by an hour."}'::jsonb),
+('l-dictation-3', 'listening-write-from-dictation', '{"sentence":"Researchers published their findings in a leading journal."}'::jsonb),
+('l-dictation-4', 'listening-write-from-dictation', '{"sentence":"The museum extended its hours for the summer exhibition."}'::jsonb),
+('l-dictation-5', 'listening-write-from-dictation', '{"sentence":"Local farmers reported a stronger harvest than last year."}'::jsonb),
+('l-dictation-6', 'listening-write-from-dictation', '{"sentence":"The airport announced new security measures starting Monday."}'::jsonb),
+
+('s-rs-1', 'speaking-repeat-sentence', '{"text":"The lecture has been rescheduled to next Tuesday afternoon."}'::jsonb),
+('s-rs-2', 'speaking-repeat-sentence', '{"text":"Please remember to submit your assignment before the deadline."}'::jsonb),
+('s-rs-3', 'speaking-repeat-sentence', '{"text":"The library closes early on public holidays."}'::jsonb),
+('s-rs-4', 'speaking-repeat-sentence', '{"text":"Researchers are studying how climate change affects coastal cities."}'::jsonb),
+('s-rs-5', 'speaking-repeat-sentence', '{"text":"The new policy will take effect at the beginning of next month."}'::jsonb),
+('s-rs-6', 'speaking-repeat-sentence', '{"text":"Most students found the workshop both practical and engaging."}'::jsonb),
+
+('s-di-1', 'speaking-describe-image', '{"chart":{"type":"bar","title":"某城市各交通方式通勤占比","categories":["步行","自行车","公交","私家车"],"values":[15,20,35,30],"unit":"%"},"referenceDescription":"The bar chart shows commuting methods in a city. Bus is the most common at 35 percent, followed by car at 30 percent, bicycle at 20 percent, and walking at 15 percent.","prepSeconds":25}'::jsonb),
+('s-di-2', 'speaking-describe-image', '{"chart":{"type":"line","title":"某产品五年销量趋势（万件）","categories":["2021","2022","2023","2024","2025"],"values":[12,18,22,30,45]},"referenceDescription":"The line chart shows steady growth in product sales from 12 units in 2021 to 45 units in 2025, with the sharpest increase occurring between 2024 and 2025.","prepSeconds":25}'::jsonb),
+('s-di-3', 'speaking-describe-image', '{"chart":{"type":"bar","title":"大学生课外活动时间分配（小时/周）","categories":["运动","社团","兼职","娱乐"],"values":[4,3,6,8],"unit":"小时"},"referenceDescription":"The bar chart shows university students spend the most time on entertainment at 8 hours per week, followed by part-time work at 6 hours, sports at 4 hours, and clubs at 3 hours.","prepSeconds":25}'::jsonb),
+('s-di-4', 'speaking-describe-image', '{"chart":{"type":"line","title":"某地区年平均气温变化（摄氏度）","categories":["2000","2010","2020","2024"],"values":[14,14.5,15.3,16]},"referenceDescription":"The line chart shows a gradual rise in average annual temperature from 14 degrees in 2000 to 16 degrees in 2024, indicating a consistent warming trend.","prepSeconds":25}'::jsonb),
+
+('s-retell-1', 'speaking-retell-lecture', '{"transcript":"Today I want to talk about the history of the compass. Long before it was used for navigation, ancient Chinese scholars used lodestone to build divination boards. It wasn''t until sailors realized the stone always pointed toward magnetic north that the compass became an essential tool for long ocean voyages, eventually enabling the age of global exploration.","prepSeconds":10}'::jsonb),
+('s-retell-2', 'speaking-retell-lecture', '{"transcript":"Let''s discuss why some trees drop their leaves in autumn. As daylight hours shorten and temperatures fall, deciduous trees stop producing chlorophyll, revealing the yellow and orange pigments that were there all along. Eventually the trees seal off the connection to each leaf, allowing them to fall and conserving the tree''s energy for winter.","prepSeconds":10}'::jsonb),
+('s-retell-3', 'speaking-retell-lecture', '{"transcript":"This lecture covers the invention of refrigeration. Before mechanical refrigeration, people relied on ice harvested from frozen lakes and stored in insulated ice houses through summer. The development of compressor-based refrigeration in the late nineteenth century transformed food storage, allowing fresh produce and meat to be shipped much further than before.","prepSeconds":10}'::jsonb),
+('s-retell-4', 'speaking-retell-lecture', '{"transcript":"Today''s topic is the domestication of rice. Archaeological evidence suggests rice was first cultivated in the Yangtze River basin thousands of years ago. Over generations, farmers selectively grew plants with larger seeds and less tendency to shatter, eventually producing the rice varieties that became a staple food across much of Asia.","prepSeconds":10}'::jsonb),
+
+('s-asq-1', 'speaking-answer-short-question', '{"question":"What do we call a doctor who treats animals?","acceptableAnswers":["a vet","vet","veterinarian","a veterinarian"]}'::jsonb),
+('s-asq-2', 'speaking-answer-short-question', '{"question":"What is the opposite of \"hot\"?","acceptableAnswers":["cold"]}'::jsonb),
+('s-asq-3', 'speaking-answer-short-question', '{"question":"How many days are there in a week?","acceptableAnswers":["seven","7","seven days"]}'::jsonb),
+('s-asq-4', 'speaking-answer-short-question', '{"question":"What do you call a place where books are borrowed?","acceptableAnswers":["a library","library"]}'::jsonb),
+('s-asq-5', 'speaking-answer-short-question', '{"question":"What season comes after winter?","acceptableAnswers":["spring"]}'::jsonb),
+('s-asq-6', 'speaking-answer-short-question', '{"question":"What instrument is used to measure temperature?","acceptableAnswers":["a thermometer","thermometer"]}'::jsonb)
+ON CONFLICT (id) DO NOTHING;

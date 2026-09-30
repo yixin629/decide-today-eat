@@ -7,21 +7,42 @@ import { loadItemById } from '../lib/item-repository'
 import { getTaskTypeMeta } from '../lib/taskTypes'
 import type {
   AnswerPayload,
+  AnswerShortQuestionItem,
   AttemptRecord,
+  DescribeImageItem,
   FillBlanksDragItem,
+  FillBlanksDropdownItem,
+  HighlightIncorrectWordsItem,
   HighlightSummaryItem,
   ListeningFillBlanksItem,
+  ListeningMcqMultipleItem,
+  ListeningMcqSingleItem,
+  ListeningSummarizeItem,
+  McqMultipleItem,
   McqSingleItem,
   PracticeItem,
   ReadAloudItem,
+  RepeatSentenceItem,
   ReorderItem,
+  RetellLectureItem,
   ScoreDimensionResult,
+  SelectMissingWordItem,
   TaskType,
+  WriteFromDictationItem,
   WritingItem,
 } from '../types'
-import { FillBlanksDragInput, McqSingleInput, ReorderInput } from './inputs/ReadingInputs'
-import { HighlightSummaryInput, ListeningFillBlanksInput } from './inputs/ListeningInputs'
-import { ReadAloudInput } from './inputs/SpeakingInput'
+import { FillBlanksDragInput, FillBlanksDropdownInput, McqMultipleInput, McqSingleInput, ReorderInput } from './inputs/ReadingInputs'
+import {
+  HighlightIncorrectWordsInput,
+  HighlightSummaryInput,
+  ListeningFillBlanksInput,
+  ListeningMcqMultipleInput,
+  ListeningMcqSingleInput,
+  ListeningSummarizeInput,
+  SelectMissingWordInput,
+  WriteFromDictationInput,
+} from './inputs/ListeningInputs'
+import { AnswerShortQuestionInput, DescribeImageInput, ReadAloudInput, RepeatSentenceInput, RetellLectureInput } from './inputs/SpeakingInput'
 import { WritingInput } from './inputs/WritingInput'
 import CommentThread from './CommentThread'
 import ReportCard from './ReportCard'
@@ -43,6 +64,28 @@ function emptyAnswerFor(taskType: TaskType): AnswerPayload {
     case 'writing-summarize-text':
     case 'writing-essay':
       return { taskType, text: '', secondsUsed: 0 }
+    case 'reading-mcq-multiple':
+      return { taskType, selectedIndexes: [] }
+    case 'reading-fill-blanks-dropdown':
+      return { taskType, answers: [] }
+    case 'listening-mcq-single':
+      return { taskType, selectedIndex: null }
+    case 'listening-mcq-multiple':
+      return { taskType, selectedIndexes: [] }
+    case 'listening-summarize-spoken-text':
+      return { taskType, text: '', secondsUsed: 0 }
+    case 'listening-select-missing-word':
+      return { taskType, selectedIndex: null }
+    case 'listening-highlight-incorrect-words':
+      return { taskType, selectedWordIndexes: [] }
+    case 'listening-write-from-dictation':
+      return { taskType, text: '' }
+    case 'speaking-repeat-sentence':
+    case 'speaking-retell-lecture':
+    case 'speaking-describe-image':
+      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
+    case 'speaking-answer-short-question':
+      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
     default: {
       const exhaustiveCheck: never = taskType
       throw new Error(`未知的 PTE 任务类型: ${String(exhaustiveCheck)}`)
@@ -112,7 +155,7 @@ export default function PracticeSession({
     setSaveError(null)
     const durationSeconds = (Date.now() - startedAtRef.current) / 1000
     let answer = answerRef.current
-    if (answer.taskType === 'writing-summarize-text' || answer.taskType === 'writing-essay') {
+    if (answer.taskType === 'writing-summarize-text' || answer.taskType === 'writing-essay' || answer.taskType === 'listening-summarize-spoken-text') {
       answer = { ...answer, secondsUsed: durationSeconds }
     }
     setScoringInProgress(true)
@@ -209,6 +252,114 @@ export default function PracticeSession({
             item={item as WritingItem}
             onChange={(text) => {
               answerRef.current = { taskType: item.taskType, text, secondsUsed: 0 }
+            }}
+          />
+        )
+      case 'reading-mcq-multiple':
+        return (
+          <McqMultipleInput
+            item={item as McqMultipleItem}
+            onChange={(selectedIndexes) => {
+              answerRef.current = { taskType: 'reading-mcq-multiple', selectedIndexes }
+            }}
+          />
+        )
+      case 'reading-fill-blanks-dropdown':
+        return (
+          <FillBlanksDropdownInput
+            item={item as FillBlanksDropdownItem}
+            onChange={(answers) => {
+              answerRef.current = { taskType: 'reading-fill-blanks-dropdown', answers }
+            }}
+          />
+        )
+      case 'listening-mcq-single':
+        return (
+          <ListeningMcqSingleInput
+            item={item as ListeningMcqSingleItem}
+            onChange={(selectedIndex) => {
+              answerRef.current = { taskType: 'listening-mcq-single', selectedIndex }
+            }}
+          />
+        )
+      case 'listening-mcq-multiple':
+        return (
+          <ListeningMcqMultipleInput
+            item={item as ListeningMcqMultipleItem}
+            onChange={(selectedIndexes) => {
+              answerRef.current = { taskType: 'listening-mcq-multiple', selectedIndexes }
+            }}
+          />
+        )
+      case 'listening-summarize-spoken-text':
+        return (
+          <ListeningSummarizeInput
+            item={item as ListeningSummarizeItem}
+            onChange={(text) => {
+              answerRef.current = { taskType: 'listening-summarize-spoken-text', text, secondsUsed: 0 }
+            }}
+          />
+        )
+      case 'listening-select-missing-word':
+        return (
+          <SelectMissingWordInput
+            item={item as SelectMissingWordItem}
+            onChange={(selectedIndex) => {
+              answerRef.current = { taskType: 'listening-select-missing-word', selectedIndex }
+            }}
+          />
+        )
+      case 'listening-highlight-incorrect-words':
+        return (
+          <HighlightIncorrectWordsInput
+            item={item as HighlightIncorrectWordsItem}
+            onChange={(selectedWordIndexes) => {
+              answerRef.current = { taskType: 'listening-highlight-incorrect-words', selectedWordIndexes }
+            }}
+          />
+        )
+      case 'listening-write-from-dictation':
+        return (
+          <WriteFromDictationInput
+            item={item as WriteFromDictationItem}
+            onChange={(text) => {
+              answerRef.current = { taskType: 'listening-write-from-dictation', text }
+            }}
+          />
+        )
+      case 'speaking-repeat-sentence':
+        return (
+          <RepeatSentenceInput
+            item={item as RepeatSentenceItem}
+            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
+              answerRef.current = { taskType: 'speaking-repeat-sentence', recordingSeconds, recognizedTranscript, audioBlob }
+            }}
+          />
+        )
+      case 'speaking-describe-image':
+        return (
+          <DescribeImageInput
+            item={item as DescribeImageItem}
+            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
+              answerRef.current = { taskType: 'speaking-describe-image', recordingSeconds, recognizedTranscript, audioBlob }
+            }}
+          />
+        )
+      case 'speaking-retell-lecture':
+        return (
+          <RetellLectureInput
+            item={item as RetellLectureItem}
+            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
+              answerRef.current = { taskType: 'speaking-retell-lecture', recordingSeconds, recognizedTranscript, audioBlob }
+            }}
+          />
+        )
+      case 'speaking-answer-short-question':
+        return (
+          <AnswerShortQuestionInput
+            item={item as AnswerShortQuestionItem}
+            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
+              answerRef.current = { taskType: 'speaking-answer-short-question', recordingSeconds, recognizedTranscript, audioBlob }
             }}
           />
         )

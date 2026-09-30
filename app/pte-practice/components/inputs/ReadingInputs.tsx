@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { FillBlanksDragItem, McqSingleItem, ReorderItem } from '../../types'
+import type { FillBlanksDragItem, FillBlanksDropdownItem, McqMultipleItem, McqSingleItem, ReorderItem } from '../../types'
 
 export function McqSingleInput({
   item,
@@ -160,6 +160,90 @@ export function FillBlanksDragInput({
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+export function McqMultipleInput({
+  item,
+  onChange,
+}: {
+  item: McqMultipleItem
+  onChange: (selectedIndexes: number[]) => void
+}) {
+  const [selected, setSelected] = useState<number[]>([])
+
+  function toggle(index: number) {
+    const next = selected.includes(index) ? selected.filter((value) => value !== index) : [...selected, index]
+    setSelected(next)
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="whitespace-pre-line rounded-lg bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">{item.passage}</p>
+      <p className="font-medium text-gray-900">{item.question}</p>
+      <p className="text-xs text-gray-400">可多选：正确答案数量不会提前告知。</p>
+      <div className="space-y-2">
+        {item.options.map((option, index) => (
+          <label
+            key={index}
+            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${
+              selected.includes(index) ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input type="checkbox" className="mt-0.5" checked={selected.includes(index)} onChange={() => toggle(index)} />
+            <span>{option}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function FillBlanksDropdownInput({
+  item,
+  onChange,
+}: {
+  item: FillBlanksDropdownItem
+  onChange: (answers: string[]) => void
+}) {
+  const [answers, setAnswers] = useState<string[]>(() => Array.from({ length: item.blankOptions.length }, () => ''))
+
+  function updateAnswer(index: number, value: string) {
+    const next = [...answers]
+    next[index] = value
+    setAnswers(next)
+    onChange(next)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">每个空格各自对应一份下拉选项，从中选出最合适的词。</p>
+      <p className="whitespace-pre-line rounded-lg bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">
+        {item.textSegments.map((segment, index) => (
+          <span key={index}>
+            {segment}
+            {index < item.blankOptions.length && (
+              <select
+                value={answers[index]}
+                onChange={(event) => updateAnswer(index, event.target.value)}
+                className="mx-1 inline-block rounded border border-gray-300 px-2 py-0.5 text-sm"
+                aria-label={`空格 ${index + 1}`}
+              >
+                <option value="" disabled>
+                  请选择
+                </option>
+                {item.blankOptions[index].map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            )}
+          </span>
+        ))}
+      </p>
     </div>
   )
 }

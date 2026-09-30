@@ -9,8 +9,13 @@ import { useEffect, useState } from 'react'
  * 音频文件。这里改用浏览器内置的 `window.speechSynthesis`（Web Speech API）
  * 朗读文字稿作为可听形式；若浏览器不支持语音合成，则直接展示文字稿并明确
  * 提示这是文字稿回退方案，而不是伪装成真实听力录音。
+ *
+ * `text` 用于朗读（可能包含题目答案，比如 Select Missing Word 需要完整
+ * 读出结尾被省略的词才能出题）；`revealText` 用于"查看文字稿"按钮展示的
+ * 内容，题目本身会剧透答案时应单独传入不含答案的版本，避免用户点一下
+ * "查看文字稿"就看到正确答案。不传则退回展示 `text`。
  */
-export default function AudioOrTranscript({ text }: { text: string }) {
+export default function AudioOrTranscript({ text, revealText }: { text: string; revealText?: string }) {
   const [supported, setSupported] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -57,7 +62,9 @@ export default function AudioOrTranscript({ text }: { text: string }) {
       ) : (
         <p className="text-sm text-gray-500">当前浏览器不支持语音合成，已直接显示文字稿：</p>
       )}
-      {(revealed || !supported) && <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{text}</p>}
+      {(revealed || !supported) && (
+        <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{revealText ?? text}</p>
+      )}
     </div>
   )
 }

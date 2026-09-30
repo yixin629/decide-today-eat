@@ -3,11 +3,23 @@ export type PteSkill = (typeof SKILLS)[number]
 
 export const TASK_TYPES = [
   'reading-mcq-single',
+  'reading-mcq-multiple',
   'reading-reorder',
   'reading-fill-blanks-drag',
+  'reading-fill-blanks-dropdown',
   'listening-fill-blanks-typed',
   'listening-highlight-summary',
+  'listening-mcq-single',
+  'listening-mcq-multiple',
+  'listening-summarize-spoken-text',
+  'listening-select-missing-word',
+  'listening-highlight-incorrect-words',
+  'listening-write-from-dictation',
   'speaking-read-aloud',
+  'speaking-repeat-sentence',
+  'speaking-describe-image',
+  'speaking-retell-lecture',
+  'speaking-answer-short-question',
   'writing-summarize-text',
   'writing-essay',
 ] as const
@@ -105,6 +117,126 @@ export interface WritingItem {
   maxWords: number
 }
 
+// ---- Reading: MCQ multiple answers ----
+export interface McqMultipleItem {
+  id: string
+  taskType: 'reading-mcq-multiple'
+  passage: string
+  question: string
+  options: string[]
+  correctIndexes: number[]
+}
+
+// ---- Reading: Fill in the blanks (dropdown per blank) ----
+export interface FillBlanksDropdownItem {
+  id: string
+  taskType: 'reading-fill-blanks-dropdown'
+  textSegments: string[]
+  blankOptions: string[][]
+  correctAnswers: string[]
+}
+
+// ---- Listening: MCQ single / multiple answers ----
+export interface ListeningMcqSingleItem {
+  id: string
+  taskType: 'listening-mcq-single'
+  transcript: string
+  question: string
+  options: string[]
+  correctIndex: number
+}
+
+export interface ListeningMcqMultipleItem {
+  id: string
+  taskType: 'listening-mcq-multiple'
+  transcript: string
+  question: string
+  options: string[]
+  correctIndexes: number[]
+}
+
+// ---- Listening: Summarize spoken text ----
+export interface ListeningSummarizeItem {
+  id: string
+  taskType: 'listening-summarize-spoken-text'
+  transcript: string
+  minWords: number
+  maxWords: number
+}
+
+// ---- Listening: Select missing word ----
+export interface SelectMissingWordItem {
+  id: string
+  taskType: 'listening-select-missing-word'
+  /** 完整录音文字稿（含结尾被省略的词/短语），仅用于语音合成播放，不直接展示给用户。 */
+  fullTranscript: string
+  /** 展示给用户的文字稿，结尾处的空缺用 "____" 占位。 */
+  displayedTranscript: string
+  options: string[]
+  correctIndex: number
+}
+
+// ---- Listening: Highlight incorrect words ----
+export interface HighlightIncorrectWordsItem {
+  id: string
+  taskType: 'listening-highlight-incorrect-words'
+  /** 实际朗读的文字稿（用于语音合成播放）。 */
+  audioTranscript: string
+  /** 屏幕上展示的文字稿单词数组，其中部分单词与实际朗读内容不同。 */
+  displayedWords: string[]
+  /** displayedWords 中与实际朗读不符的单词下标。 */
+  incorrectWordIndexes: number[]
+}
+
+// ---- Listening: Write from dictation ----
+export interface WriteFromDictationItem {
+  id: string
+  taskType: 'listening-write-from-dictation'
+  sentence: string
+}
+
+// ---- Speaking: Repeat sentence ----
+export interface RepeatSentenceItem {
+  id: string
+  taskType: 'speaking-repeat-sentence'
+  text: string
+}
+
+// ---- Speaking: Describe image ----
+export interface DescribeImageChart {
+  type: 'bar' | 'line'
+  title: string
+  categories: string[]
+  values: number[]
+  unit?: string
+}
+
+export interface DescribeImageItem {
+  id: string
+  taskType: 'speaking-describe-image'
+  chart: DescribeImageChart
+  /** 供内容维度做关键词覆盖率估算的参考描述文本，不展示给用户。 */
+  referenceDescription: string
+  prepSeconds: number
+}
+
+// ---- Speaking: Retell lecture ----
+export interface RetellLectureItem {
+  id: string
+  taskType: 'speaking-retell-lecture'
+  transcript: string
+  prepSeconds: number
+}
+
+// ---- Speaking: Answer short question ----
+export interface AnswerShortQuestionItem {
+  id: string
+  taskType: 'speaking-answer-short-question'
+  question: string
+  /** 任一均判定为正确（不区分大小写、忽略标点）。 */
+  acceptableAnswers: string[]
+}
+
 export type PracticeItem =
   | McqSingleItem
   | ReorderItem
@@ -113,6 +245,18 @@ export type PracticeItem =
   | HighlightSummaryItem
   | ReadAloudItem
   | WritingItem
+  | McqMultipleItem
+  | FillBlanksDropdownItem
+  | ListeningMcqSingleItem
+  | ListeningMcqMultipleItem
+  | ListeningSummarizeItem
+  | SelectMissingWordItem
+  | HighlightIncorrectWordsItem
+  | WriteFromDictationItem
+  | RepeatSentenceItem
+  | DescribeImageItem
+  | RetellLectureItem
+  | AnswerShortQuestionItem
 
 export type AnswerPayload =
   | { taskType: 'reading-mcq-single'; selectedIndex: number | null }
@@ -131,6 +275,21 @@ export type AnswerPayload =
       audioBlob?: Blob | null
     }
   | { taskType: 'writing-summarize-text' | 'writing-essay'; text: string; secondsUsed: number }
+  | { taskType: 'reading-mcq-multiple'; selectedIndexes: number[] }
+  | { taskType: 'reading-fill-blanks-dropdown'; answers: string[] }
+  | { taskType: 'listening-mcq-single'; selectedIndex: number | null }
+  | { taskType: 'listening-mcq-multiple'; selectedIndexes: number[] }
+  | { taskType: 'listening-summarize-spoken-text'; text: string; secondsUsed: number }
+  | { taskType: 'listening-select-missing-word'; selectedIndex: number | null }
+  | { taskType: 'listening-highlight-incorrect-words'; selectedWordIndexes: number[] }
+  | { taskType: 'listening-write-from-dictation'; text: string }
+  | {
+      taskType: 'speaking-repeat-sentence' | 'speaking-retell-lecture' | 'speaking-describe-image'
+      recordingSeconds: number
+      recognizedTranscript: string | null
+      audioBlob?: Blob | null
+    }
+  | { taskType: 'speaking-answer-short-question'; recordingSeconds: number; recognizedTranscript: string | null; audioBlob?: Blob | null }
 
 export interface AttemptRecord {
   id: string

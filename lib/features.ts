@@ -571,6 +571,16 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['决定', '随机'],
   },
   {
+    name: '吉他新手陪练',
+    path: '/guitar-tutor',
+    icon: '🎸',
+    description: '挑一首歌，跟着分解和弦步骤学弹唱',
+    category: 'play',
+    showOnHome: true,
+    showInNavigation: true,
+    keywords: ['吉他', '和弦', '弹唱', '新手'],
+  },
+  {
     name: '个人资料',
     path: '/profile',
     icon: '👤',

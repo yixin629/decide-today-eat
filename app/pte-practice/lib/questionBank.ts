@@ -1,12 +1,24 @@
 import type {
+  AnswerShortQuestionItem,
+  DescribeImageItem,
   FillBlanksDragItem,
+  FillBlanksDropdownItem,
+  HighlightIncorrectWordsItem,
   HighlightSummaryItem,
   ListeningFillBlanksItem,
+  ListeningMcqMultipleItem,
+  ListeningMcqSingleItem,
+  ListeningSummarizeItem,
+  McqMultipleItem,
   McqSingleItem,
   PracticeItem,
   ReadAloudItem,
+  RepeatSentenceItem,
   ReorderItem,
+  RetellLectureItem,
+  SelectMissingWordItem,
   TaskType,
+  WriteFromDictationItem,
   WritingItem,
 } from '../types'
 
@@ -495,13 +507,470 @@ const writingEssay: WritingItem[] = [
   },
 ]
 
+const readingMcqMultiple: McqMultipleItem[] = [
+  {
+    id: 'r-mcqm-1',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'City councils weighing whether to install more public drinking fountains cite several benefits: reduced plastic bottle waste, free access to water for low-income residents, and lower rates of dehydration-related emergency visits during heat waves. Some councils also note that fountains require ongoing maintenance and water-quality testing, which strains already limited budgets.',
+    question: '根据文章，支持增设饮水台的理由有哪些？（选出所有正确答案）',
+    options: ['减少塑料瓶垃圾', '为低收入居民提供免费饮水', '降低热浪期间脱水就诊率', '完全不需要维护成本'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-2',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Proponents of a four-day work week argue it can reduce burnout, lower commuting-related emissions, and, in several pilot studies, maintain or even improve productivity. Skeptics counter that it may not suit every industry, particularly those requiring round-the-clock coverage such as healthcare.',
+    question: '根据文章，支持四天工作制的理由有哪些？（选出所有正确答案）',
+    options: ['降低职业倦怠', '减少通勤相关排放', '在部分试点中维持或提升生产力', '适用于所有行业，没有例外'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-3',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Advocates for community gardens point to improved access to fresh produce, opportunities for neighbors to interact, and modest reductions in local food-transport emissions. Critics note that gardens can fail without a committed group of volunteers to maintain them long-term.',
+    question: '根据文章，社区花园的好处包括哪些？（选出所有正确答案）',
+    options: ['改善新鲜农产品的获取', '为邻里提供交流机会', '略微降低本地食物运输排放', '完全不需要志愿者维护'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-4',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Digital note-taking apps offer searchable text, easy sharing, and automatic backup, which many students find convenient. Handwriting researchers, however, note that writing by hand has been linked to better recall of material in several studies, likely due to the slower, more deliberate encoding process it requires.',
+    question: '根据文章，数字笔记应用的优势包括哪些？（选出所有正确答案）',
+    options: ['可搜索的文本', '便于分享', '自动备份', '已被证明比手写记忆效果更好'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'r-mcqm-5',
+    taskType: 'reading-mcq-multiple',
+    passage:
+      'Supporters of congestion pricing in city centers argue it reduces traffic jams, cuts air pollution, and can fund public transit improvements with the revenue collected. Opponents worry it disproportionately affects lower-income drivers who cannot easily switch to other forms of transport.',
+    question: '根据文章，支持拥堵收费的理由有哪些？（选出所有正确答案）',
+    options: ['减少交通拥堵', '降低空气污染', '收入可用于改善公共交通', '对所有收入群体的影响完全相同'],
+    correctIndexes: [0, 1, 2],
+  },
+]
+
+const readingFillBlanksDropdown: FillBlanksDropdownItem[] = [
+  {
+    id: 'r-dropdown-1',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'The discovery of antibiotics ',
+      ' modern medicine, dramatically reducing deaths from infections that were once ',
+      ' fatal, though overuse has since led to growing concerns about drug ',
+      '.',
+    ],
+    blankOptions: [
+      ['transformed', 'ignored', 'delayed'],
+      ['routinely', 'rarely', 'accidentally'],
+      ['resistance', 'shortage', 'discovery'],
+    ],
+    correctAnswers: ['transformed', 'routinely', 'resistance'],
+  },
+  {
+    id: 'r-dropdown-2',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Satellite imagery allows scientists to ',
+      ' deforestation in near real time, helping ',
+      ' agencies respond ',
+      ' to illegal logging.',
+    ],
+    blankOptions: [
+      ['monitor', 'ignore', 'cause'],
+      ['environmental', 'financial', 'unrelated'],
+      ['quickly', 'slowly', 'never'],
+    ],
+    correctAnswers: ['monitor', 'environmental', 'quickly'],
+  },
+  {
+    id: 'r-dropdown-3',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Many economists argue that investing in early childhood education produces one of the highest ',
+      ' on investment of any public policy, since the benefits ',
+      ' over a person\'s entire working ',
+      '.',
+    ],
+    blankOptions: [
+      ['returns', 'losses', 'delays'],
+      ['compound', 'disappear', 'reverse'],
+      ['lifetime', 'weekend', 'holiday'],
+    ],
+    correctAnswers: ['returns', 'compound', 'lifetime'],
+  },
+  {
+    id: 'r-dropdown-4',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Noise pollution in cities has been ',
+      ' to elevated stress hormones and disrupted sleep, prompting some municipalities to ',
+      ' stricter limits on construction ',
+      '.',
+    ],
+    blankOptions: [
+      ['linked', 'unrelated', 'opposed'],
+      ['introduce', 'abandon', 'ignore'],
+      ['noise', 'colors', 'traffic lights'],
+    ],
+    correctAnswers: ['linked', 'introduce', 'noise'],
+  },
+  {
+    id: 'r-dropdown-5',
+    taskType: 'reading-fill-blanks-dropdown',
+    textSegments: [
+      'Because coral polyps are extremely ',
+      ' to temperature change, even a rise of one or two degrees can trigger a ',
+      ' event that leaves reefs ',
+      ' to disease.',
+    ],
+    blankOptions: [
+      ['sensitive', 'immune', 'indifferent'],
+      ['bleaching', 'cooling', 'celebration'],
+      ['vulnerable', 'immune', 'unrelated'],
+    ],
+    correctAnswers: ['sensitive', 'bleaching', 'vulnerable'],
+  },
+]
+
+const listeningMcqSingle: ListeningMcqSingleItem[] = [
+  {
+    id: 'l-mcqs-1',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Today I want to talk about why honey never spoils. Its low moisture content and naturally acidic pH create an environment where bacteria simply cannot survive, which is why archaeologists have found edible honey in tombs thousands of years old.',
+    question: '根据讲座，蜂蜜为什么不会变质？',
+    options: ['因为它含糖量低', '因为其低水分含量和酸性环境使细菌无法存活', '因为它总是被密封保存', '因为蜜蜂会添加防腐剂'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-2',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s discuss why the sky appears blue during the day. Sunlight contains all colors, but shorter blue wavelengths are scattered far more by the gases in our atmosphere than longer wavelengths like red, so blue light reaches our eyes from all directions.',
+    question: '根据讲座，天空为什么呈现蓝色？',
+    options: ['因为大气中含有蓝色气体', '因为蓝光波长较短，更容易被大气散射', '因为太阳只发出蓝光', '因为人眼只能看到蓝光'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-3',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'This morning\'s topic is why we yawn when we see someone else yawn. One leading theory suggests contagious yawning is linked to empathy, since studies show it occurs more frequently between people who are emotionally close.',
+    question: '根据讲座，"传染性打哈欠"与什么因素有关？',
+    options: ['房间的温度', '同理心，在情感亲近的人之间更常见', '打哈欠的人的年龄', '当天的时间'],
+    correctIndex: 1,
+  },
+  {
+    id: 'l-mcqs-4',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Now, why do onions make us cry? When you cut an onion, it releases a volatile compound that reacts with the moisture in your eyes to form a mild sulfuric acid, triggering your tear glands as a protective response.',
+    question: '根据讲座，切洋葱为什么会让人流泪？',
+    options: ['洋葱释放的气体与眼睛水分反应生成刺激性物质', '洋葱含有辣椒素', '这只是一种心理暗示效应', '洋葱的气味太浓烈'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-mcqs-5',
+    taskType: 'listening-mcq-single',
+    transcript:
+      'Let\'s look at why bamboo grows so fast. Unlike trees, bamboo doesn\'t need to build new cells to grow taller each day; the segments of the stem are all fully formed at the base and simply extend rapidly by expanding cells that are already there.',
+    question: '根据讲座，竹子生长快的原因是什么？',
+    options: ['它不断长出新细胞', '茎的分段已在基部形成，通过已有细胞的扩张快速伸长', '它几乎不需要阳光', '它的根系特别浅'],
+    correctIndex: 1,
+  },
+]
+
+const listeningMcqMultiple: ListeningMcqMultipleItem[] = [
+  {
+    id: 'l-mcqm-1',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Researchers studying urban trees found several benefits beyond aesthetics: they lower summer street temperatures by providing shade, reduce stormwater runoff by absorbing rainfall, and can modestly reduce noise from nearby traffic.',
+    question: '根据讲座，城市树木带来的好处有哪些？（选出所有正确答案）',
+    options: ['降低夏季街道气温', '减少雨水径流', '降低交通噪音', '完全消除空气污染'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-2',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A study on workplace lighting found that employees exposed to more natural daylight reported better sleep quality, fewer headaches, and slightly higher self-reported productivity compared with those working under fluorescent lighting alone.',
+    question: '根据讲座，接触更多自然光的员工报告了哪些变化？（选出所有正确答案）',
+    options: ['睡眠质量更好', '头痛更少', '自评生产力略高', '视力显著改善'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-3',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Marine biologists tracking whale migration have found that the animals rely on a combination of ocean currents, water temperature gradients, and possibly the Earth\'s magnetic field to navigate thousands of kilometers each year.',
+    question: '根据讲座，鲸鱼迁徙可能依赖哪些导航方式？（选出所有正确答案）',
+    options: ['洋流', '水温梯度', '地球磁场', '船只发出的声音'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-4',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'A survey of remote workers identified the top challenges as difficulty separating work from personal life, feelings of isolation from colleagues, and, for some, a lack of suitable home office equipment.',
+    question: '根据讲座，远程办公者面临的挑战有哪些？（选出所有正确答案）',
+    options: ['工作与生活边界模糊', '与同事的孤立感', '缺乏合适的居家办公设备', '通勤时间过长'],
+    correctIndexes: [0, 1, 2],
+  },
+  {
+    id: 'l-mcqm-5',
+    taskType: 'listening-mcq-multiple',
+    transcript:
+      'Nutrition researchers note that fermented foods can support gut health by introducing beneficial bacteria, may improve the digestibility of certain nutrients, and in some studies have been linked to modest improvements in mood.',
+    question: '根据讲座，发酵食品可能带来哪些益处？（选出所有正确答案）',
+    options: ['引入有益菌群', '提高部分营养素的可消化性', '与情绪的适度改善有关', '完全替代所有药物治疗'],
+    correctIndexes: [0, 1, 2],
+  },
+]
+
+const listeningSummarizeSpokenText: ListeningSummarizeItem[] = [
+  {
+    id: 'l-sst-1',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today\'s lecture examines the rise of urban vertical gardens, which use exterior building walls to grow plants. Proponents highlight improved insulation, reduced urban heat, and added greenery in space-constrained cities. Engineers caution that structural load and irrigation systems must be carefully designed, since a poorly maintained vertical garden can damage the building\'s facade over time.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-2',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture looks at why some companies are shifting to a four-day work week. Early trials report steady or improved output alongside better employee wellbeing, though the approach appears to suit knowledge-based roles more easily than shift-based industries like manufacturing or healthcare, where continuous coverage is essential.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-3',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'We\'ll discuss the growing use of drones in agriculture. Farmers use them to monitor crop health, apply fertilizer with precision, and detect irrigation problems earlier than ground inspection allows. The main barriers to wider adoption remain the upfront cost of the equipment and the training required to operate it effectively.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-4',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'Today\'s topic is the debate over standardized testing in schools. Supporters argue it provides an objective, comparable measure of student achievement across different schools and regions. Critics counter that it narrows curricula toward test preparation and may fail to capture creativity, critical thinking, or other harder-to-measure skills.',
+    minWords: 50,
+    maxWords: 70,
+  },
+  {
+    id: 'l-sst-5',
+    taskType: 'listening-summarize-spoken-text',
+    transcript:
+      'This lecture covers recent efforts to restore wetlands that were drained decades ago for agriculture. Restored wetlands have been shown to filter pollutants from water, provide habitat for migratory birds, and reduce flood risk downstream, though restoration projects can take many years to reach full ecological function.',
+    minWords: 50,
+    maxWords: 70,
+  },
+]
+
+const listeningSelectMissingWord: SelectMissingWordItem[] = [
+  {
+    id: 'l-missing-1',
+    taskType: 'listening-select-missing-word',
+    fullTranscript:
+      'After weeks of drought, the farmers were relieved when the forecast finally predicted heavy rain.',
+    displayedTranscript: 'After weeks of drought, the farmers were relieved when the forecast finally predicted ____.',
+    options: ['heavy rain', 'a sunny week', 'strong winds', 'a full moon'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-2',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'Despite the rising cost of raw materials, the company managed to keep its prices stable.',
+    displayedTranscript: 'Despite the rising cost of raw materials, the company managed to keep its prices ____.',
+    options: ['stable', 'doubled', 'confidential', 'irrelevant'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-3',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The museum\'s new wing was designed specifically to house the growing photography collection.',
+    displayedTranscript: 'The museum\'s new wing was designed specifically to house the growing photography ____.',
+    options: ['collection', 'cafeteria', 'parking lot', 'staff'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-4',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'Because the bridge was closed for repairs, commuters had to find an alternative route.',
+    displayedTranscript: 'Because the bridge was closed for repairs, commuters had to find an alternative ____.',
+    options: ['route', 'hobby', 'language', 'salary'],
+    correctIndex: 0,
+  },
+  {
+    id: 'l-missing-5',
+    taskType: 'listening-select-missing-word',
+    fullTranscript: 'The research team published their findings only after the results had been independently verified.',
+    displayedTranscript: 'The research team published their findings only after the results had been independently ____.',
+    options: ['verified', 'forgotten', 'sold', 'translated'],
+    correctIndex: 0,
+  },
+]
+
+const listeningHighlightIncorrectWords: HighlightIncorrectWordsItem[] = [
+  {
+    id: 'l-highlight-1',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The library will extend its opening hours during the final week of exams to support students.',
+    displayedWords: ['The', 'library', 'will', 'reduce', 'its', 'closing', 'hours', 'during', 'the', 'final', 'week', 'of', 'exams', 'to', 'support', 'students.'],
+    incorrectWordIndexes: [3, 5],
+  },
+  {
+    id: 'l-highlight-2',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'Scientists discovered that the ancient river had shifted its course several times over the centuries.',
+    displayedWords: ['Scientists', 'discovered', 'that', 'the', 'modern', 'river', 'had', 'shifted', 'its', 'course', 'several', 'times', 'over', 'the', 'decades.'],
+    incorrectWordIndexes: [4, 14],
+  },
+  {
+    id: 'l-highlight-3',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The company announced that it would open two new factories next spring to meet rising demand.',
+    displayedWords: ['The', 'company', 'announced', 'that', 'it', 'would', 'close', 'two', 'old', 'factories', 'next', 'spring', 'to', 'meet', 'rising', 'demand.'],
+    incorrectWordIndexes: [6, 8],
+  },
+  {
+    id: 'l-highlight-4',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'Volunteers spent the weekend planting trees along the riverbank to prevent soil erosion.',
+    displayedWords: ['Volunteers', 'spent', 'the', 'morning', 'planting', 'flowers', 'along', 'the', 'riverbank', 'to', 'prevent', 'soil', 'erosion.'],
+    incorrectWordIndexes: [3, 5],
+  },
+  {
+    id: 'l-highlight-5',
+    taskType: 'listening-highlight-incorrect-words',
+    audioTranscript: 'The airline confirmed that all delayed flights would resume service by early evening.',
+    displayedWords: ['The', 'airline', 'confirmed', 'that', 'all', 'cancelled', 'flights', 'would', 'resume', 'service', 'by', 'late', 'evening.'],
+    incorrectWordIndexes: [5, 11],
+  },
+]
+
+const listeningWriteFromDictation: WriteFromDictationItem[] = [
+  { id: 'l-dictation-1', taskType: 'listening-write-from-dictation', sentence: 'The committee will review the proposal next week.' },
+  { id: 'l-dictation-2', taskType: 'listening-write-from-dictation', sentence: 'Heavy traffic delayed the morning delivery by an hour.' },
+  { id: 'l-dictation-3', taskType: 'listening-write-from-dictation', sentence: 'Researchers published their findings in a leading journal.' },
+  { id: 'l-dictation-4', taskType: 'listening-write-from-dictation', sentence: 'The museum extended its hours for the summer exhibition.' },
+  { id: 'l-dictation-5', taskType: 'listening-write-from-dictation', sentence: 'Local farmers reported a stronger harvest than last year.' },
+  { id: 'l-dictation-6', taskType: 'listening-write-from-dictation', sentence: 'The airport announced new security measures starting Monday.' },
+]
+
+const speakingRepeatSentence: RepeatSentenceItem[] = [
+  { id: 's-rs-1', taskType: 'speaking-repeat-sentence', text: 'The lecture has been rescheduled to next Tuesday afternoon.' },
+  { id: 's-rs-2', taskType: 'speaking-repeat-sentence', text: 'Please remember to submit your assignment before the deadline.' },
+  { id: 's-rs-3', taskType: 'speaking-repeat-sentence', text: 'The library closes early on public holidays.' },
+  { id: 's-rs-4', taskType: 'speaking-repeat-sentence', text: 'Researchers are studying how climate change affects coastal cities.' },
+  { id: 's-rs-5', taskType: 'speaking-repeat-sentence', text: 'The new policy will take effect at the beginning of next month.' },
+  { id: 's-rs-6', taskType: 'speaking-repeat-sentence', text: 'Most students found the workshop both practical and engaging.' },
+]
+
+const speakingDescribeImage: DescribeImageItem[] = [
+  {
+    id: 's-di-1',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '某城市各交通方式通勤占比', categories: ['步行', '自行车', '公交', '私家车'], values: [15, 20, 35, 30], unit: '%' },
+    referenceDescription:
+      'The bar chart shows commuting methods in a city. Bus is the most common at 35 percent, followed by car at 30 percent, bicycle at 20 percent, and walking at 15 percent.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-2',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某产品五年销量趋势（万件）', categories: ['2021', '2022', '2023', '2024', '2025'], values: [12, 18, 22, 30, 45] },
+    referenceDescription:
+      'The line chart shows steady growth in product sales from 12 units in 2021 to 45 units in 2025, with the sharpest increase occurring between 2024 and 2025.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-3',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'bar', title: '大学生课外活动时间分配（小时/周）', categories: ['运动', '社团', '兼职', '娱乐'], values: [4, 3, 6, 8], unit: '小时' },
+    referenceDescription:
+      'The bar chart shows university students spend the most time on entertainment at 8 hours per week, followed by part-time work at 6 hours, sports at 4 hours, and clubs at 3 hours.',
+    prepSeconds: 25,
+  },
+  {
+    id: 's-di-4',
+    taskType: 'speaking-describe-image',
+    chart: { type: 'line', title: '某地区年平均气温变化（摄氏度）', categories: ['2000', '2010', '2020', '2024'], values: [14, 14.5, 15.3, 16 ] },
+    referenceDescription:
+      'The line chart shows a gradual rise in average annual temperature from 14 degrees in 2000 to 16 degrees in 2024, indicating a consistent warming trend.',
+    prepSeconds: 25,
+  },
+]
+
+const speakingRetellLecture: RetellLectureItem[] = [
+  {
+    id: 's-retell-1',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Today I want to talk about the history of the compass. Long before it was used for navigation, ancient Chinese scholars used lodestone to build divination boards. It wasn\'t until sailors realized the stone always pointed toward magnetic north that the compass became an essential tool for long ocean voyages, eventually enabling the age of global exploration.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-2',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Let\'s discuss why some trees drop their leaves in autumn. As daylight hours shorten and temperatures fall, deciduous trees stop producing chlorophyll, revealing the yellow and orange pigments that were there all along. Eventually the trees seal off the connection to each leaf, allowing them to fall and conserving the tree\'s energy for winter.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-3',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'This lecture covers the invention of refrigeration. Before mechanical refrigeration, people relied on ice harvested from frozen lakes and stored in insulated ice houses through summer. The development of compressor-based refrigeration in the late nineteenth century transformed food storage, allowing fresh produce and meat to be shipped much further than before.',
+    prepSeconds: 10,
+  },
+  {
+    id: 's-retell-4',
+    taskType: 'speaking-retell-lecture',
+    transcript:
+      'Today\'s topic is the domestication of rice. Archaeological evidence suggests rice was first cultivated in the Yangtze River basin thousands of years ago. Over generations, farmers selectively grew plants with larger seeds and less tendency to shatter, eventually producing the rice varieties that became a staple food across much of Asia.',
+    prepSeconds: 10,
+  },
+]
+
+const speakingAnswerShortQuestion: AnswerShortQuestionItem[] = [
+  { id: 's-asq-1', taskType: 'speaking-answer-short-question', question: 'What do we call a doctor who treats animals?', acceptableAnswers: ['a vet', 'vet', 'veterinarian', 'a veterinarian'] },
+  { id: 's-asq-2', taskType: 'speaking-answer-short-question', question: 'What is the opposite of "hot"?', acceptableAnswers: ['cold'] },
+  { id: 's-asq-3', taskType: 'speaking-answer-short-question', question: 'How many days are there in a week?', acceptableAnswers: ['seven', '7', 'seven days'] },
+  { id: 's-asq-4', taskType: 'speaking-answer-short-question', question: 'What do you call a place where books are borrowed?', acceptableAnswers: ['a library', 'library'] },
+  { id: 's-asq-5', taskType: 'speaking-answer-short-question', question: 'What season comes after winter?', acceptableAnswers: ['spring'] },
+  { id: 's-asq-6', taskType: 'speaking-answer-short-question', question: 'What instrument is used to measure temperature?', acceptableAnswers: ['a thermometer', 'thermometer'] },
+]
+
 export const QUESTION_BANK: Record<TaskType, PracticeItem[]> = {
   'reading-mcq-single': readingMcqSingle,
+  'reading-mcq-multiple': readingMcqMultiple,
   'reading-reorder': readingReorder,
   'reading-fill-blanks-drag': readingFillBlanksDrag,
+  'reading-fill-blanks-dropdown': readingFillBlanksDropdown,
   'listening-fill-blanks-typed': listeningFillBlanksTyped,
   'listening-highlight-summary': listeningHighlightSummary,
+  'listening-mcq-single': listeningMcqSingle,
+  'listening-mcq-multiple': listeningMcqMultiple,
+  'listening-summarize-spoken-text': listeningSummarizeSpokenText,
+  'listening-select-missing-word': listeningSelectMissingWord,
+  'listening-highlight-incorrect-words': listeningHighlightIncorrectWords,
+  'listening-write-from-dictation': listeningWriteFromDictation,
   'speaking-read-aloud': speakingReadAloud,
+  'speaking-repeat-sentence': speakingRepeatSentence,
+  'speaking-describe-image': speakingDescribeImage,
+  'speaking-retell-lecture': speakingRetellLecture,
+  'speaking-answer-short-question': speakingAnswerShortQuestion,
   'writing-summarize-text': writingSummarizeText,
   'writing-essay': writingEssay,
 }
