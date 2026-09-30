@@ -53,22 +53,30 @@ export default function CommunityFeed({ currentUserId }: { currentUserId: string
   }, [attempts, comments])
 
   if (loading) {
-    return <p className="text-sm text-gray-400">加载共享动态中…</p>
+    return (
+      <div className="loading-state">
+        <span className="loading-spinner" aria-hidden />
+        加载共享动态中…
+      </div>
+    )
   }
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500">ZYX 与 ZLY 的最近练习与讨论，实时更新。</p>
-      {error && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">{error}</p>}
+      {error && (
+        <div className="note-warning">
+          <span className="note-callout-icon" aria-hidden>⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
       {feed.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-          还没有任何共享记录，完成一次练习或发一条评论试试。
-        </p>
+        <p className="empty-state">还没有任何共享记录，完成一次练习或发一条评论试试。</p>
       ) : (
         <ul className="space-y-2">
           {feed.map((entry) =>
             entry.kind === 'attempt' ? (
-              <li key={`attempt-${entry.attempt.id}`} className="rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm">
+              <li key={`attempt-${entry.attempt.id}`} className="card-compact text-sm transition-shadow duration-150 hover:shadow-md">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-800">
                     {USER_LABELS[entry.attempt.userId ?? ''] ?? entry.attempt.userId ?? '未知用户'}
@@ -80,7 +88,7 @@ export default function CommunityFeed({ currentUserId }: { currentUserId: string
                 <p className="mt-1 text-xs text-gray-500">{entry.attempt.summary}</p>
               </li>
             ) : (
-              <li key={`comment-${entry.comment.id}`} className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-sm shadow-sm">
+              <li key={`comment-${entry.comment.id}`} className="card-compact border-blue-100 bg-blue-50/50 text-sm transition-shadow duration-150 hover:shadow-md">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-800">
                     {USER_LABELS[entry.comment.userId] ?? entry.comment.userId}

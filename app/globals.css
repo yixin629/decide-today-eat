@@ -209,6 +209,73 @@ html[data-color-theme='starlight'] body::before {
   .badge-gray {
     @apply badge bg-gray-100 text-gray-700;
   }
+
+  /* ── Callout notes (disclaimers / hints) ──
+     Consistent "icon + tinted background" treatment so honesty disclaimers
+     (heuristic scoring, non-official results, etc.) stay legible instead of
+     collapsing into ignorable text-xs/text-gray-400 fine print. */
+  .note-callout {
+    @apply flex items-start gap-2.5 rounded-xl border p-3.5 text-sm leading-relaxed sm:p-4;
+  }
+  .note-callout-icon {
+    @apply mt-0.5 shrink-0 text-base leading-none;
+  }
+  .note-info {
+    @apply note-callout border-blue-100 bg-blue-50/60 text-blue-800;
+  }
+  .dark-mode .note-info,
+  .eye-care-mode .note-info {
+    @apply border-blue-900/40 bg-blue-950/30 text-blue-200;
+  }
+  .note-warning {
+    @apply note-callout border-amber-200 bg-amber-50/80 text-amber-800;
+  }
+  .dark-mode .note-warning,
+  .eye-care-mode .note-warning {
+    @apply border-amber-900/40 bg-amber-950/30 text-amber-200;
+  }
+  .note-error {
+    @apply note-callout border-red-200 bg-red-50/80 text-red-700;
+  }
+  .dark-mode .note-error,
+  .eye-care-mode .note-error {
+    @apply border-red-900/40 bg-red-950/30 text-red-300;
+  }
+
+  /* ── Empty / loading state ──
+     One shared visual pattern for "nothing here yet" and "loading" so every
+     panel (history, feed, analytics, task dashboard, mock exam) reads the same. */
+  .empty-state {
+    @apply rounded-xl border border-dashed p-8 text-center text-sm;
+    border-color: var(--border-subtle);
+    color: var(--text-muted);
+  }
+  .loading-state {
+    @apply flex items-center justify-center gap-2 rounded-xl border border-dashed p-8 text-sm;
+    border-color: var(--border-subtle);
+    color: var(--text-muted);
+  }
+  .loading-spinner {
+    @apply h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-60;
+  }
+
+  /* ── Score / progress bars (report card, weak-spot rankings, etc.) ── */
+  .score-track {
+    @apply h-2.5 w-full overflow-hidden rounded-full;
+    background: var(--surface-muted);
+  }
+  .score-fill {
+    @apply h-full rounded-full transition-[width] duration-500 ease-out;
+  }
+  .score-fill-good {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+  }
+  .score-fill-mid {
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+  .score-fill-low {
+    background: linear-gradient(90deg, #dc2626, #ef4444);
+  }
 }
 
 @layer utilities {

@@ -75,25 +75,25 @@ export default function MockExamRunner({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white p-3 text-sm">
+      <div className="card-compact flex flex-wrap items-center justify-between gap-2 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary">{currentStep.sectionShortLabel}</span>
           <span className="text-gray-600">
             {currentStep.sectionLabel} · 第 {currentStep.indexInSection}/{currentStep.totalInSection} 题
           </span>
         </div>
-        <div className="flex items-center gap-3 text-gray-500">
-          <span>模考总用时 {elapsedLabel}</span>
-          <span>总进度 {currentStep.globalIndex}/{currentStep.totalGlobal}</span>
-          <button type="button" onClick={confirmAndAbort} className="text-red-500 underline">
+        <div className="flex flex-wrap items-center gap-3 text-gray-500">
+          <span className="tabular-nums">模考总用时 {elapsedLabel}</span>
+          <span className="tabular-nums">总进度 {currentStep.globalIndex}/{currentStep.totalGlobal}</span>
+          <button type="button" onClick={confirmAndAbort} className="text-red-500 underline transition-colors hover:text-red-700">
             提前结束模考
           </button>
         </div>
       </div>
 
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="score-track">
         <div
-          className="h-full rounded-full bg-primary transition-all"
+          className="score-fill bg-primary"
           style={{ width: `${(currentStep.globalIndex / currentStep.totalGlobal) * 100}%` }}
         />
       </div>

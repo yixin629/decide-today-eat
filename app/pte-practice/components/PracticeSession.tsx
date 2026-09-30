@@ -386,54 +386,64 @@ export default function PracticeSession({
   }, [item])
 
   if (itemLoading) {
-    return <p className="text-sm text-gray-400">加载题目中…</p>
+    return (
+      <div className="loading-state">
+        <span className="loading-spinner" aria-hidden />
+        加载题目中…
+      </div>
+    )
   }
 
   if (!item) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-        未找到题目，请返回题库重新选择。
-        <button type="button" onClick={onExit} className="ml-3 underline">
-          返回
-        </button>
+      <div className="note-error">
+        <span className="note-callout-icon" aria-hidden>⚠️</span>
+        <span>
+          未找到题目，请返回题库重新选择。
+          <button type="button" onClick={onExit} className="ml-3 underline transition-colors hover:text-red-900">
+            返回
+          </button>
+        </span>
       </div>
     )
   }
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-gray-500">{meta.label}</p>
-          <h2 className="text-lg font-semibold text-gray-900">{meta.shortLabel} 练习</h2>
+          <h2 className="title-h3">{meta.shortLabel} 练习</h2>
         </div>
         <div className="flex items-center gap-3">
           {minutes !== null && seconds !== null ? (
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${remainingSeconds && remainingSeconds < 15 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-medium tabular-nums transition-colors ${
+                remainingSeconds && remainingSeconds < 15 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
               剩余 {minutes}:{seconds.toString().padStart(2, '0')}
             </span>
           ) : (
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">已用时 {elapsedSeconds}s</span>
+            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium tabular-nums text-gray-700">已用时 {elapsedSeconds}s</span>
           )}
-          <button type="button" onClick={onQuit ?? onExit} className="text-sm text-gray-500 underline">
+          <button type="button" onClick={onQuit ?? onExit} className="text-sm text-gray-500 underline transition-colors hover:text-gray-700">
             退出
           </button>
         </div>
       </div>
 
       {itemLoadError && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">{itemLoadError}</p>
+        <div className="note-warning">
+          <span className="note-callout-icon" aria-hidden>⚠️</span>
+          <span>{itemLoadError}</span>
+        </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">{inputElement}</div>
+      <div className="card">{inputElement}</div>
 
       {!submitted && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="w-full rounded-lg bg-primary py-2.5 font-medium text-white disabled:opacity-60 sm:w-auto sm:px-8"
-        >
+        <button type="button" onClick={handleSubmit} disabled={submitting} className="btn-primary w-full sm:w-auto">
           {scoringInProgress ? '正在评分…' : submitting ? '提交中…' : '提交作答'}
         </button>
       )}
@@ -442,10 +452,13 @@ export default function PracticeSession({
         <div className="space-y-4">
           <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />
           {saveError && (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">{saveError}</p>
+            <div className="note-warning">
+              <span className="note-callout-icon" aria-hidden>⚠️</span>
+              <span>{saveError}</span>
+            </div>
           )}
           <div className="flex gap-3">
-            <button type="button" onClick={onExit} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
+            <button type="button" onClick={onExit} className="btn-secondary">
               {exitLabel}
             </button>
           </div>

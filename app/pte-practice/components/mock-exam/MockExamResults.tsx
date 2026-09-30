@@ -68,13 +68,16 @@ export default function MockExamResults({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-800">
-        模考结束，共完成 {totalAttempted}/{results.length} 题。以下统计为<strong>本项目内部估算</strong>，
-        并非 Pearson 官方评分或官方 0-90 分换算结果，仅供自我训练参考。
+      <div className="note-info">
+        <span className="note-callout-icon" aria-hidden>ℹ️</span>
+        <span>
+          模考结束，共完成 {totalAttempted}/{results.length} 题。以下统计为<strong>本项目内部估算</strong>，
+          并非 Pearson 官方评分或官方 0-90 分换算结果，仅供自我训练参考。
+        </span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card-compact">
           <p className="text-sm text-gray-500">客观题正确率（阅读/听力客观题等，精确对错判定）</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
             {overallObjective.max > 0 ? `${Math.round((overallObjective.scored / overallObjective.max) * 100)}%` : '暂无客观题数据'}
@@ -85,7 +88,7 @@ export default function MockExamResults({
             </p>
           )}
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card-compact">
           <p className="text-sm text-gray-500">主观题练习估分均值（口语/写作等启发式估分，非官方评分）</p>
           <p className="mt-1 text-2xl font-semibold text-gray-900">
             {overallSubjective.max > 0 ? `${Math.round((overallSubjective.scored / overallSubjective.max) * 100)}%` : '暂无主观题数据'}
@@ -100,8 +103,8 @@ export default function MockExamResults({
 
       <div className="space-y-3">
         {sectionStats.map((section) => (
-          <div key={section.sectionId} className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className="flex items-center justify-between">
+          <div key={section.sectionId} className="card-compact">
+            <div className="flex flex-wrap items-center justify-between gap-1">
               <h3 className="font-semibold text-gray-900">{section.sectionLabel}</h3>
               <span className="text-sm text-gray-500">
                 完成 {section.attempted}/{section.total} 题
@@ -125,8 +128,8 @@ export default function MockExamResults({
           {results.map((result, index) => {
             const meta = getTaskTypeMeta(result.step.taskType)
             return (
-              <div key={`${result.step.taskType}-${result.step.itemId}-${index}`} className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
-                <div className="flex items-center justify-between">
+              <div key={`${result.step.taskType}-${result.step.itemId}-${index}`} className="card-compact text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-1">
                   <span className="font-medium text-gray-800">
                     {result.step.sectionShortLabel} · {meta.shortLabel}
                   </span>
@@ -144,10 +147,10 @@ export default function MockExamResults({
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={onRestart} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">
+        <button type="button" onClick={onRestart} className="btn-primary !px-4 !py-2 !text-sm">
           再来一次模考
         </button>
-        <button type="button" onClick={onExit} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">
+        <button type="button" onClick={onExit} className="btn-secondary !px-4 !py-2 !text-sm">
           返回模考入口
         </button>
       </div>

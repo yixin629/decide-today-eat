@@ -68,7 +68,7 @@ export default function TaskDashboard({ onSelectTaskType }: { onSelectTaskType: 
                     type="button"
                     onClick={() => onSelectTaskType(taskType)}
                     disabled={itemCount === 0}
-                    className="flex flex-col items-start gap-1 rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                    className="card-compact flex flex-col items-start gap-1 text-left transition-shadow duration-150 hover:shadow-md focus-visible:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-none"
                   >
                     <span className="font-medium text-gray-900">{meta.shortLabel}</span>
                     <span className="text-xs text-gray-500">{meta.description}</span>

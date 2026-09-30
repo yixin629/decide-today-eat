@@ -65,15 +65,23 @@ export default function CommentThread({ itemId, taskType, userId }: { itemId: st
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+    <div className="card space-y-3">
       <h3 className="text-sm font-semibold text-gray-900">这道题的讨论 / 考场记录</h3>
 
-      {loadError && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">{loadError}</p>}
+      {loadError && (
+        <div className="note-warning">
+          <span className="note-callout-icon" aria-hidden>⚠️</span>
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {loading ? (
-        <p className="text-sm text-gray-400">加载评论中…</p>
+        <div className="loading-state">
+          <span className="loading-spinner" aria-hidden />
+          加载评论中…
+        </div>
       ) : comments.length === 0 ? (
-        <p className="text-sm text-gray-400">还没有人留言，快来记录一下有没有考到过这道题吧。</p>
+        <p className="empty-state">还没有人留言，快来记录一下有没有考到过这道题吧。</p>
       ) : (
         <ul className="space-y-2">
           {comments.map((comment) => (
@@ -96,14 +104,14 @@ export default function CommentThread({ itemId, taskType, userId }: { itemId: st
       )}
 
       {userId ? (
-        <div className="space-y-2 border-t border-gray-100 pt-3">
+        <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--border-subtle)' }}>
           <textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
             maxLength={2000}
             rows={3}
             placeholder="留下你的想法，或者记录一下这道题是否在真实考场遇到过……"
-            className="w-full rounded-lg border border-gray-200 p-2 text-sm"
+            className="input-ghost text-sm"
           />
           <div className="flex flex-wrap gap-2">
             <input
@@ -111,27 +119,29 @@ export default function CommentThread({ itemId, taskType, userId }: { itemId: st
               onChange={(event) => setExamLocation(event.target.value)}
               maxLength={100}
               placeholder="在哪里考过（可选）"
-              className="flex-1 rounded-lg border border-gray-200 p-2 text-sm"
+              className="input-ghost flex-1 text-sm"
             />
             <input
               type="date"
               value={examDate}
               onChange={(event) => setExamDate(event.target.value)}
-              className="rounded-lg border border-gray-200 p-2 text-sm"
+              className="input-ghost text-sm sm:w-auto"
             />
           </div>
-          {submitError && <p className="text-xs text-red-600">{submitError}</p>}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
+          {submitError && (
+            <div className="note-error !p-2.5 !text-xs">
+              <span className="note-callout-icon !text-sm" aria-hidden>⚠️</span>
+              <span>{submitError}</span>
+            </div>
+          )}
+          <button type="button" onClick={handleSubmit} disabled={submitting} className="btn-primary !px-4 !py-2 !text-sm">
             {submitting ? '发送中…' : '发布评论'}
           </button>
         </div>
       ) : (
-        <p className="border-t border-gray-100 pt-3 text-xs text-gray-400">未识别登录身份，暂时无法发表评论。</p>
+        <p className="border-t pt-3 text-xs text-gray-400" style={{ borderColor: 'var(--border-subtle)' }}>
+          未识别登录身份，暂时无法发表评论。
+        </p>
       )}
     </div>
   )

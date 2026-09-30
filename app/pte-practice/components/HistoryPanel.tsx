@@ -11,19 +11,19 @@ export default function HistoryPanel({
   source?: 'cloud' | 'local'
 }) {
   if (attempts.length === 0) {
-    return <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">还没有练习记录，完成一次练习后会显示在这里。</p>
+    return <p className="empty-state">还没有练习记录，完成一次练习后会显示在这里。</p>
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-gray-500">
           共 {attempts.length} 条记录（
           {source === 'cloud' ? '已同步到云端，可跨设备查看' : '当前保存在本机浏览器，不会同步到其他设备'}
           ）
         </p>
         {source === 'local' && (
-          <button type="button" onClick={onClear} className="text-sm text-red-500 underline">
+          <button type="button" onClick={onClear} className="text-sm text-red-500 underline transition-colors hover:text-red-700">
             清空本机记录
           </button>
         )}
@@ -32,7 +32,7 @@ export default function HistoryPanel({
         {attempts.map((attempt) => {
           const meta = getTaskTypeMeta(attempt.taskType)
           return (
-            <li key={attempt.id} className="rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-sm">
+            <li key={attempt.id} className="card-compact text-sm transition-shadow duration-150 hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-gray-800">{meta.shortLabel}</span>
                 <span className="text-xs text-gray-400">{new Date(attempt.createdAt).toLocaleString('zh-CN')}</span>

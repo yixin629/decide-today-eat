@@ -6,6 +6,7 @@ import { clearLocalAttempts, loadAttempts } from '../lib/attempt-repository'
 import { loadItemsForTaskType } from '../lib/item-repository'
 import { getTaskTypeMeta } from '../lib/taskTypes'
 import type { AttemptRecord, PracticeItem, TaskType } from '../types'
+import AnalyticsDashboard from './analytics/AnalyticsDashboard'
 import CommunityFeed from './CommunityFeed'
 import HistoryPanel from './HistoryPanel'
 import MockExam from './mock-exam/MockExam'
@@ -13,7 +14,7 @@ import PracticeSession from './PracticeSession'
 import TaskDashboard from './TaskDashboard'
 
 type View = { name: 'dashboard' } | { name: 'pick-item'; taskType: TaskType } | { name: 'session'; taskType: TaskType; itemId: string }
-type Tab = 'practice' | 'mock-exam' | 'mine' | 'feed'
+type Tab = 'practice' | 'mock-exam' | 'mine' | 'feed' | 'analytics'
 
 export default function PtePractice() {
   const { user } = useAuth()
@@ -23,15 +24,19 @@ export default function PtePractice() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-800">
-        这是一套<strong>原创练习题</strong>，参考 PTE 公开题型格式自行编写，并非 Pearson 官方真题或&ldquo;机经&rdquo;，所有分数均为练习估分，仅供自我训练参考。
+      <div className="note-info">
+        <span className="note-callout-icon" aria-hidden>ℹ️</span>
+        <span>
+          这是一套<strong>原创练习题</strong>，参考 PTE 公开题型格式自行编写，并非 Pearson 官方真题或&ldquo;机经&rdquo;，所有分数均为练习估分，仅供自我训练参考。
+        </span>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
+      <div className="flex flex-wrap gap-1.5 border-b pb-2" style={{ borderColor: 'var(--border-subtle)' }}>
         <TabButton active={tab === 'practice'} onClick={() => setTab('practice')} label="题型练习" />
         <TabButton active={tab === 'mock-exam'} onClick={() => setTab('mock-exam')} label="模拟考试" />
         <TabButton active={tab === 'mine'} onClick={() => setTab('mine')} label="我的练习" />
         <TabButton active={tab === 'feed'} onClick={() => setTab('feed')} label="练习集锦" />
+        <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')} label="学习分析" />
       </div>
 
       {tab === 'practice' && (
@@ -63,6 +68,17 @@ export default function PtePractice() {
       {tab === 'mine' && <MyHistoryTab userId={user} refreshKey={historyRefreshKey} />}
 
       {tab === 'feed' && <CommunityFeed currentUserId={user} />}
+
+      {tab === 'analytics' && (
+        <AnalyticsDashboard
+          userId={user}
+          refreshKey={historyRefreshKey}
+          onSelectTaskType={(taskType) => {
+            setTab('practice')
+            setView({ name: 'pick-item', taskType })
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -72,7 +88,9 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium ${active ? 'bg-primary text-white' : 'text-gray-500'}`}
+      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 ${
+        active ? 'bg-primary text-white shadow-sm' : 'text-gray-500 hover:bg-primary/5 hover:text-gray-700'
+      }`}
     >
       {label}
     </button>
@@ -100,22 +118,22 @@ function MyHistoryTab({ userId, refreshKey }: { userId: string | null; refreshKe
   }, [userId, refreshKey])
 
   if (!userId) {
-    return (
-      <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-400">
-        未识别登录身份，暂时只能显示本机练习记录。
-      </p>
-    )
+    return <p className="empty-state">未识别登录身份，暂时只能显示本机练习记录。</p>
   }
 
   return (
     <div className="space-y-3">
       {state.error && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-          {state.error}
-        </p>
+        <div className="note-warning">
+          <span className="note-callout-icon" aria-hidden>⚠️</span>
+          <span>{state.error}</span>
+        </div>
       )}
       {state.loading ? (
-        <p className="text-sm text-gray-400">加载中…</p>
+        <div className="loading-state">
+          <span className="loading-spinner" aria-hidden />
+          加载中…
+        </div>
       ) : (
         <HistoryPanel
           attempts={state.attempts}
@@ -160,14 +178,22 @@ function ItemPicker({
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={onBack} className="text-sm text-gray-500 underline">
+      <button type="button" onClick={onBack} className="text-sm text-gray-500 underline transition-colors hover:text-gray-700">
         ← 返回题型列表
       </button>
-      <h2 className="text-lg font-semibold text-gray-900">{meta.label}</h2>
+      <h2 className="title-h3">{meta.label}</h2>
       <p className="text-sm text-gray-500">{meta.description}</p>
-      {state.error && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">{state.error}</p>}
+      {state.error && (
+        <div className="note-warning">
+          <span className="note-callout-icon" aria-hidden>⚠️</span>
+          <span>{state.error}</span>
+        </div>
+      )}
       {state.loading ? (
-        <p className="text-sm text-gray-400">加载题库中…</p>
+        <div className="loading-state">
+          <span className="loading-spinner" aria-hidden />
+          加载题库中…
+        </div>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           {state.items.map((item, index) => (
@@ -175,7 +201,7 @@ function ItemPicker({
               key={item.id}
               type="button"
               onClick={() => onSelectItem(item.id)}
-              className="rounded-lg border border-gray-200 bg-white p-3 text-left text-sm shadow-sm hover:shadow-md"
+              className="card-compact text-left text-sm transition-shadow duration-150 hover:shadow-md focus-visible:shadow-md"
             >
               练习 {index + 1}
             </button>
