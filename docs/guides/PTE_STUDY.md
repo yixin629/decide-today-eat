@@ -83,7 +83,8 @@ JSON 批量导入一次最多 50 题，格式与内置题库一致（可以在�
 - 缺乏可靠信号的占位维度显示为“未评估”，不参与趋势和模考汇总；客观结果与启发式估算分别展示，不判断官方分数是否达标。
 
 - 客观题（选择、排序、填空、听写等）按答案精确判分。
-- 口语和写作默认使用本地启发式估分。配置可选的自托管评分服务后，Read Aloud 发音和写作语法会改用开源模型估算，部署方式见 [pte-scoring-service/README.md](../../pte-scoring-service/README.md)。
+- Read Aloud 和 Repeat Sentence 提交后会按语音识别结果逐词标注：绿色清晰一致、黄色读音接近但不准（如单复数、相近词）、红色漏读或读错，点击单词可听标准发音；内容和发音分据此估算（`app/pte-practice/engine/wordAlignment.ts`）。需要浏览器支持实时语音转写（Chrome / Edge），否则只能回放录音自评。这不是音素级发音评测。
+- 其他口语题和写作默认使用本地启发式估分。配置可选的自托管评分服务后，Read Aloud 发音和写作语法会改用开源模型估算，部署方式见 [pte-scoring-service/README.md](../../pte-scoring-service/README.md)。
 - 评分服务通过服务端环境变量 `PTE_SCORING_SERVICE_URL`、`PTE_SCORING_SERVICE_TOKEN` 接入，只在 `app/api/pte-scoring/*/route.ts` 中读取，见 [部署与持续集成](../getting-started/DEPLOYMENT.md)。
 
 ### 本机数据

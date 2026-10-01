@@ -12,6 +12,7 @@ import type { AnswerPayload, AttemptRecord, PracticeItem, ScoreDimensionResult, 
 import CommentThread from './CommentThread'
 import ReportCard from './ReportCard'
 import AnswerReview from './session/AnswerReview'
+import PronunciationReview from './session/PronunciationReview'
 import PracticeInput from './session/PracticeInput'
 import { RecordingContext } from './session/RecordingContext'
 
@@ -175,7 +176,9 @@ export default function PracticeSession({
     {!submitted && <button type="button" onClick={() => void handleSubmit()} disabled={submitting} className="pte-button primary"><Send size={16} />{submitting ? '正在提交并评分…' : '提交作答'}</button>}
     {submitted && <div className="space-y-5" aria-live="polite">
       <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />
-      {reviewAnswer && <AnswerReview item={item} answer={reviewAnswer} />}
+      {reviewAnswer && (item.taskType === 'speaking-read-aloud' || item.taskType === 'speaking-repeat-sentence') && 'recognizedTranscript' in reviewAnswer
+        ? <PronunciationReview referenceText={item.text} transcript={reviewAnswer.recognizedTranscript} audioBlob={reviewAnswer.audioBlob} />
+        : reviewAnswer && <AnswerReview item={item} answer={reviewAnswer} />}
       {saveError && <div className="pte-notice" role="status">{saveError}</div>}
       <div className="flex flex-wrap gap-3">
         {onNext && <button className="pte-button primary" disabled={submitting} onClick={onNext}>下一题<ArrowRight size={16} /></button>}

@@ -188,6 +188,23 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
 .pte-answer-review dl { display: grid; gap: 14px; margin-top: 14px; }
 .pte-answer-review dt { color: var(--pte-muted); font-size: 11px; margin-bottom: 5px; }
 .pte-answer-review dd { font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pte-app { --pron-good: #15803d; --pron-good-bg: #e7f6ec; --pron-weak: #a16207; --pron-weak-bg: #fdf3d7; --pron-missed: #c2410c; --pron-missed-bg: #fde8e1; }
+.pte-pron-review { border-top: 1px solid var(--pte-line); padding-top: 20px; display: grid; gap: 14px; }
+.pte-pron-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--pte-muted); }
+.pte-pron-dot { display: inline-flex; align-items: center; gap: 6px; }
+.pte-pron-dot::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: currentColor; }
+.pte-pron-dot.good { color: var(--pron-good); }
+.pte-pron-dot.weak { color: var(--pron-weak); }
+.pte-pron-dot.missed { color: var(--pron-missed); }
+.pte-pron-text { display: flex; flex-wrap: wrap; gap: 6px 4px; padding: 16px; border: 1px solid var(--pte-line); border-radius: 8px; background: var(--pte-surface); }
+.pte-pron-word { display: inline-flex; flex-direction: column; align-items: center; padding: 3px 7px; border-radius: 6px; border-bottom: 2px solid transparent; font-size: 16px; line-height: 1.5; cursor: pointer; }
+.pte-pron-word small { font-size: 10px; line-height: 1.2; opacity: .85; text-decoration: line-through; }
+.pte-pron-word.good { color: var(--pron-good); background: var(--pron-good-bg); }
+.pte-pron-word.weak { color: var(--pron-weak); background: var(--pron-weak-bg); border-bottom-color: var(--pron-weak); }
+.pte-pron-word.missed { color: var(--pron-missed); background: var(--pron-missed-bg); border-bottom-color: var(--pron-missed); }
+.pte-pron-word:hover, .pte-pron-word.speaking { outline: 2px solid currentColor; outline-offset: 1px; }
+.pte-pron-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.dark-mode .pte-app { --pron-good: #6ee7a0; --pron-good-bg: #1d3a2a; --pron-weak: #fcd34d; --pron-weak-bg: #3d3420; --pron-missed: #fca5a5; --pron-missed-bg: #45252a; }
 .pte-upload-card { border: 1px solid var(--pte-line); border-radius: 8px; padding: 20px; }
 .pte-upload-field { display: grid; gap: 7px; }
 .pte-upload-field > span { font-size: 12px; font-weight: 600; }

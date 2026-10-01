@@ -40,7 +40,7 @@ export default function TaskTypePicker({ skill, task, onChange, counts, types = 
       {allowAll && skill !== 'all' && <button type="button" aria-pressed={task === 'all'} className={task === 'all' ? 'active' : ''} onClick={() => onChange({ skill, task: 'all' })}>全部{SKILL_NAMES[skill]}</button>}
       {visibleTypes.map((t) => {
         const meta = TASK_TYPE_META[t]
-        return <button key={t} type="button" aria-pressed={task === t} title={meta.label} className={task === t ? 'active' : ''} onClick={() => onChange({ skill: allowAll ? skill : meta.skill, task: t })}>
+        return <button key={t} type="button" data-task={t} aria-pressed={task === t} title={meta.label} className={task === t ? 'active' : ''} onClick={() => onChange({ skill: allowAll ? skill : meta.skill, task: t })}>
           <span className={`pte-chip-code skill-${meta.skill}`}>{TASK_CODES[t]}</span>{meta.shortLabel}{counts && <small>{counts[t] ?? 0}</small>}
         </button>
       })}

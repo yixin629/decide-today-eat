@@ -1,4 +1,5 @@
 import { getTaskTypeMeta } from '../lib/taskTypes'
+import { alignWords, scoresFromAlignment } from './wordAlignment'
 import type {
   AnswerPayload,
   AnswerShortQuestionItem,
@@ -291,6 +292,24 @@ export function scoreAnswerShortQuestion(item: AnswerShortQuestionItem, recogniz
   ]
 }
 
+/**
+ * 朗读类题型（原文固定）的逐词比对估分：内容看读出了多少原文单词，
+ * 发音看其中有多少被识别得完全一致。逐词颜色标注见 components/session/PronunciationReview。
+ */
+function alignedSpeakingScores(referenceText: string, transcript: string, contentMax: number, pronunciationMax = contentMax) {
+  const alignment = alignWords(referenceText, transcript)
+  const { good, weak, missed } = alignment.counts
+  const { content } = scoresFromAlignment(alignment, contentMax)
+  const { pronunciation } = scoresFromAlignment(alignment, pronunciationMax)
+  const total = alignment.words.length
+  return {
+    content,
+    pronunciation,
+    contentNote: `语音识别逐词比对：读出原文 ${good + weak}/${total} 个词${alignment.extras.length ? `，多读 ${alignment.extras.length} 个词` : ''}。练习估算，非官方评分。`,
+    pronunciationNote: `语音识别逐词比对：${good} 个词清晰一致，${weak} 个词读音接近但不准确，${missed} 个词漏读或读错（见下方逐词标注）。基于识别结果估算，不是音素级发音评测。`,
+  }
+}
+
 export interface ReadAloudHeuristicInput {
   item: ReadAloudItem
   recordingSeconds: number
@@ -299,9 +318,8 @@ export interface ReadAloudHeuristicInput {
 
 /**
  * 口语朗读的启发式估分。没有真实的发音/流利度识别引擎，因此：
- * - Content：若浏览器提供了语音识别转写文本，按与原文的词汇重合率粗略估算；
- *   否则给出中性占位分并注明"未采集转写文本，无法估算"。
- * - Pronunciation：始终标注为无法通过启发式判断，给出占位分与说明。
+ * - Content / Pronunciation：若浏览器提供了语音识别转写文本，按逐词比对结果估算
+ *   （见 wordAlignment.ts）；否则给出中性占位分并注明"未采集转写文本"。
  * - Oral Fluency：按录音时长与原文期望语速（约 2.2 词/秒的常见朗读语速）
  *   的接近程度粗略估算，仅反映"是否读完/是否明显过快过慢"，不代表真实流利度。
  */
@@ -314,13 +332,14 @@ export function scoreReadAloud({ item, recordingSeconds, recognizedTranscript }:
 
   let contentScore = 2.5
   let contentNote = '当前浏览器未采集到语音转写文本，无法估算内容匹配度，此处为中性占位分。'
+  let pronunciationScore = 2.5
+  let pronunciationNote = '未采集到语音转写文本，无法逐词比对发音，此处为占位分，请回放录音并对照原文自评。'
   if (recognizedTranscript) {
-    const originalWords = new Set(item.text.split(/\s+/).map(normalizeWord).filter(Boolean))
-    const recognizedWords = recognizedTranscript.split(/\s+/).map(normalizeWord).filter(Boolean)
-    const matched = [...new Set(recognizedWords)].filter((word) => originalWords.has(word)).length
-    const ratio = originalWords.size > 0 ? matched / originalWords.size : 0
-    contentScore = Math.round(ratio * 5)
-    contentNote = `基于浏览器语音识别转写文本与原文的粗略词汇重合率估算（重合 ${matched}/${originalWords.size} 个词），非官方发音或语义评分。`
+    const aligned = alignedSpeakingScores(item.text, recognizedTranscript, 5)
+    contentScore = aligned.content
+    contentNote = aligned.contentNote
+    pronunciationScore = aligned.pronunciation
+    pronunciationNote = aligned.pronunciationNote
   }
 
   return [
@@ -335,10 +354,10 @@ export function scoreReadAloud({ item, recordingSeconds, recognizedTranscript }:
     {
       id: 'pronunciation',
       label: meta.scoringDimensions[1].label,
-      score: 2.5,
+      score: pronunciationScore,
       maxScore: 5,
       isHeuristic: true,
-      note: '本练习没有音素级发音识别能力，无法给出真实发音评分，此处为占位分，请自行回放录音并对照原文自评。',
+      note: pronunciationNote,
     },
     {
       id: 'fluency',
@@ -634,6 +653,8 @@ export interface ShortSpeakingHeuristicInput {
   contentLabel: string
   pronunciationLabel: string
   fluencyLabel: string
+  /** 参考文本即应读原文（Repeat Sentence）时按逐词比对估算内容与发音；自由表达题型不适用。 */
+  alignWithReference?: boolean
 }
 
 /**
@@ -651,7 +672,15 @@ export function scoreShortSpeakingHeuristic(input: ShortSpeakingHeuristicInput):
 
   let contentScore = Math.round((contentMax / 2) * 10) / 10
   let contentNote = '当前浏览器未采集到语音转写文本，无法估算内容匹配度，此处为中性占位分。'
-  if (recognizedTranscript) {
+  let pronunciationScore = Math.round((pronunciationMax / 2) * 10) / 10
+  let pronunciationNote = '本练习没有音素级发音识别能力，无法给出真实发音评分，此处为占位分，请自行回放录音并对照参考文本自评。'
+  if (recognizedTranscript && input.alignWithReference) {
+    const aligned = alignedSpeakingScores(referenceText, recognizedTranscript, contentMax, pronunciationMax)
+    contentScore = aligned.content
+    contentNote = aligned.contentNote
+    pronunciationScore = aligned.pronunciation
+    pronunciationNote = aligned.pronunciationNote
+  } else if (recognizedTranscript) {
     const referenceWords = new Set(referenceText.split(/\s+/).map(normalizeWord).filter(Boolean))
     const recognizedWords = recognizedTranscript.split(/\s+/).map(normalizeWord).filter(Boolean)
     const matched = [...new Set(recognizedWords)].filter((word) => referenceWords.has(word)).length
@@ -665,10 +694,10 @@ export function scoreShortSpeakingHeuristic(input: ShortSpeakingHeuristicInput):
     {
       id: 'pronunciation',
       label: pronunciationLabel,
-      score: Math.round((pronunciationMax / 2) * 10) / 10,
+      score: pronunciationScore,
       maxScore: pronunciationMax,
       isHeuristic: true,
-      note: '本练习没有音素级发音识别能力，无法给出真实发音评分，此处为占位分，请自行回放录音并对照参考文本自评。',
+      note: pronunciationNote,
     },
     {
       id: 'fluency',
@@ -693,6 +722,7 @@ export function scoreRepeatSentence(item: RepeatSentenceItem, recordingSeconds: 
     contentLabel: meta.scoringDimensions[0].label,
     pronunciationLabel: meta.scoringDimensions[1].label,
     fluencyLabel: meta.scoringDimensions[2].label,
+    alignWithReference: true,
   })
 }
 
