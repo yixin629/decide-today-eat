@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Clock3, RotateCcw, Send } from 'lucide-react'
 import { scoreAttemptAsync } from '../engine/scoring'
 import { emptyAnswerFor } from '../lib/answers'
+import { scoreSummary } from '../lib/score-display'
 import { saveAttempt } from '../lib/attempt-repository'
 import { loadItemById } from '../lib/item-repository'
 import { getTaskTypeMeta } from '../lib/taskTypes'
@@ -15,7 +16,7 @@ import PracticeInput from './session/PracticeInput'
 import { RecordingContext } from './session/RecordingContext'
 
 export default function PracticeSession({
-  taskType, itemId, userId, onExit, onQuit, onNext, onAttemptSaved,
+  taskType, itemId, userId, onExit, onQuit, onNext, onAttemptSaved, onRetry,
   exitLabel = '返回题型列表', hideCommentThread = false,
 }: {
   taskType: TaskType
@@ -24,6 +25,7 @@ export default function PracticeSession({
   onExit: () => void
   onQuit?: () => void
   onNext?: () => void
+  onRetry?: () => void
   onAttemptSaved: (attempt: AttemptRecord) => void
   exitLabel?: string
   hideCommentThread?: boolean
@@ -107,7 +109,7 @@ export default function PracticeSession({
       setSubmitted(true)
       const saveResult = await saveAttempt({
         taskType, itemId, createdAt: new Date().toISOString(), durationSeconds, dimensions: results,
-        summary: `${meta.shortLabel} · ${results.map((d) => `${d.label} ${d.score}/${d.maxScore}`).join('，')}`,
+        summary: `${meta.shortLabel} · ${scoreSummary(results)}`,
         isEstimate: true,
       }, userId)
       if (!mounted.current) return
@@ -129,6 +131,7 @@ export default function PracticeSession({
   }, [remaining, submitted, itemLoading, handleSubmit])
 
   function retry() {
+    onRetry?.()
     answerRef.current = emptyAnswerFor(taskType, item)
     startedAtRef.current = Date.now()
     expired.current = false

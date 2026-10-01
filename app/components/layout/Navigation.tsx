@@ -293,6 +293,7 @@ export default function Navigation() {
       <nav
         className="fixed bottom-3 left-3 right-3 z-50 grid grid-cols-5 rounded-2xl border border-white/70 bg-white/95 px-1 py-1.5 shadow-[0_10px_35px_rgba(31,41,55,0.2)] backdrop-blur-xl md:hidden"
         aria-label="移动端主导航"
+        data-global-mobile-nav
       >
         <Link
           href={homeFeature.path}

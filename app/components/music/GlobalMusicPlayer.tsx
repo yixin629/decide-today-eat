@@ -283,6 +283,7 @@ export default function GlobalMusicPlayer() {
           panelOpen ? 'z-[70]' : 'z-50'
         } bg-gradient-to-br from-rose-400 to-fuchsia-600`}
         aria-label={panelOpen ? '收起音乐播放器' : '打开音乐播放器'}
+        data-global-utility="music"
         aria-expanded={panelOpen}
         aria-controls="global-music-panel"
         title={hasSong ? (isPlaying ? `正在播放：${currentSong?.title}` : '音乐播放器') : '音乐播放器'}

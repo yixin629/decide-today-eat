@@ -341,6 +341,7 @@ export default function UnifiedThemePanel() {
           background: `linear-gradient(135deg, ${current.primary}, ${current.secondary})`,
         }}
         aria-label={isOpen ? '关闭主题设置' : '打开主题设置'}
+        data-global-utility="theme"
         aria-expanded={isOpen}
         aria-controls="theme-settings-panel"
         title="主题与显示"

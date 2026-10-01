@@ -30,8 +30,8 @@ export default function MockExamEntry({
       <div className="note-info">
         <span className="note-callout-icon" aria-hidden>ℹ️</span>
         <span>
-          模拟考试按 <strong>PTE Academic 2026 版</strong> 公开的考试结构连续进行：Part 1 口语与写作 → Part 2
-          阅读 → Part 3 听力，中途<strong>不安排可选休息</strong>（与 2026 版真实考试一致）。
+          <strong>精简模拟练习</strong>：口语与写作 → 阅读 → 听力。当前覆盖 20 种题型，
+          尚未包含 Summarize Group Discussion 和 Respond to a Situation，不是完整官方模考。
         </span>
       </div>
 
@@ -63,8 +63,8 @@ export default function MockExamEntry({
       </div>
 
       <div className="card-compact text-sm text-gray-700">
-        预计总用时约 <strong>{totalMinutes} 分钟</strong>（精简版；官方完整版约 2 小时 15 分钟）。开始后请勿刷新或关闭
-        页面——当前版本不支持中途退出后恢复进度，刷新会丢失本次模考记录。
+        预计总用时约 <strong>{totalMinutes} 分钟</strong>。当前版本不支持恢复模考进度；
+        已提交的作答保留在练习记录，未提交的作答在离开后丢失。
       </div>
 
       {error && (

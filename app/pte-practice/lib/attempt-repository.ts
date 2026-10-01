@@ -57,16 +57,16 @@ function loadLocalAttempts(): AttemptRecord[] {
   }
 }
 
-function saveLocalAttempt(attempt: AttemptRecord): AttemptRecord[] {
-  if (!isBrowser()) return []
+function saveLocalAttempt(attempt: AttemptRecord): boolean {
+  if (!isBrowser()) return false
   const existing = loadLocalAttempts()
   const next = [attempt, ...existing].slice(0, MAX_STORED_ATTEMPTS)
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    return true
   } catch {
-    // 存储空间不足或被禁用时静默忽略，不影响当次练习反馈展示。
+    return false
   }
-  return next
 }
 
 export interface AttemptQueryResult {
@@ -77,7 +77,8 @@ export interface AttemptQueryResult {
 
 /** 加载指定用户的练习记录（"我的练习"）。 */
 export async function loadAttempts(userId: string | null): Promise<AttemptQueryResult> {
-  if (!userId) return { attempts: loadLocalAttempts(), source: 'local', error: null }
+  const localAttempts = loadLocalAttempts().filter((attempt) => (attempt.userId ?? null) === userId)
+  if (!userId) return { attempts: localAttempts, source: 'local', error: null }
   try {
     const { data, error } = await supabase
       .from('pte_practice_attempts')
@@ -90,7 +91,7 @@ export async function loadAttempts(userId: string | null): Promise<AttemptQueryR
     return { attempts: ((data ?? []) as AttemptRow[]).map(rowToAttempt), source: 'cloud', error: null }
   } catch (err) {
     return {
-      attempts: loadLocalAttempts(),
+      attempts: localAttempts,
       source: 'local',
       error: err instanceof Error ? err.message : '练习记录加载失败，已显示本机历史',
     }
@@ -137,22 +138,22 @@ export async function saveAttempt(
         .select('id,user_id,task_type,item_id,duration_seconds,dimensions,summary,created_at')
         .single()
 
-      if (error) throw error
+      if (error || !data) throw error ?? new Error('练习记录保存未返回结果')
       return { attempt: rowToAttempt(data as AttemptRow), source: 'cloud', error: null }
-    } catch (err) {
+    } catch {
       const localRecord: AttemptRecord = { ...attempt, id: `${attempt.itemId}-${Date.now()}`, userId: userId ?? undefined }
-      saveLocalAttempt(localRecord)
+      const stored = saveLocalAttempt(localRecord)
       return {
         attempt: localRecord,
         source: 'local',
-        error: err instanceof Error ? err.message : '练习记录保存到云端失败，已仅保存在本机',
+        error: stored ? '云端保存失败，本次记录已保存在当前身份的本机历史。' : '云端和本机均保存失败，本次反馈仅在当前页面可见，请勿关闭页面。',
       }
     }
   }
 
   const localRecord: AttemptRecord = { ...attempt, id: `${attempt.itemId}-${Date.now()}` }
-  saveLocalAttempt(localRecord)
-  return { attempt: localRecord, source: 'local', error: null }
+  const stored = saveLocalAttempt(localRecord)
+  return { attempt: localRecord, source: 'local', error: stored ? null : '本机存储不可用，本次反馈仅在当前页面可见，请勿关闭页面。' }
 }
 
 /** 订阅练习记录表的新增事件，用于"练习集锦"共享动态实时刷新。 */

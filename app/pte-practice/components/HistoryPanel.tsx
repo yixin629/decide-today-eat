@@ -1,4 +1,5 @@
 import { getTaskTypeMeta } from '../lib/taskTypes'
+import { scoreSummary } from '../lib/score-display'
 import type { AttemptRecord, TaskType } from '../types'
 
 export default function HistoryPanel({
@@ -36,11 +37,11 @@ export default function HistoryPanel({
           const meta = getTaskTypeMeta(attempt.taskType)
           const content = (
             <>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium text-gray-800">{meta.shortLabel}</span>
                 <span className="text-xs text-gray-400">{new Date(attempt.createdAt).toLocaleString('zh-CN')}</span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">{attempt.summary}</p>
+              <p className="mt-1 text-xs text-gray-500">{scoreSummary(attempt.dimensions)}</p>
               <p className="mt-0.5 text-xs text-gray-400">用时 {Math.round(attempt.durationSeconds)} 秒 · 练习估分，非官方评分</p>
             </>
           )

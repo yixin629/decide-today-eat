@@ -15,9 +15,11 @@ export default function MockExamRunner({
   userId,
   onFinish,
   onAbort,
+  onAttemptSaved,
 }: {
   run: MockExamRun
   userId: string | null
+  onAttemptSaved: (attempt: AttemptRecord) => void
   onFinish: (results: MockExamStepResult[]) => void
   /** 提前结束模考时回调，携带已完成的题目结果（未完成的当前题不计入），
    * 由调用方决定展示结果页还是回到入口——完全不传结果会导致"确定要提前
@@ -68,7 +70,7 @@ export default function MockExamRunner({
 
   function confirmAndAbort() {
     if (window.confirm('确定要提前结束本次模拟考试吗？已完成的作答会保留在结果页，未完成部分不计入。')) {
-      onAbort(currentResultsRef)
+      onAbort(lastAttemptRef.current ? [...currentResultsRef, { step: currentStep, attempt: lastAttemptRef.current }] : currentResultsRef)
     }
   }
 
@@ -112,6 +114,7 @@ export default function MockExamRunner({
         onQuit={confirmAndAbort}
         onAttemptSaved={(attempt) => {
           lastAttemptRef.current = attempt
+          onAttemptSaved(attempt)
         }}
       />
     </div>

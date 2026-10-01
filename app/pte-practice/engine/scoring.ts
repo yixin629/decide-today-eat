@@ -55,17 +55,20 @@ export function scoreMcqSingle(item: McqSingleItem, selectedIndex: number | null
 
 export function scoreReorder(item: ReorderItem, order: number[]): ScoreDimensionResult[] {
   const meta = getTaskTypeMeta(item.taskType)
-  const total = item.correctOrder.length
-  const correctPositions = order.filter((paragraphIndex, position) => paragraphIndex === item.correctOrder[position]).length
-  const ratio = total > 0 ? correctPositions / total : 0
+  const total = Math.max(0, item.correctOrder.length - 1)
+  const validOrder = order.length === item.correctOrder.length && new Set(order).size === order.length && order.every((index) => item.correctOrder.includes(index))
+  const correctPairs = validOrder ? order.slice(0, -1).filter((index, position) => {
+    const expectedIndex = item.correctOrder.indexOf(index)
+    return item.correctOrder[expectedIndex + 1] === order[position + 1]
+  }).length : 0
   return [
     {
       id: 'content',
       label: meta.scoringDimensions[0].label,
-      score: Math.round(ratio * 100) / 100,
-      maxScore: 1,
+      score: correctPairs,
+      maxScore: total,
       isHeuristic: false,
-      note: `${correctPositions}/${total} 个段落位置正确（按整体顺序匹配比例计分，官方按相邻段落对计分，结果仅供参考）。`,
+      note: `${correctPairs}/${total} 对相邻段落顺序正确，每对计 1 分；不换算为官方考试成绩。`,
     },
   ]
 }
@@ -139,7 +142,7 @@ function scoreMultipleChoice(selectedIndexes: number[], correctIndexes: number[]
   const correctSet = new Set(correctIndexes)
   let correctHits = 0
   let incorrectHits = 0
-  for (const index of selectedIndexes) {
+  for (const index of new Set(selectedIndexes)) {
     if (correctSet.has(index)) correctHits += 1
     else incorrectHits += 1
   }
@@ -217,7 +220,7 @@ export function scoreHighlightIncorrectWords(item: HighlightIncorrectWordsItem, 
   const incorrectSet = new Set(item.incorrectWordIndexes)
   let correctHits = 0
   let falsePositives = 0
-  for (const index of selectedWordIndexes) {
+  for (const index of new Set(selectedWordIndexes)) {
     if (incorrectSet.has(index)) correctHits += 1
     else falsePositives += 1
   }
@@ -314,7 +317,7 @@ export function scoreReadAloud({ item, recordingSeconds, recognizedTranscript }:
   if (recognizedTranscript) {
     const originalWords = new Set(item.text.split(/\s+/).map(normalizeWord).filter(Boolean))
     const recognizedWords = recognizedTranscript.split(/\s+/).map(normalizeWord).filter(Boolean)
-    const matched = recognizedWords.filter((word) => originalWords.has(word)).length
+    const matched = [...new Set(recognizedWords)].filter((word) => originalWords.has(word)).length
     const ratio = originalWords.size > 0 ? matched / originalWords.size : 0
     contentScore = Math.round(ratio * 5)
     contentNote = `基于浏览器语音识别转写文本与原文的粗略词汇重合率估算（重合 ${matched}/${originalWords.size} 个词），非官方发音或语义评分。`
@@ -651,7 +654,7 @@ export function scoreShortSpeakingHeuristic(input: ShortSpeakingHeuristicInput):
   if (recognizedTranscript) {
     const referenceWords = new Set(referenceText.split(/\s+/).map(normalizeWord).filter(Boolean))
     const recognizedWords = recognizedTranscript.split(/\s+/).map(normalizeWord).filter(Boolean)
-    const matched = recognizedWords.filter((word) => referenceWords.has(word)).length
+    const matched = [...new Set(recognizedWords)].filter((word) => referenceWords.has(word)).length
     const ratio = referenceWords.size > 0 ? matched / referenceWords.size : 0
     contentScore = Math.round(ratio * contentMax)
     contentNote = `基于浏览器语音识别转写文本与参考文本的粗略词汇重合率估算（重合 ${matched}/${referenceWords.size} 个词），非官方评分。`

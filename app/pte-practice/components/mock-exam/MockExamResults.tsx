@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { MOCK_EXAM_SECTIONS } from '../../lib/mockExam'
 import { getTaskTypeMeta } from '../../lib/taskTypes'
+import { isAssessed, scoreSummary } from '../../lib/score-display'
 import type { MockExamStepResult } from './MockExamRunner'
 
 interface SectionStats {
@@ -32,6 +33,7 @@ function computeStats(results: MockExamStepResult[]): SectionStats[] {
     for (const result of sectionResults) {
       if (!result.attempt) continue
       for (const dimension of result.attempt.dimensions) {
+        if (!isAssessed(dimension)) continue
         if (dimension.isHeuristic) {
           stats.subjectiveScored += dimension.score
           stats.subjectiveMax += dimension.maxScore
@@ -72,7 +74,7 @@ export default function MockExamResults({
         <span className="note-callout-icon" aria-hidden>ℹ️</span>
         <span>
           模考结束，共完成 {totalAttempted}/{results.length} 题。以下统计为<strong>本项目内部估算</strong>，
-          并非 Pearson 官方评分或官方 0-90 分换算结果，仅供自我训练参考。
+          并非 Pearson 官方评分或官方 10-90 分换算结果，仅供自我训练参考。
         </span>
       </div>
 
@@ -136,7 +138,7 @@ export default function MockExamResults({
                   <span className="text-gray-400">第 {result.step.globalIndex} 题</span>
                 </div>
                 {result.attempt ? (
-                  <p className="mt-1 text-gray-600">{result.attempt.summary}</p>
+                  <p className="mt-1 text-gray-600">{scoreSummary(result.attempt.dimensions)}</p>
                 ) : (
                   <p className="mt-1 text-amber-600">未作答（提前跳过或退出）</p>
                 )}

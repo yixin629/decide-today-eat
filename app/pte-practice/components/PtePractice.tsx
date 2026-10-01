@@ -47,6 +47,7 @@ export default function PtePractice() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [session, setSession] = useState<{ queue: PracticeItem[]; index: number } | null>(null)
   const [sessionSaved, setSessionSaved] = useState(false)
+  const [mockRunning, setMockRunning] = useState(false)
   const [catalogRefresh, setCatalogRefresh] = useState(0)
 
   useEffect(() => {
@@ -69,6 +70,8 @@ export default function PtePractice() {
   }, [user, authLoading])
 
   function navigate(nextTab: Tab) {
+    if (mockRunning && !window.confirm('离开模拟考试？已提交的作答会保留，当前模考进度不会保存。')) return
+    setMockRunning(false)
     if (session && !sessionSaved && !window.confirm('离开当前练习？尚未提交的作答不会保存。')) return
     setSession(null)
     setTab(nextTab)
@@ -116,7 +119,7 @@ export default function PtePractice() {
   const contentTitle = session ? '专项练习' : NAV.find((item) => item.id === tab)?.label
 
   return <div className="pte-app">
-    <header className="pte-brandbar"><div className="pte-brand"><span className="pte-brand-icon"><GraduationCap size={24} /></span><div><h1>PTE 学习空间</h1><span>Practice a little. Progress every day.</span></div></div><span className="pte-academic">ACADEMIC</span></header>
+    <header className="pte-brandbar"><div className="pte-brand"><span className="pte-brand-icon"><GraduationCap size={24} /></span><div><h1>PTE 学习空间</h1><span>Practice a little. Progress every day.</span></div></div><Link href="/" className="pte-mobile-home pte-icon-button" aria-label="返回首页" title="返回首页"><ArrowLeft size={18} /></Link><span className="pte-academic">ACADEMIC</span></header>
     <div className="pte-shell">
       <aside className="pte-sidebar">
         <p className="pte-nav-label">学习中心</p>
@@ -131,14 +134,14 @@ export default function PtePractice() {
           {preferenceError && <div className="pte-notice" role="alert">{preferenceError}</div>}
           {session && currentItem ? <div>
             <div className="pte-session-context"><button className="pte-button" onClick={() => navigate(tab)}><ArrowLeft size={16} />返回列表</button><span>本组 {session.index + 1} / {session.queue.length} 题</span><button className={`pte-button ${preferences.bookmarks.includes(activeKey) ? 'bookmarked' : ''}`} disabled={!ready} aria-pressed={preferences.bookmarks.includes(activeKey)} onClick={() => bookmark(activeKey)}><Bookmark size={16} fill={preferences.bookmarks.includes(activeKey) ? 'currentColor' : 'none'} />{preferences.bookmarks.includes(activeKey) ? '已收藏' : '收藏'}</button></div>
-            <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
+            <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onRetry={() => setSessionSaved(false)} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
               <aside className="pte-notes"><h3><NotebookPen size={17} />本题笔记</h3><p className="pte-small-note">仅保存在本机</p><textarea aria-label="本题笔记" placeholder="记下生词、易错点或下次想改进的地方…" maxLength={3000} value={preferences.notes[activeKey] ?? ''} disabled={!ready} onChange={(e) => update((p) => ({ ...p, notes: { ...p.notes, [activeKey]: e.target.value } }))} /><small>{(preferences.notes[activeKey] ?? '').length} / 3000</small></aside>
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
             {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
-            {tab === 'mock-exam' && <MockExam userId={user} />}
+            {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}
             {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} />}
             {tab === 'analytics' && <AnalyticsDashboard userId={user} refreshKey={refreshKey} onSelectTaskType={openTask} />}
             {tab === 'feed' && <CommunityFeed currentUserId={user} />}

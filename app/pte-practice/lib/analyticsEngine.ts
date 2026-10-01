@@ -1,4 +1,5 @@
 import { getTaskTypeMeta } from './taskTypes'
+import { isAssessed } from './score-display'
 import type { AttemptRecord, PteSkill, TaskType } from '../types'
 
 /**
@@ -39,7 +40,7 @@ function avgPct(attempts: AttemptRecord[], predicate: (isHeuristic: boolean) => 
   for (const attempt of attempts) {
     for (const dim of attempt.dimensions) {
       if (!predicate(dim.isHeuristic)) continue
-      if (dim.maxScore <= 0) continue
+      if (!isAssessed(dim)) continue
       sum += dim.score / dim.maxScore
       count += 1
     }
@@ -75,8 +76,8 @@ export function computeSkillTrends(attempts: AttemptRecord[], skills: readonly P
 
   return skills.map((skill) => {
     const skillAttempts = attempts.filter((a) => getTaskTypeMeta(a.taskType).skill === skill)
-    const hasObjective = skillAttempts.some((a) => a.dimensions.some((d) => !d.isHeuristic))
-    const hasHeuristic = skillAttempts.some((a) => a.dimensions.some((d) => d.isHeuristic))
+    const hasObjective = skillAttempts.some((a) => a.dimensions.some((d) => isAssessed(d) && !d.isHeuristic))
+    const hasHeuristic = skillAttempts.some((a) => a.dimensions.some((d) => isAssessed(d) && d.isHeuristic))
 
     const points: SkillWeekPoint[] = weekStarts
       .map((weekStart) => {
@@ -90,8 +91,8 @@ export function computeSkillTrends(attempts: AttemptRecord[], skills: readonly P
         if (inWeek.length === 0) {
           return { weekStart: key, objectivePct: null, heuristicPct: null, objectiveSamples: 0, heuristicSamples: 0 }
         }
-        const objectiveSamples = inWeek.reduce((n, a) => n + a.dimensions.filter((d) => !d.isHeuristic).length, 0)
-        const heuristicSamples = inWeek.reduce((n, a) => n + a.dimensions.filter((d) => d.isHeuristic).length, 0)
+        const objectiveSamples = inWeek.reduce((n, a) => n + a.dimensions.filter((d) => isAssessed(d) && !d.isHeuristic).length, 0)
+        const heuristicSamples = inWeek.reduce((n, a) => n + a.dimensions.filter((d) => isAssessed(d) && d.isHeuristic).length, 0)
         return {
           weekStart: key,
           objectivePct: avgPct(inWeek, (h) => !h),
@@ -177,15 +178,12 @@ export function computeStreak(attempts: AttemptRecord[], now: Date = new Date())
 export interface SkillGapEntry {
   skill: PteSkill
   currentPct: number | null
-  targetPct: number
-  gapPct: number | null
+  targetScore: number
   sampleCount: number
 }
 
 /**
- * 将官方 10-90 分制的目标分数与练习估分做"达成度百分比"对齐，两者都归一化到 0-100%，
- * 绝不声称练习估分等于真实 PTE 10-90 分。currentPct 取最近 WEAK_SPOT_WINDOW_DAYS 天
- * 内该技能所有维度（客观+启发式混合）的平均达成度。
+ * Official targets and local objective results use different scales and must not be subtracted.
  */
 export function computeTargetGaps(
   attempts: AttemptRecord[],
@@ -197,15 +195,12 @@ export function computeTargetGaps(
 
   return skills.map((skill) => {
     const skillAttempts = recent.filter((a) => getTaskTypeMeta(a.taskType).skill === skill)
-    const currentPct = avgPct(skillAttempts, () => true)
-    const targetRaw = targetScores[skill]
-    const targetPct = Math.round(Math.max(0, Math.min(100, ((targetRaw - 10) / (90 - 10)) * 100)) * 10) / 10
-    const sampleCount = skillAttempts.reduce((n, a) => n + a.dimensions.length, 0)
+    const currentPct = avgPct(skillAttempts, (heuristic) => !heuristic)
+    const sampleCount = skillAttempts.reduce((n, a) => n + a.dimensions.filter((d) => isAssessed(d) && !d.isHeuristic).length, 0)
     return {
       skill,
       currentPct,
-      targetPct,
-      gapPct: currentPct === null ? null : Math.round((targetPct - currentPct) * 10) / 10,
+      targetScore: targetScores[skill],
       sampleCount,
     }
   })

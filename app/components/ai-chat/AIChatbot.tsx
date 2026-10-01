@@ -238,6 +238,7 @@ export default function AIChatbot() {
         }}
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] right-3 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-xl text-white shadow-lg transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-xl sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 sm:text-2xl"
         aria-label="打开 AI 助手"
+        data-global-utility="assistant"
         aria-haspopup="dialog"
         aria-controls="ai-chatbot-dialog"
       >
