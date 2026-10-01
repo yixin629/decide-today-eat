@@ -4,8 +4,8 @@ import { Eye, RotateCcw, Save } from 'lucide-react'
 import { useState } from 'react'
 import { buildFromFields, CUSTOM_FIELDS, defaultValues, validateCustomItem, type FieldValues, type NewPracticeItem } from '../../lib/custom-items'
 import { TASK_TYPE_META } from '../../lib/taskTypes'
-import { SKILL_NAMES, STUDY_SKILLS, TASK_CODES } from '../../lib/study'
-import { TASK_TYPES, type PracticeItem, type TaskType } from '../../types'
+import type { PracticeItem, TaskType } from '../../types'
+import TaskTypePicker from '../TaskTypePicker'
 import PracticeInput from '../session/PracticeInput'
 
 export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; onSave: (items: NewPracticeItem[]) => Promise<boolean> }) {
@@ -46,12 +46,10 @@ export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; 
   }
 
   return <div className="space-y-4">
-    <label className="pte-upload-field">
-      <span>题型</span>
-      <select value={taskType} onChange={(e) => changeTask(e.target.value as TaskType)}>
-        {STUDY_SKILLS.map((skill) => <optgroup key={skill} label={SKILL_NAMES[skill]}>{TASK_TYPES.filter((t) => TASK_TYPE_META[t].skill === skill).map((t) => <option key={t} value={t}>{TASK_CODES[t]} · {TASK_TYPE_META[t].shortLabel}</option>)}</optgroup>)}
-      </select>
-    </label>
+    <div className="pte-upload-field">
+      <span>题型 · {TASK_TYPE_META[taskType].label}</span>
+      <TaskTypePicker label="上传题型" allowAll={false} skill={TASK_TYPE_META[taskType].skill} task={taskType} onChange={(next) => { if (next.task !== 'all' && next.task !== taskType) changeTask(next.task) }} />
+    </div>
     <p className="pte-small-note">题目内容请使用英文；带 {'{ }'} 的写法会自动转换成空格或标记。</p>
     {CUSTOM_FIELDS[taskType].map((field) => <label key={`${taskType}-${field.key}`} className="pte-upload-field">
       <span>{field.label}</span>

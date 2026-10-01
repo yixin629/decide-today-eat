@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { isEnglishVoice, normalizeLang } from '../lib/voices'
 
 export function useSpeechPlayer() {
   const [supported, setSupported] = useState(false)
@@ -20,7 +21,7 @@ export function useSpeechPlayer() {
     if (!('speechSynthesis' in window)) return
     setSupported(true)
     const synth = window.speechSynthesis
-    const refreshVoices = () => setVoices(synth.getVoices().filter((voice) => /^en\b/i.test(voice.lang)))
+    const refreshVoices = () => setVoices(synth.getVoices().filter(isEnglishVoice))
     refreshVoices()
     synth.addEventListener('voiceschanged', refreshVoices)
     return () => {
@@ -30,14 +31,14 @@ export function useSpeechPlayer() {
     }
   }, [])
 
-  const play = useCallback((text: string, options: { rate?: number; voiceURI?: string; onEnd?: () => void } = {}) => {
+  const play = useCallback((text: string, options: { rate?: number; voice?: SpeechSynthesisVoice | null; onEnd?: () => void } = {}) => {
     stop()
     if (!supported || !text.trim()) return
     setError(null)
     const next = new SpeechSynthesisUtterance(text)
-    next.lang = 'en-US'
+    next.voice = options.voice ?? null
+    next.lang = options.voice ? normalizeLang(options.voice.lang) : 'en-US'
     next.rate = options.rate ?? 1
-    next.voice = voices.find((voice) => voice.voiceURI === options.voiceURI) ?? null
     next.onend = () => { if (utterance.current === next) { setStatus('idle'); options.onEnd?.() } }
     next.onerror = (event) => {
       if (utterance.current !== next) return
@@ -47,7 +48,7 @@ export function useSpeechPlayer() {
     utterance.current = next
     setStatus('playing')
     window.speechSynthesis.speak(next)
-  }, [stop, supported, voices])
+  }, [stop, supported])
 
   function togglePause() {
     if (!supported) return
