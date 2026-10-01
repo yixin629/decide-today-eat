@@ -1,482 +1,185 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowRight, Clock3, RotateCcw, Send } from 'lucide-react'
 import { scoreAttemptAsync } from '../engine/scoring'
+import { emptyAnswerFor } from '../lib/answers'
 import { saveAttempt } from '../lib/attempt-repository'
 import { loadItemById } from '../lib/item-repository'
 import { getTaskTypeMeta } from '../lib/taskTypes'
-import type {
-  AnswerPayload,
-  AnswerShortQuestionItem,
-  AttemptRecord,
-  DescribeImageItem,
-  FillBlanksDragItem,
-  FillBlanksDropdownItem,
-  HighlightIncorrectWordsItem,
-  HighlightSummaryItem,
-  ListeningFillBlanksItem,
-  ListeningMcqMultipleItem,
-  ListeningMcqSingleItem,
-  ListeningSummarizeItem,
-  McqMultipleItem,
-  McqSingleItem,
-  PracticeItem,
-  ReadAloudItem,
-  RepeatSentenceItem,
-  ReorderItem,
-  RetellLectureItem,
-  ScoreDimensionResult,
-  SelectMissingWordItem,
-  TaskType,
-  WriteFromDictationItem,
-  WritingItem,
-} from '../types'
-import { FillBlanksDragInput, FillBlanksDropdownInput, McqMultipleInput, McqSingleInput, ReorderInput } from './inputs/ReadingInputs'
-import {
-  HighlightIncorrectWordsInput,
-  HighlightSummaryInput,
-  ListeningFillBlanksInput,
-  ListeningMcqMultipleInput,
-  ListeningMcqSingleInput,
-  ListeningSummarizeInput,
-  SelectMissingWordInput,
-  WriteFromDictationInput,
-} from './inputs/ListeningInputs'
-import { AnswerShortQuestionInput, DescribeImageInput, ReadAloudInput, RepeatSentenceInput, RetellLectureInput } from './inputs/SpeakingInput'
-import { WritingInput } from './inputs/WritingInput'
+import type { AnswerPayload, AttemptRecord, PracticeItem, ScoreDimensionResult, TaskType } from '../types'
 import CommentThread from './CommentThread'
 import ReportCard from './ReportCard'
-
-function emptyAnswerFor(taskType: TaskType): AnswerPayload {
-  switch (taskType) {
-    case 'reading-mcq-single':
-      return { taskType, selectedIndex: null }
-    case 'reading-reorder':
-      return { taskType, order: [] }
-    case 'reading-fill-blanks-drag':
-      return { taskType, answers: [] }
-    case 'listening-fill-blanks-typed':
-      return { taskType, answers: [] }
-    case 'listening-highlight-summary':
-      return { taskType, selectedIndex: null }
-    case 'speaking-read-aloud':
-      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
-    case 'writing-summarize-text':
-    case 'writing-essay':
-      return { taskType, text: '', secondsUsed: 0 }
-    case 'reading-mcq-multiple':
-      return { taskType, selectedIndexes: [] }
-    case 'reading-fill-blanks-dropdown':
-      return { taskType, answers: [] }
-    case 'listening-mcq-single':
-      return { taskType, selectedIndex: null }
-    case 'listening-mcq-multiple':
-      return { taskType, selectedIndexes: [] }
-    case 'listening-summarize-spoken-text':
-      return { taskType, text: '', secondsUsed: 0 }
-    case 'listening-select-missing-word':
-      return { taskType, selectedIndex: null }
-    case 'listening-highlight-incorrect-words':
-      return { taskType, selectedWordIndexes: [] }
-    case 'listening-write-from-dictation':
-      return { taskType, text: '' }
-    case 'speaking-repeat-sentence':
-    case 'speaking-retell-lecture':
-    case 'speaking-describe-image':
-      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
-    case 'speaking-answer-short-question':
-      return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
-    default: {
-      const exhaustiveCheck: never = taskType
-      throw new Error(`未知的 PTE 任务类型: ${String(exhaustiveCheck)}`)
-    }
-  }
-}
+import AnswerReview from './session/AnswerReview'
+import PracticeInput from './session/PracticeInput'
+import { RecordingContext } from './session/RecordingContext'
 
 export default function PracticeSession({
-  taskType,
-  itemId,
-  userId,
-  onExit,
-  onQuit,
-  onNext,
-  onAttemptSaved,
-  exitLabel = '返回题型列表',
-  hideCommentThread = false,
+  taskType, itemId, userId, onExit, onQuit, onNext, onAttemptSaved,
+  exitLabel = '返回题型列表', hideCommentThread = false,
 }: {
   taskType: TaskType
   itemId: string
   userId: string | null
-  /** 提交后"下一题/查看结果/返回"按钮的行为。 */
   onExit: () => void
-  /**
-   * 题库/收藏/错题复习等"连续做题队列"场景下，提交后额外展示一个"下一题"
-   * 按钮，直接进入队列里的下一道题（不同于 onExit——onExit 通常是"返回列表"，
-   * onNext 是"留在做题界面，换下一题"）。不传则不展示这个按钮。
-   */
-  onNext?: () => void
-  /**
-   * 顶部"退出"按钮（提交前随时可见）的行为。单独练习场景下退出即是返回题库，
-   * 与 onExit 语义相同，因此不传时默认退回 onExit；但在模拟考试等连续流程里，
-   * onExit 实际是"提交后前进到下一题"，如果顶部退出按钮也直接复用它，会让
-   * 用户以为在退出整场考试，实际却只是跳过当前这一题且不计分——这是真实
-   * 出现过的一处交互歧义，因此拆成独立的 onQuit，由调用方决定"退出"到底
-   * 应该做什么（模拟考试场景下应弹确认框并终止整场考试，而不是跳题）。
-   */
   onQuit?: () => void
+  onNext?: () => void
   onAttemptSaved: (attempt: AttemptRecord) => void
-  /** 提交后退出按钮文案，模拟考试等连续流程场景下可传入"下一题"/"查看模考结果"。 */
   exitLabel?: string
-  /** 模拟考试连续作答流程下隐藏题目下方的评论区，避免打断考试节奏。 */
   hideCommentThread?: boolean
 }) {
   const meta = getTaskTypeMeta(taskType)
-  const [item, setItem] = useState<PracticeItem | undefined>(undefined)
+  const [item, setItem] = useState<PracticeItem>()
   const [itemLoading, setItemLoading] = useState(true)
   const [itemLoadError, setItemLoadError] = useState<string | null>(null)
-
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [scoringInProgress, setScoringInProgress] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [dimensions, setDimensions] = useState<ScoreDimensionResult[]>([])
   const [finalDurationSeconds, setFinalDurationSeconds] = useState(0)
+  const [mode, setMode] = useState<'practice' | 'timed'>(hideCommentThread ? 'timed' : 'practice')
+  const [retryKey, setRetryKey] = useState(0)
+  const [reviewAnswer, setReviewAnswer] = useState<AnswerPayload | null>(null)
   const answerRef = useRef<AnswerPayload>(emptyAnswerFor(taskType))
-  const startedAtRef = useRef<number>(Date.now())
+  const startedAtRef = useRef(0)
+  const mounted = useRef(false)
+  const locked = useRef(false)
+  const expired = useRef(false)
+  const stopRecording = useRef<(() => Promise<void>) | null>(null)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     setItemLoading(true)
     loadItemById(taskType, itemId).then((result) => {
       if (cancelled) return
+      answerRef.current = emptyAnswerFor(taskType, result.item)
+      startedAtRef.current = Date.now()
       setItem(result.item)
       setItemLoadError(result.error)
       setItemLoading(false)
     })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [taskType, itemId])
 
   useEffect(() => {
-    if (submitted) return
+    if (submitted || submitting || itemLoading || !item) return
     const interval = window.setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 1)
-    }, 1000)
+      setElapsedSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
+    }, 250)
     return () => window.clearInterval(interval)
-  }, [submitted])
-
-  const timeLimitSeconds = meta.timeLimitSeconds
-  const remainingSeconds = timeLimitSeconds !== null ? Math.max(timeLimitSeconds - elapsedSeconds, 0) : null
-
-  const minutes = remainingSeconds !== null ? Math.floor(remainingSeconds / 60) : null
-  const seconds = remainingSeconds !== null ? remainingSeconds % 60 : null
-
-  const handleSubmit = useCallback(async () => {
-    if (!item || submitted || submitting) return
-    setSubmitting(true)
-    setSaveError(null)
-    const durationSeconds = (Date.now() - startedAtRef.current) / 1000
-    let answer = answerRef.current
-    if (answer.taskType === 'writing-summarize-text' || answer.taskType === 'writing-essay' || answer.taskType === 'listening-summarize-spoken-text') {
-      answer = { ...answer, secondsUsed: durationSeconds }
-    }
-    setScoringInProgress(true)
-    const results = await scoreAttemptAsync(taskType, item, answer, meta.timeLimitSeconds ?? durationSeconds)
-    setScoringInProgress(false)
-    setDimensions(results)
-    setFinalDurationSeconds(durationSeconds)
-    setSubmitted(true)
-
-    const record = {
-      taskType,
-      itemId,
-      createdAt: new Date().toISOString(),
-      durationSeconds,
-      dimensions: results,
-      summary: `${meta.shortLabel} · ${results.map((dimension) => `${dimension.label} ${dimension.score}/${dimension.maxScore}`).join('，')}`,
-      isEstimate: true as const,
-    }
-    const saveResult = await saveAttempt(record, userId)
-    setSubmitting(false)
-    if (saveResult.source === 'local' && saveResult.error) {
-      setSaveError(saveResult.error)
-    }
-    onAttemptSaved(saveResult.attempt)
-  }, [item, submitted, submitting, taskType, itemId, meta, userId, onAttemptSaved])
+  }, [submitted, submitting, itemLoading, item, retryKey])
 
   useEffect(() => {
-    if (!submitted && remainingSeconds === 0) {
-      handleSubmit()
-    }
-  }, [remainingSeconds, submitted, handleSubmit])
+    if (submitted) return
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [submitted])
 
-  const inputElement = useMemo(() => {
-    if (!item) return null
-    switch (item.taskType) {
-      case 'reading-mcq-single':
-        return (
-          <McqSingleInput
-            item={item as McqSingleItem}
-            onChange={(selectedIndex) => {
-              answerRef.current = { taskType: 'reading-mcq-single', selectedIndex }
-            }}
-          />
-        )
-      case 'reading-reorder':
-        return (
-          <ReorderInput
-            item={item as ReorderItem}
-            onChange={(order) => {
-              answerRef.current = { taskType: 'reading-reorder', order }
-            }}
-          />
-        )
-      case 'reading-fill-blanks-drag':
-        return (
-          <FillBlanksDragInput
-            item={item as FillBlanksDragItem}
-            onChange={(answers) => {
-              answerRef.current = { taskType: 'reading-fill-blanks-drag', answers }
-            }}
-          />
-        )
-      case 'listening-fill-blanks-typed':
-        return (
-          <ListeningFillBlanksInput
-            item={item as ListeningFillBlanksItem}
-            onChange={(answers) => {
-              answerRef.current = { taskType: 'listening-fill-blanks-typed', answers }
-            }}
-          />
-        )
-      case 'listening-highlight-summary':
-        return (
-          <HighlightSummaryInput
-            item={item as HighlightSummaryItem}
-            onChange={(selectedIndex) => {
-              answerRef.current = { taskType: 'listening-highlight-summary', selectedIndex }
-            }}
-          />
-        )
-      case 'speaking-read-aloud':
-        return (
-          <ReadAloudInput
-            item={item as ReadAloudItem}
-            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
-              answerRef.current = { taskType: 'speaking-read-aloud', recordingSeconds, recognizedTranscript, audioBlob }
-            }}
-          />
-        )
-      case 'writing-summarize-text':
-      case 'writing-essay':
-        return (
-          <WritingInput
-            item={item as WritingItem}
-            onChange={(text) => {
-              answerRef.current = { taskType: item.taskType, text, secondsUsed: 0 }
-            }}
-          />
-        )
-      case 'reading-mcq-multiple':
-        return (
-          <McqMultipleInput
-            item={item as McqMultipleItem}
-            onChange={(selectedIndexes) => {
-              answerRef.current = { taskType: 'reading-mcq-multiple', selectedIndexes }
-            }}
-          />
-        )
-      case 'reading-fill-blanks-dropdown':
-        return (
-          <FillBlanksDropdownInput
-            item={item as FillBlanksDropdownItem}
-            onChange={(answers) => {
-              answerRef.current = { taskType: 'reading-fill-blanks-dropdown', answers }
-            }}
-          />
-        )
-      case 'listening-mcq-single':
-        return (
-          <ListeningMcqSingleInput
-            item={item as ListeningMcqSingleItem}
-            onChange={(selectedIndex) => {
-              answerRef.current = { taskType: 'listening-mcq-single', selectedIndex }
-            }}
-          />
-        )
-      case 'listening-mcq-multiple':
-        return (
-          <ListeningMcqMultipleInput
-            item={item as ListeningMcqMultipleItem}
-            onChange={(selectedIndexes) => {
-              answerRef.current = { taskType: 'listening-mcq-multiple', selectedIndexes }
-            }}
-          />
-        )
-      case 'listening-summarize-spoken-text':
-        return (
-          <ListeningSummarizeInput
-            item={item as ListeningSummarizeItem}
-            onChange={(text) => {
-              answerRef.current = { taskType: 'listening-summarize-spoken-text', text, secondsUsed: 0 }
-            }}
-          />
-        )
-      case 'listening-select-missing-word':
-        return (
-          <SelectMissingWordInput
-            item={item as SelectMissingWordItem}
-            onChange={(selectedIndex) => {
-              answerRef.current = { taskType: 'listening-select-missing-word', selectedIndex }
-            }}
-          />
-        )
-      case 'listening-highlight-incorrect-words':
-        return (
-          <HighlightIncorrectWordsInput
-            item={item as HighlightIncorrectWordsItem}
-            onChange={(selectedWordIndexes) => {
-              answerRef.current = { taskType: 'listening-highlight-incorrect-words', selectedWordIndexes }
-            }}
-          />
-        )
-      case 'listening-write-from-dictation':
-        return (
-          <WriteFromDictationInput
-            item={item as WriteFromDictationItem}
-            onChange={(text) => {
-              answerRef.current = { taskType: 'listening-write-from-dictation', text }
-            }}
-          />
-        )
-      case 'speaking-repeat-sentence':
-        return (
-          <RepeatSentenceInput
-            item={item as RepeatSentenceItem}
-            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
-              answerRef.current = { taskType: 'speaking-repeat-sentence', recordingSeconds, recognizedTranscript, audioBlob }
-            }}
-          />
-        )
-      case 'speaking-describe-image':
-        return (
-          <DescribeImageInput
-            item={item as DescribeImageItem}
-            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
-              answerRef.current = { taskType: 'speaking-describe-image', recordingSeconds, recognizedTranscript, audioBlob }
-            }}
-          />
-        )
-      case 'speaking-retell-lecture':
-        return (
-          <RetellLectureInput
-            item={item as RetellLectureItem}
-            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
-              answerRef.current = { taskType: 'speaking-retell-lecture', recordingSeconds, recognizedTranscript, audioBlob }
-            }}
-          />
-        )
-      case 'speaking-answer-short-question':
-        return (
-          <AnswerShortQuestionInput
-            item={item as AnswerShortQuestionItem}
-            onChange={({ recordingSeconds, recognizedTranscript, audioBlob }) => {
-              answerRef.current = { taskType: 'speaking-answer-short-question', recordingSeconds, recognizedTranscript, audioBlob }
-            }}
-          />
-        )
-      default:
-        return null
-    }
-  }, [item])
+  const remaining = mode === 'timed' && meta.timeLimitSeconds !== null ? Math.max(meta.timeLimitSeconds - elapsedSeconds, 0) : null
+  const displaySeconds = remaining ?? elapsedSeconds
 
-  if (itemLoading) {
-    return (
-      <div className="loading-state">
-        <span className="loading-spinner" aria-hidden />
-        加载题目中…
-      </div>
-    )
+  const handleSubmit = useCallback(async () => {
+    if (!item || itemLoading || submitted || locked.current) return
+    locked.current = true
+    setSubmitting(true)
+    setSubmitError(null)
+    setSaveError(null)
+    try {
+      await stopRecording.current?.()
+      if (!mounted.current) return
+      window.speechSynthesis?.cancel()
+      const durationSeconds = (Date.now() - startedAtRef.current) / 1000
+      let answer = answerRef.current
+      if ('secondsUsed' in answer) answer = { ...answer, secondsUsed: durationSeconds }
+      const results = await scoreAttemptAsync(taskType, item, answer, mode === 'timed' ? meta.timeLimitSeconds ?? durationSeconds : Infinity)
+      if (!mounted.current) return
+      setReviewAnswer(answer)
+      setDimensions(results)
+      setFinalDurationSeconds(durationSeconds)
+      setSubmitted(true)
+      const saveResult = await saveAttempt({
+        taskType, itemId, createdAt: new Date().toISOString(), durationSeconds, dimensions: results,
+        summary: `${meta.shortLabel} · ${results.map((d) => `${d.label} ${d.score}/${d.maxScore}`).join('，')}`,
+        isEstimate: true,
+      }, userId)
+      if (!mounted.current) return
+      if (saveResult.error) setSaveError(saveResult.error)
+      onAttemptSaved(saveResult.attempt)
+    } catch (error) {
+      if (mounted.current) setSubmitError(error instanceof Error ? error.message : '提交失败，请重试。')
+    } finally {
+      locked.current = false
+      if (mounted.current) setSubmitting(false)
+    }
+  }, [item, itemLoading, submitted, taskType, itemId, mode, meta, userId, onAttemptSaved])
+
+  useEffect(() => {
+    if (remaining === 0 && !expired.current && !submitted && !itemLoading) {
+      expired.current = true
+      void handleSubmit()
+    }
+  }, [remaining, submitted, itemLoading, handleSubmit])
+
+  function retry() {
+    answerRef.current = emptyAnswerFor(taskType, item)
+    startedAtRef.current = Date.now()
+    expired.current = false
+    setElapsedSeconds(0)
+    setSubmitted(false)
+    setDimensions([])
+    setReviewAnswer(null)
+    setSaveError(null)
+    setSubmitError(null)
+    setRetryKey((key) => key + 1)
   }
 
-  if (!item) {
-    return (
-      <div className="note-error">
-        <span className="note-callout-icon" aria-hidden>⚠️</span>
-        <span>
-          未找到题目，请返回题库重新选择。
-          <button type="button" onClick={onExit} className="ml-3 underline transition-colors hover:text-red-900">
-            返回
-          </button>
-        </span>
-      </div>
-    )
+  function quit() {
+    if (submitting) return
+    if (!submitted && !hideCommentThread && !window.confirm('离开当前练习？尚未提交的作答不会保存。')) return
+    ;(onQuit ?? onExit)()
   }
 
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-gray-500">{meta.label}</p>
-          <h2 className="title-h3">{meta.shortLabel} 练习</h2>
-        </div>
-        <div className="flex items-center gap-3">
-          {minutes !== null && seconds !== null ? (
-            <span
-              className={`rounded-full px-3 py-1 text-sm font-medium tabular-nums transition-colors ${
-                remainingSeconds && remainingSeconds < 15 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              剩余 {minutes}:{seconds.toString().padStart(2, '0')}
-            </span>
-          ) : (
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium tabular-nums text-gray-700">已用时 {elapsedSeconds}s</span>
-          )}
-          <button type="button" onClick={onQuit ?? onExit} className="text-sm text-gray-500 underline transition-colors hover:text-gray-700">
-            退出
-          </button>
-        </div>
+  if (itemLoading) return <div className="loading-state"><span className="loading-spinner" aria-hidden />加载题目中…</div>
+  if (!item) return <div className="pte-empty"><h3>未找到这道题</h3><button className="pte-button" onClick={onQuit ?? onExit}>返回题库</button></div>
+
+  return <div className="pte-session space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div><p className="pte-eyebrow">#{itemId}</p><h2 className="title-h3">{meta.shortLabel}</h2></div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={`inline-flex items-center gap-2 text-sm tabular-nums ${remaining !== null && remaining < 15 ? 'text-red-600' : 'text-gray-500'}`}><Clock3 size={16} />{remaining === null ? '用时' : '剩余'} {Math.floor(displaySeconds / 60)}:{(displaySeconds % 60).toString().padStart(2, '0')}</span>
+        <button type="button" onClick={quit} disabled={submitting} className="pte-button">退出</button>
       </div>
-
-      {itemLoadError && (
-        <div className="note-warning">
-          <span className="note-callout-icon" aria-hidden>⚠️</span>
-          <span>{itemLoadError}</span>
-        </div>
-      )}
-
-      <div className="card">{inputElement}</div>
-
-      {!submitted && (
-        <button type="button" onClick={handleSubmit} disabled={submitting} className="btn-primary w-full sm:w-auto">
-          {scoringInProgress ? '正在评分…' : submitting ? '提交中…' : '提交作答'}
-        </button>
-      )}
-
-      {submitted && (
-        <div className="space-y-4">
-          <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />
-          {saveError && (
-            <div className="note-warning">
-              <span className="note-callout-icon" aria-hidden>⚠️</span>
-              <span>{saveError}</span>
-            </div>
-          )}
-          <div className="flex gap-3">
-            {onNext && (
-              <button type="button" onClick={onNext} className="btn-primary">
-                下一题
-              </button>
-            )}
-            <button type="button" onClick={onExit} className="btn-secondary">
-              {exitLabel}
-            </button>
-          </div>
-          {!hideCommentThread && <CommentThread itemId={itemId} taskType={taskType} userId={userId} />}
-        </div>
-      )}
     </div>
-  )
+    {!hideCommentThread && !submitted && <div className="pte-filter-tabs" aria-label="练习模式">
+      <button type="button" aria-pressed={mode === 'practice'} className={mode === 'practice' ? 'active' : ''} disabled={submitting} onClick={() => setMode('practice')}>自由练习</button>
+      <button type="button" aria-pressed={mode === 'timed'} className={mode === 'timed' ? 'active' : ''} disabled={submitting} onClick={() => setMode('timed')}>限时练习</button>
+    </div>}
+    {itemLoadError && <div className="pte-notice" role="status">云端题目暂时不可用，已使用内置练习。</div>}
+    <RecordingContext.Provider value={stopRecording}>
+      <fieldset disabled={submitted || submitting} className="min-w-0 border-0 p-0">
+        <PracticeInput key={`${itemId}-${retryKey}`} item={item} onChange={(answer) => { answerRef.current = answer }} />
+      </fieldset>
+    </RecordingContext.Provider>
+    {submitError && <div className="pte-notice" role="alert">{submitError}</div>}
+    {!submitted && <button type="button" onClick={() => void handleSubmit()} disabled={submitting} className="pte-button primary"><Send size={16} />{submitting ? '正在提交并评分…' : '提交作答'}</button>}
+    {submitted && <div className="space-y-5" aria-live="polite">
+      <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />
+      {reviewAnswer && <AnswerReview item={item} answer={reviewAnswer} />}
+      {saveError && <div className="pte-notice" role="status">{saveError}</div>}
+      <div className="flex flex-wrap gap-3">
+        {onNext && <button className="pte-button primary" disabled={submitting} onClick={onNext}>下一题<ArrowRight size={16} /></button>}
+        {!hideCommentThread && <button className="pte-button" disabled={submitting} onClick={retry}><RotateCcw size={16} />再练一次</button>}
+        <button className="pte-button" disabled={submitting} onClick={onExit}>{exitLabel}</button>
+      </div>
+      {!hideCommentThread && <CommentThread itemId={itemId} taskType={taskType} userId={userId} />}
+    </div>}
+  </div>
 }

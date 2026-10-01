@@ -1,31 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-
-interface SpeechRecognitionResultLike {
-  transcript: string
-}
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { RecordingContext } from '../components/session/RecordingContext'
 
 interface MinimalSpeechRecognition {
   lang: string
   interimResults: boolean
   continuous: boolean
-  onresult: ((event: { results: ArrayLike<ArrayLike<SpeechRecognitionResultLike>> }) => void) | null
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
   onerror: (() => void) | null
   start: () => void
   stop: () => void
 }
-
 type SpeechRecognitionConstructor = new () => MinimalSpeechRecognition
-
-function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor | null {
-  if (typeof window === 'undefined') return null
-  const globalWindow = window as unknown as {
-    SpeechRecognition?: SpeechRecognitionConstructor
-    webkitSpeechRecognition?: SpeechRecognitionConstructor
-  }
-  return globalWindow.SpeechRecognition ?? globalWindow.webkitSpeechRecognition ?? null
-}
 
 export interface AudioRecorderResult {
   recordingSeconds: number
@@ -33,102 +20,159 @@ export interface AudioRecorderResult {
   audioBlob: Blob | null
 }
 
-/**
- * 口语类题型共用的录音 + 可选语音识别 Hook，从 SpeakingInput.tsx 的 Read
- * Aloud 实现中提取而来，供 Repeat Sentence / Describe Image / Retell
- * Lecture / Answer Short Question 复用，避免每个题型各自重复一份
- * MediaRecorder + SpeechRecognition 逻辑。
- */
 export function useAudioRecorder(onChange: (result: AudioRecorderResult) => void) {
+  const coordinator = useContext(RecordingContext)
   const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [recognitionError, setRecognitionError] = useState<string | null>(null)
   const [recording, setRecording] = useState(false)
+  const [starting, setStarting] = useState(false)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
   const [recognizedTranscript, setRecognizedTranscript] = useState<string | null>(null)
-
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const mediaStreamRef = useRef<MediaStream | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const startTimeRef = useRef<number>(0)
+  const mounted = useRef(false)
+  const requesting = useRef(false)
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const recognitionRef = useRef<MinimalSpeechRecognition | null>(null)
-  const recognizedTranscriptRef = useRef<string | null>(null)
+  const transcriptRef = useRef<string | null>(null)
+  const audioUrlRef = useRef<string | null>(null)
+  const startTimeRef = useRef(0)
+  const stoppedAtRef = useRef(0)
+  const onChangeRef = useRef(onChange)
+  const pendingStop = useRef<Promise<void> | null>(null)
+  const resolveStop = useRef<(() => void) | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const finalizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl)
-      recognitionRef.current?.stop()
-      // 如果用户在录音过程中直接退出（没点"停止录音"），麦克风流之前会一直
-      // 挂着不释放——getUserMedia 的 stream 是浏览器级资源，不会因为这个
-      // React 组件卸载就自动关闭，必须显式 stop 每个 track。这里不等
-      // MediaRecorder 的 onstop 回调（那个回调里的 setState/onChange 是给
-      // 正常"停止录音"流程用的，组件都卸载了不需要再触发它，也应避免在已
-      // 卸载组件上调用 setState），改成先摘掉 onstop 处理器，再直接 stop
-      // recorder 和底层的 stream track。
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.onstop = null
-        mediaRecorderRef.current.stop()
-      }
-      mediaStreamRef.current?.getTracks().forEach((track) => track.stop())
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
+
+  const stopRecording = useCallback((): Promise<void> => {
+    if (requesting.current) return Promise.reject(new Error('麦克风权限仍在等待确认，请完成授权后再提交。'))
+    if (pendingStop.current) return pendingStop.current
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state === 'inactive') return Promise.resolve()
+    pendingStop.current = new Promise<void>((resolve) => { resolveStop.current = resolve })
+    stoppedAtRef.current = Date.now()
+    recognitionRef.current?.stop()
+    recorder.stop()
+    setRecording(false)
+    return pendingStop.current
   }, [])
 
+  useEffect(() => {
+    if (coordinator) coordinator.current = stopRecording
+    return () => { if (coordinator) coordinator.current = null }
+  }, [coordinator, stopRecording])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      const recorder = recorderRef.current
+      if (recorder) {
+        recorder.onstop = null
+        recorder.ondataavailable = null
+        if (recorder.state !== 'inactive') recorder.stop()
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.onresult = null
+        recognitionRef.current.onerror = null
+        recognitionRef.current.stop()
+      }
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+      if (finalizeTimer.current) clearTimeout(finalizeTimer.current)
+      resolveStop.current?.()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!recording) return
+    const timer = window.setInterval(() => setRecordingSeconds((Date.now() - startTimeRef.current) / 1000), 200)
+    return () => window.clearInterval(timer)
+  }, [recording])
+
   async function startRecording() {
+    if (requesting.current || recorderRef.current?.state === 'recording' || pendingStop.current) return
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setPermissionError('当前浏览器不支持录音。请在 HTTPS 或 localhost 上使用支持录音的浏览器。')
+      return
+    }
+    requesting.current = true
+    setStarting(true)
     setPermissionError(null)
-    setRecognizedTranscript(null)
+    setRecognitionError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaStreamRef.current = stream
+      if (!mounted.current) { stream.getTracks().forEach((track) => track.stop()); return }
+      streamRef.current = stream
       const recorder = new MediaRecorder(stream)
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+      audioUrlRef.current = null
+      setAudioUrl(null)
+      transcriptRef.current = null
+      setRecognizedTranscript(null)
+      setRecordingSeconds(0)
       chunksRef.current = []
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data)
-      }
+      onChangeRef.current({ recordingSeconds: 0, recognizedTranscript: null, audioBlob: null })
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunksRef.current.push(event.data) }
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const url = URL.createObjectURL(blob)
-        setAudioUrl(url)
         stream.getTracks().forEach((track) => track.stop())
-        mediaStreamRef.current = null
-        const seconds = (Date.now() - startTimeRef.current) / 1000
-        setRecordingSeconds(seconds)
-        onChange({ recordingSeconds: seconds, recognizedTranscript: recognizedTranscriptRef.current, audioBlob: blob })
+        streamRef.current = null
+        const seconds = ((stoppedAtRef.current || Date.now()) - startTimeRef.current) / 1000
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        // Allow the final recognition event to arrive before submitting the completed blob.
+        finalizeTimer.current = setTimeout(() => {
+          if (mounted.current) {
+            const url = URL.createObjectURL(blob)
+            audioUrlRef.current = url
+            setAudioUrl(url)
+            setRecordingSeconds(seconds)
+            setRecording(false)
+            onChangeRef.current({ recordingSeconds: seconds, recognizedTranscript: transcriptRef.current, audioBlob: blob })
+          }
+          resolveStop.current?.()
+          pendingStop.current = null
+          resolveStop.current = null
+        }, 180)
       }
-      mediaRecorderRef.current = recorder
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop())
+        recognitionRef.current?.stop()
+        if (mounted.current) { setPermissionError('录音发生错误，请重试。'); setRecording(false) }
+        resolveStop.current?.()
+        pendingStop.current = null
+      }
+      recorderRef.current = recorder
       startTimeRef.current = Date.now()
+      stoppedAtRef.current = 0
       recorder.start()
       setRecording(true)
-
-      const RecognitionCtor = getSpeechRecognitionConstructor()
-      if (RecognitionCtor) {
-        const recognition = new RecognitionCtor()
+      const speechWindow = window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }
+      const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
+      if (Recognition) {
+        const recognition = new Recognition()
         recognition.lang = 'en-US'
         recognition.interimResults = false
         recognition.continuous = true
-        let fullTranscript = ''
         recognition.onresult = (event) => {
-          for (let i = 0; i < event.results.length; i += 1) {
-            fullTranscript += `${event.results[i][0].transcript} `
-          }
-          recognizedTranscriptRef.current = fullTranscript.trim()
-          setRecognizedTranscript(fullTranscript.trim())
+          const transcript = Array.from(event.results).map((result) => result[0].transcript).join(' ').trim()
+          transcriptRef.current = transcript
+          if (mounted.current) setRecognizedTranscript(transcript)
         }
-        recognition.onerror = () => {
-          // 语音识别失败时静默忽略，内容维度会回退为占位分。
-        }
+        recognition.onerror = () => { if (mounted.current) setRecognitionError('实时转写不可用，录音仍可正常回放。') }
         recognitionRef.current = recognition
-        recognition.start()
-      }
+        try { recognition.start() } catch { setRecognitionError('实时转写未能启动，录音仍可正常回放。') }
+      } else setRecognitionError('当前浏览器不支持实时转写，录音仍可正常回放。')
     } catch {
-      setPermissionError('无法访问麦克风，请检查浏览器权限设置后重试。')
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+      if (mounted.current) { setPermissionError('无法访问麦克风，请检查浏览器权限设置后重试。'); setRecording(false) }
+    } finally {
+      requesting.current = false
+      if (mounted.current) setStarting(false)
     }
   }
 
-  function stopRecording() {
-    mediaRecorderRef.current?.stop()
-    recognitionRef.current?.stop()
-    setRecording(false)
-  }
-
-  return { permissionError, recording, audioUrl, recordingSeconds, recognizedTranscript, startRecording, stopRecording }
+  return { permissionError, recognitionError, recording, starting, audioUrl, recordingSeconds, recognizedTranscript, startRecording, stopRecording }
 }

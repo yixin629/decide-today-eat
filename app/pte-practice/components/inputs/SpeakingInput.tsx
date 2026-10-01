@@ -1,5 +1,6 @@
 'use client'
 
+import { Mic, Square } from 'lucide-react'
 import type { AnswerShortQuestionItem, DescribeImageItem, ReadAloudItem, RepeatSentenceItem, RetellLectureItem } from '../../types'
 import { useAudioRecorder, type AudioRecorderResult } from '../../hooks/useAudioRecorder'
 import AudioOrTranscript from './AudioOrTranscript'
@@ -15,7 +16,7 @@ export function ReadAloudInput({
     <div className="space-y-4">
       <p className="rounded-lg bg-gray-50 p-4 text-base leading-relaxed text-gray-800">{item.text}</p>
       <RecorderControls
-        hint="本练习使用 MediaRecorder 录音，仅支持回放，不做真实发音评分；若浏览器支持语音识别，会额外生成一份粗略转写文本用于内容匹配估算。"
+        hint="朗读上方文字。录音可回放，转写与估分仅供练习参考。"
         onChange={onChange}
       />
     </div>
@@ -30,24 +31,25 @@ function RecorderControls({
   hint: string
   onChange: (result: AudioRecorderResult) => void
 }) {
-  const { permissionError, recording, audioUrl, recordingSeconds, recognizedTranscript, startRecording, stopRecording } = useAudioRecorder(onChange)
+  const { permissionError, recognitionError, recording, starting, audioUrl, recordingSeconds, recognizedTranscript, startRecording, stopRecording } = useAudioRecorder(onChange)
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-400">{hint}</p>
-      {permissionError && <p className="text-sm text-red-600">{permissionError}</p>}
-      <div className="flex items-center gap-3">
+      {permissionError && <p role="alert" className="text-sm text-red-600">{permissionError}</p>}
+      {recognitionError && <p role="status" className="pte-small-note">{recognitionError}</p>}
+      <div className="pte-recording-strip">
         {!recording ? (
-          <button type="button" onClick={startRecording} className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white">
-            ● 开始录音
+          <button type="button" onClick={() => void startRecording()} disabled={starting} className="pte-button primary">
+            <Mic size={16} />{starting ? '等待麦克风权限…' : audioUrl ? '重新录音' : '开始录音'}
           </button>
         ) : (
-          <button type="button" onClick={stopRecording} className="rounded-full bg-red-500 px-4 py-1.5 text-sm font-medium text-white">
-            ■ 停止录音
+          <button type="button" onClick={() => void stopRecording()} className="pte-button">
+            <Square size={16} className="text-red-600" />停止录音
           </button>
         )}
-        {audioUrl && <audio src={audioUrl} controls className="h-9" />}
+        <span className="text-sm tabular-nums text-gray-500" role="timer">{recordingSeconds.toFixed(1)} 秒{recording ? ' · 录音中' : ''}</span>
+        {audioUrl && <audio src={audioUrl} controls aria-label="我的录音回放" className="h-9" />}
       </div>
-      {recordingSeconds > 0 && <p className="text-sm text-gray-500">录音时长：{recordingSeconds.toFixed(1)} 秒</p>}
       {recognizedTranscript && <p className="text-sm text-gray-500">识别到的转写文本（仅供参考）：{recognizedTranscript}</p>}
     </div>
   )

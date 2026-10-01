@@ -385,7 +385,7 @@ export function scoreWriting({ item, text, secondsUsed, timeLimitSeconds }: Writ
         isHeuristic: false,
         note: `字数 ${wordCount}（要求 ${item.minWords}-${item.maxWords}）${
           item.taskType === 'writing-summarize-text' ? '，且应为单句' : ''
-        }，用时 ${Math.round(secondsUsed)} 秒（限时 ${Math.round(timeLimitSeconds)} 秒）。${formOk ? '符合形式要求。' : '不完全符合形式要求，请检查字数、句子数或用时。'}`,
+        }，用时 ${Math.round(secondsUsed)} 秒${Number.isFinite(timeLimitSeconds) ? `（限时 ${Math.round(timeLimitSeconds)} 秒）` : '（自由练习不限时）'}。${formOk ? '符合形式要求。' : '不完全符合形式要求，请检查字数、句子数或用时。'}`,
       })
     } else {
       results.push({
@@ -752,7 +752,7 @@ export function scoreListeningSummarize({ item, text, secondsUsed, timeLimitSeco
         score: formOk ? dimension.maxScore : 0,
         maxScore: dimension.maxScore,
         isHeuristic: false,
-        note: `字数 ${wordCount}（要求 ${item.minWords}-${item.maxWords}），用时 ${Math.round(secondsUsed)} 秒（限时 ${Math.round(timeLimitSeconds)} 秒）。${
+        note: `字数 ${wordCount}（要求 ${item.minWords}-${item.maxWords}），用时 ${Math.round(secondsUsed)} 秒${Number.isFinite(timeLimitSeconds) ? `（限时 ${Math.round(timeLimitSeconds)} 秒）` : '（自由练习不限时）'}。${
           formOk ? '符合形式要求。' : '不完全符合形式要求，请检查字数或用时。'
         }`,
       }

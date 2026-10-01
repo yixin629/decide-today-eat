@@ -198,7 +198,7 @@ export function SelectMissingWordInput({
   const [selected, setSelected] = useState<number | null>(null)
   return (
     <div className="space-y-4">
-      <AudioOrTranscript text={item.fullTranscript} revealText={item.displayedTranscript} />
+      <AudioOrTranscript text={item.displayedTranscript.split('____')[0]} revealText={item.displayedTranscript} />
       <p className="whitespace-pre-line rounded-lg bg-gray-50 p-4 text-sm leading-relaxed text-gray-700">{item.displayedTranscript}</p>
       <p className="text-xs text-gray-400">选出能补全录音结尾空缺部分的选项。</p>
       <div className="space-y-2">
