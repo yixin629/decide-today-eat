@@ -163,6 +163,16 @@
 .pte-answer-review dl { display: grid; gap: 14px; margin-top: 14px; }
 .pte-answer-review dt { color: var(--pte-muted); font-size: 11px; margin-bottom: 5px; }
 .pte-answer-review dd { font-size: 13px; line-height: 1.9; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pte-upload-card { border: 1px solid var(--pte-line); border-radius: 8px; padding: 20px; }
+.pte-upload-field { display: grid; gap: 7px; }
+.pte-upload-field > span { font-size: 12px; font-weight: 600; }
+.pte-upload-field :is(input, select, textarea) { width: 100%; min-width: 0; border: 1px solid var(--pte-line); border-radius: 6px; padding: 9px 11px; font-size: 13px; line-height: 1.7; }
+.pte-upload-field textarea { resize: vertical; }
+.pte-upload-field :is(input, select, textarea):focus { outline: 2px solid var(--pte-accent); outline-offset: 1px; }
+.pte-upload-field small { font-size: 11px; color: var(--pte-muted); line-height: 1.7; }
+.pte-upload-errors { list-style: disc; padding-left: 20px; font-size: 12px; line-height: 1.8; color: #b42318; }
+.dark-mode .pte-upload-errors { color: #f3a39a; }
+.pte-upload-preview { border-top: 1px dashed var(--pte-line); padding-top: 18px; display: grid; gap: 12px; }
 /*
  * 深色模式选择器说明：这个网站切换深色模式时，是往 <html> 上加 `dark-mode`
  * 这个类名（见 app/globals.css 和 UnifiedThemePanel.tsx），不是常见 Tailwind

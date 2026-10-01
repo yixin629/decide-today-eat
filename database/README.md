@@ -61,7 +61,7 @@
 | 星座           | `horoscope_readings`             | `migrations/horoscope-table.sql`                                | 独立迁移                                                                                                                          |
 | 穿搭记录       | `outfit_records`                 | `migrations/outfit-records-table.sql`                           | 独立迁移                                                                                                                          |
 | PTE 备考计划   | `pte_plans`、`pte_templates`     | `migrations/pte-plans-table.sql` + `migrations/pte-templates-table.sql` | 按网站登录身份保存多个计划、逐题记录和个人模板                                                                                |
-| PTE 练习平台   | `pte_practice_items`、`pte_practice_attempts`、`pte_practice_comments` | `migrations/pte-practice-items-table.sql` + `migrations/pte-practice-attempts-table.sql` + `migrations/pte-practice-comments-table.sql` | 题库云端存储（seed 迁移自 `questionBank.ts`，前端离线回退用）、按 zyx/zly 分用户的练习记录（Realtime，供"练习集锦"）、按题目留言与"在哪里/哪天考过"标记（Realtime）。三者可任意顺序执行，`pte_practice_comments.item_id`/`pte_practice_attempts.item_id` 仅为软引用（TEXT），不设外键。2026-09-24 起 `pte-practice-items-table.sql` 追加了一段 `task_type` 约束扩展（8 种 -> 20 种，覆盖全部官方 PTE Academic 题型）与对应新题型的 seed 数据；该文件依旧整体幂等可重复执行，**已经执行过旧版本的数据库必须重新执行一次本文件**才能让新的 12 种题型的数据写入成功（旧约束会拒绝新 task_type 值），文件内以 `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` 的方式安全重建约束，不影响已有数据行。2026-09-30 起该文件末尾又追加了一批题库扩容 seed 数据（20 种题型各自新增约 9-11 题，全库题量从 105 题扩大到 302 题，`ON CONFLICT (id) DO NOTHING`），不改表结构、不改约束；**任何已执行过旧版本的数据库都需要重新执行一次本文件**才能补齐新增的练习题（这仍只是阶段性扩容，远未达到商业级题库的数千题规模） |
+| PTE 练习平台   | `pte_practice_items`、`pte_practice_attempts`、`pte_practice_comments` | `migrations/pte-practice-items-table.sql` + `migrations/pte-practice-attempts-table.sql` + `migrations/pte-practice-comments-table.sql`；上传自定义题目再执行 `migrations/pte-practice-custom-items.sql`；已执行过旧版题库种子的库执行 `fixes/pte-practice-items-english-text.sql` 把题干/选项改为英文 | 题库云端存储（seed 迁移自 `questionBank.ts`，前端离线回退用）、按 zyx/zly 分用户的练习记录（Realtime，供"练习集锦"）、按题目留言与"在哪里/哪天考过"标记（Realtime）。三者可任意顺序执行，`pte_practice_comments.item_id`/`pte_practice_attempts.item_id` 仅为软引用（TEXT），不设外键。2026-09-24 起 `pte-practice-items-table.sql` 追加了一段 `task_type` 约束扩展（8 种 -> 20 种，覆盖全部官方 PTE Academic 题型）与对应新题型的 seed 数据；该文件依旧整体幂等可重复执行，**已经执行过旧版本的数据库必须重新执行一次本文件**才能让新的 12 种题型的数据写入成功（旧约束会拒绝新 task_type 值），文件内以 `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` 的方式安全重建约束，不影响已有数据行。2026-09-30 起该文件末尾又追加了一批题库扩容 seed 数据（20 种题型各自新增约 9-11 题，全库题量从 105 题扩大到 302 题，`ON CONFLICT (id) DO NOTHING`），不改表结构、不改约束；**任何已执行过旧版本的数据库都需要重新执行一次本文件**才能补齐新增的练习题（这仍只是阶段性扩容，远未达到商业级题库的数千题规模）。2026-10-01 起题库种子中的中文题干、选项、SWT 题目要求和 Describe Image 图表文字已改为英文（新库直接执行本文件即可）；现有库因种子使用 `ON CONFLICT DO NOTHING` 不会被更新，需要执行 `fixes/pte-practice-items-english-text.sql`。`pte-practice-custom-items.sql` 为题库增加 `created_by`/`created_at` 列和仅限 `custom-` 前缀行的匿名 INSERT/DELETE 策略，未执行时前端上传会提示先执行该文件，练习与浏览不受影响 |
 | 双人陪伴功能   | `decision_options`、`food_options`、`memory_places`、`couple_growth`、`couple_gifts`、`couple_notifications` | `migrations/couple-companion-features.sql` + `migrations/expand-decision-wheel-options.sql` | 万能转盘（保留旧食物库并扩充其他主题）、共同养成、回忆地图、礼物、PTE 鼓励与实时通知 |
 | 互动功能包     | 见下表                           | `migrations/supabase-new-features.sql`                          | 包含默认数据和遗留表，不能默认重复执行                                                                                            |
 
@@ -115,6 +115,7 @@
 | `outfit-records-table.sql`      | 穿搭记录                                         |
 | `profile-tables.sql`            | 个人资料和提醒；新库会为规范化姓名建立唯一索引   |
 | `pte-plans-table.sql`           | PTE 多计划、配置和逐题记录的 JSONB 云端存储      |
+| `pte-practice-custom-items.sql` | PTE 题库自定义题目：`created_by`/`created_at` 列、payload 大小约束、仅限 `custom-` 行的匿名 INSERT/DELETE（放宽 RLS） |
 | `replace-food-options-seed.sql` | 破坏性清空并重建食物种子                         |
 | `supabase-new-features.sql`     | 尚未拆分完的互动功能、默认数据和遗留表           |
 | `tarot-table.sql`               | 塔罗记录                                         |
@@ -126,6 +127,7 @@
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `deduplicate-user-profiles.sql` | `user_profiles.name` 已有重复行导致单行查询失败；会先建立启用 RLS 且撤销客户端权限的备份表，再合并重复资料并添加规范化姓名唯一索引 |
 | `fix-check-ins-rls.sql`         | `check_ins` 已存在但缺少 RLS，或需修复 `update_updated_at_column` 的 `search_path`                                                 |
+| `pte-practice-items-english-text.sql` | 已执行过旧版 `pte-practice-items-table.sql` 的库：把内置题目的中文题干、选项、SWT 要求和图表文字更新为英文；只合并被翻译字段、仅更新仍含中文的行，可重复执行 |
 
 ### `diagnostics/`
 
@@ -204,5 +206,5 @@
 - `photos`、`songs`、`love_notes` 的页面会使用 Realtime，但对应脚本尚未统一加入 publication。
 - `photos`、`avatars` Storage bucket 及其策略需要在 Supabase 控制台单独配置。
 - `pte_plans` 沿用网站自定义的 `zyx` / `zly` 前端身份；在迁移到 Supabase Auth 前，RLS 无法提供基于 `auth.uid()` 的强用户隔离。
-- `pte_practice_attempts`、`pte_practice_comments` 同样沿用 `zyx` / `zly` 前端身份，RLS 无法验证调用者真实身份；`pte_practice_items` 的 SELECT 对所有角色开放（练习题面内容不敏感），INSERT/UPDATE/DELETE 未对 anon/authenticated 开放，题库更新只能通过新增迁移文件完成。
+- `pte_practice_attempts`、`pte_practice_comments` 同样沿用 `zyx` / `zly` 前端身份，RLS 无法验证调用者真实身份；`pte_practice_items` 的 SELECT 对所有角色开放（练习题面内容不敏感），内置题目的 INSERT/UPDATE/DELETE 未对 anon/authenticated 开放。执行 `migrations/pte-practice-custom-items.sql` 后，anon/authenticated 可以插入和删除 id 以 `custom-` 开头、`created_by` 为 zyx/zly 的自定义题目；由于沿用前端身份，任何持有匿名 key 的人都能以这两个身份上传或删除自定义题目，公开部署前必须接入可靠认证并收紧该策略。
 - 任何 SQL 都先在测试项目验证；仓库维护过程不会自动连接或修改线上数据库。

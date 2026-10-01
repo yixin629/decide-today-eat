@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, GraduationCap, Headphones, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
+import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
 import { loadAttempts } from '../lib/attempt-repository'
-import { loadPracticeCatalog } from '../lib/item-repository'
+import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
 import { itemKey, latestByItem, needsReview } from '../lib/study'
 import { TASK_TYPES, type AttemptRecord, type PracticeItem, type TaskType } from '../types'
@@ -18,8 +18,9 @@ import MockExam from './mock-exam/MockExam'
 import PracticeSession from './PracticeSession'
 import QuestionLibrary, { type LibraryFilter } from './QuestionLibrary'
 import TaskDashboard from './TaskDashboard'
+import QuestionUploader from './upload/QuestionUploader'
 
-type Tab = 'dashboard' | 'library' | 'review' | 'bookmarks' | 'listening' | 'mock-exam' | 'history' | 'analytics' | 'feed'
+type Tab = 'dashboard' | 'library' | 'review' | 'bookmarks' | 'listening' | 'mock-exam' | 'history' | 'analytics' | 'feed' | 'upload'
 const NAV = [
   { id: 'dashboard', label: '学习工作台', icon: LayoutDashboard },
   { id: 'library', label: '专项题库', icon: BookOpen },
@@ -30,6 +31,7 @@ const NAV = [
   { id: 'history', label: '练习记录', icon: History },
   { id: 'analytics', label: '学习分析', icon: BarChart3 },
   { id: 'feed', label: '练习集锦', icon: MessageSquare },
+  { id: 'upload', label: '上传题目', icon: FilePlus2 },
 ] as const
 
 export default function PtePractice() {
@@ -38,7 +40,7 @@ export default function PtePractice() {
   const [tab, setTab] = useState<Tab>('dashboard')
   const [libraryTask, setLibraryTask] = useState<TaskType | undefined>()
   const [libraryKey, setLibraryKey] = useState(0)
-  const [catalog, setCatalog] = useState({ items: TASK_TYPES.flatMap(getItemsForTaskType), cloudIds: [] as string[], error: null as string | null })
+  const [catalog, setCatalog] = useState({ items: TASK_TYPES.flatMap(getItemsForTaskType), cloudIds: [] as string[], customItems: [] as CustomItemInfo[], error: null as string | null })
   const [catalogLoading, setCatalogLoading] = useState(true)
   const [history, setHistory] = useState({ attempts: [] as AttemptRecord[], source: 'local' as 'local' | 'cloud', error: null as string | null })
   const [historyLoading, setHistoryLoading] = useState(true)
@@ -134,12 +136,13 @@ export default function PtePractice() {
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
-            {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} onBookmark={bookmark} onStart={start} />}
+            {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} />}
             {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} />}
             {tab === 'analytics' && <AnalyticsDashboard userId={user} refreshKey={refreshKey} onSelectTaskType={openTask} />}
             {tab === 'feed' && <CommunityFeed currentUserId={user} />}
+            {tab === 'upload' && <QuestionUploader items={catalog.items} customItems={catalog.customItems} userId={user} onChanged={() => setCatalogRefresh((n) => n + 1)} onPractice={startItem} />}
           </>}
         </div>
         <footer className="pte-footer"><span>练习反馈仅供学习参考</span><a href="https://www.pearsonpte.com/pte-academic/scoring" target="_blank" rel="noreferrer">Pearson 官方评分说明 <ArrowLeft size={12} className="rotate-[135deg]" /></a></footer>

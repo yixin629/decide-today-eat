@@ -10,8 +10,8 @@ export type LibraryFilter = 'all' | 'unpracticed' | 'practiced' | 'bookmarked' |
 const FILTER_LABELS: Record<LibraryFilter, string> = { all: '全部题目', unpracticed: '未练习', practiced: '已练习', bookmarked: '我的收藏', review: '错题复习' }
 const PAGE_SIZE = 12
 
-export default function QuestionLibrary({ items, cloudIds, attempts, bookmarks, initialTask, initialFilter = 'all', onBookmark, onStart }: {
-  items: PracticeItem[]; cloudIds: string[]; attempts: AttemptRecord[]; bookmarks: string[]
+export default function QuestionLibrary({ items, cloudIds, customKeys = [], attempts, bookmarks, initialTask, initialFilter = 'all', onBookmark, onStart }: {
+  items: PracticeItem[]; cloudIds: string[]; customKeys?: string[]; attempts: AttemptRecord[]; bookmarks: string[]
   initialTask?: TaskType; initialFilter?: LibraryFilter
   onBookmark: (key: string) => void
   onStart: (items: PracticeItem[], index: number) => void
@@ -24,6 +24,7 @@ export default function QuestionLibrary({ items, cloudIds, attempts, bookmarks, 
   const latest = useMemo(() => latestByItem(attempts), [attempts])
   const bookmarkSet = new Set(bookmarks)
   const cloudSet = new Set(cloudIds)
+  const customSet = new Set(customKeys)
   const filtered = items.filter((item) => {
     const key = itemKey(item)
     const attempt = latest.get(key)
@@ -54,7 +55,7 @@ export default function QuestionLibrary({ items, cloudIds, attempts, bookmarks, 
       const pct = attempt ? objectivePercent(attempt) : null
       return <article className="pte-question-row" key={key}>
         <span className={`pte-task-code skill-${meta.skill}`}>{TASK_CODES[item.taskType]}</span>
-        <div className="pte-question-copy"><div className="pte-question-meta"><span>#{item.id}</span><span>{cloudSet.has(key) ? '云端题库' : '原创练习'}</span>{attempt && <span className={needsReview(attempt) ? 'pte-review-label' : 'pte-complete-label'}><CheckCircle2 size={12} />{pct !== null ? `客观项 ${pct}%` : '已练习'}</span>}</div><button onClick={() => onStart(filtered, safePage * PAGE_SIZE + index)} className="pte-question-title">{itemPreview(item)}</button><p>{meta.shortLabel} · {meta.timeLimitSeconds ? `${meta.timeLimitSeconds < 60 ? `${meta.timeLimitSeconds} 秒` : `${meta.timeLimitSeconds / 60} 分钟`}练习计时` : '自由练习'}</p></div>
+        <div className="pte-question-copy"><div className="pte-question-meta"><span>#{item.id}</span><span>{customSet.has(key) ? '自定义题目' : cloudSet.has(key) ? '云端题库' : '原创练习'}</span>{attempt && <span className={needsReview(attempt) ? 'pte-review-label' : 'pte-complete-label'}><CheckCircle2 size={12} />{pct !== null ? `客观项 ${pct}%` : '已练习'}</span>}</div><button onClick={() => onStart(filtered, safePage * PAGE_SIZE + index)} className="pte-question-title">{itemPreview(item)}</button><p>{meta.shortLabel} · {meta.timeLimitSeconds ? `${meta.timeLimitSeconds < 60 ? `${meta.timeLimitSeconds} 秒` : `${meta.timeLimitSeconds / 60} 分钟`}练习计时` : '自由练习'}</p></div>
         <div className="pte-row-actions"><button className={`pte-icon-button ${bookmarkSet.has(key) ? 'bookmarked' : ''}`} aria-label={bookmarkSet.has(key) ? `取消收藏 ${item.id}` : `收藏 ${item.id}`} title={bookmarkSet.has(key) ? '取消收藏' : '收藏题目'} aria-pressed={bookmarkSet.has(key)} onClick={() => onBookmark(key)}><Bookmark size={18} fill={bookmarkSet.has(key) ? 'currentColor' : 'none'} /></button><button className="pte-icon-button start" aria-label={`练习 ${item.id}`} title="开始练习" onClick={() => onStart(filtered, safePage * PAGE_SIZE + index)}><ArrowRight size={19} /></button></div>
       </article>
     })}</div>
