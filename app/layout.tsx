@@ -12,6 +12,7 @@ import RandomSurprise from '@/app/components/layout/RandomSurprise'
 import NotificationCenter from '@/app/components/layout/NotificationCenter'
 import { MusicPlayerProvider } from '@/app/components/music/MusicPlayerContext'
 import GlobalMusicPlayer from '@/app/components/music/GlobalMusicPlayer'
+import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </MusicPlayerProvider>
           </AuthGuard>
         </ToastProvider>
+        <Analytics />
       </body>
     </html>
   )
