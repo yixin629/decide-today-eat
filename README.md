@@ -25,7 +25,7 @@
 | Web 框架 | Next.js 16（App Router、Turbopack） |
 | 开发语言 | TypeScript、React 19 |
 | 样式 | Tailwind CSS |
-| 数据与存储 | Supabase（PostgreSQL、Storage） |
+| 数据与存储 | Supabase（PostgreSQL、Realtime、Storage） |
 | 日期处理 | date-fns |
 | Markdown | react-markdown、remark-gfm |
 
@@ -53,7 +53,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名访问密钥
 PTE 练习平台（`/pte-practice`）的口语朗读发音评分与写作语法评分依赖一套可选的
 自托管开源评分服务，通过 `PTE_SCORING_SERVICE_URL`、`PTE_SCORING_SERVICE_TOKEN`
 两个服务端环境变量接入；不配置时会自动回退到本地启发式估分，网站其余功能不受
-影响。部署方式见 [`pte-scoring-service/README.md`](./pte-scoring-service/README.md)。
+影响。部署方式见 [`pte-scoring-service/README.md`](./pte-scoring-service/README.md)，
+PTE 功能的数据库脚本、上传题目和使用说明见 [PTE 备考与练习](./docs/guides/PTE_STUDY.md)。
 
 ### 3. 初始化数据库
 
@@ -146,19 +147,7 @@ npm start
 - Cloudflare 本地构建：`npm run cf:build`
 - Cloudflare 本地预览：`npm run preview`
 
-Cloudflare Workers Builds 推荐使用 OpenNext 的分阶段命令：
-
-```text
-Production branch: main
-Root directory: 留空（仓库根目录）
-Build command: npm run cf:build
-Deploy command: npx @opennextjs/cloudflare deploy
-Non-production branch deploy command: npx @opennextjs/cloudflare upload
-```
-
-不要在同一流水线中再调用包含构建步骤的 `npm run deploy`，否则会重复构建。仓库不在 `wrangler.toml` 中配置 Custom Build，Dashboard 的 Build command 需要明确填写。
-
-在 Cloudflare 的 Build variables 中配置两个 `NEXT_PUBLIC_SUPABASE_*` 变量；AI Key 应配置为 Worker 运行时 Secret。不要把真实值写入 `wrangler.toml`。
+Cloudflare Workers Builds 的 Dashboard 命令、构建变量与运行时 Secret 统一维护在 [部署与持续集成](./docs/getting-started/DEPLOYMENT.md)；不要在同一流水线中重复调用包含构建步骤的 `npm run deploy`，也不要把真实值写入 `wrangler.toml`。
 
 `scripts/verify-project.bat` 和 `scripts/verify-project.sh` 会安装锁定依赖并执行
 `npm run check`（lint、类型检查和生产构建），不会把项目发布到 Vercel 或 Cloudflare。

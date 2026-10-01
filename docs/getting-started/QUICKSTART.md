@@ -37,7 +37,7 @@ NEXT_PUBLIC_SUPABASE_URL=你的项目地址
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的匿名客户端密钥
 ```
 
-AI 助手需要时，再填写 `GROQ_API_KEY` 或 `CHATANYWHERE_API_KEY`。不要提交 `.env.local`。
+AI 助手、YouTube 搜索和 PTE 评分服务都是可选的服务端变量，按 `.env.local.example` 中的说明填写，详见 [部署与持续集成](./DEPLOYMENT.md#环境变量)。不要提交 `.env.local`。
 
 ## 3. 初始化 Supabase
 

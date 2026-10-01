@@ -23,6 +23,7 @@
 │   └── reports/               # 历史开发报告
 ├── scripts/                   # 本地验证与维护脚本
 ├── patches/                   # 安全依赖兼容补丁
+├── pte-scoring-service/       # PTE 练习的可选自托管评分服务（Docker，独立部署）
 ├── eslint.config.mjs          # ESLint 9 Flat Config
 ├── AGENTS.md                  # AI 开发协作规则
 ├── README.md                  # 项目入口
@@ -48,7 +49,11 @@ app/
 ├── error.tsx                  # 页面渲染异常兜底
 ├── not-found.tsx              # 404 页面
 ├── globals.css                # 全局样式和主题
-├── api/chat/route.ts          # AI 聊天服务端接口
+├── api/
+│   ├── chat/route.ts          # AI 聊天服务端接口
+│   ├── lyrics/route.ts        # 音乐播放器歌词查询
+│   ├── youtube-search/route.ts # 音乐播放器 YouTube 站内搜索
+│   └── pte-scoring/           # PTE 朗读与写作评分代理（read-aloud、writing）
 ├── components/
 │   ├── ai-chat/               # AI 聊天浮层、客户端与本地回复
 │   ├── avatar/                # 头像选择
@@ -74,11 +79,18 @@ app/
 │   ├── page.tsx               # /gomoku
 │   ├── [id]/page.tsx          # /gomoku/:id
 │   └── engine/                # 五子棋规则逻辑
-└── mahjong/
-    ├── page.tsx               # /mahjong
-    ├── [id]/page.tsx          # /mahjong/:id
-    ├── components/            # 麻将专用组件
-    └── engine/                # 麻将规则逻辑
+├── mahjong/
+│   ├── page.tsx               # /mahjong
+│   ├── [id]/page.tsx          # /mahjong/:id
+│   ├── components/            # 麻将专用组件
+│   └── engine/                # 麻将规则逻辑
+├── pte-plan/                  # /pte-plan：备考计划（components、engine、lib）
+└── pte-practice/
+    ├── page.tsx               # /pte-practice
+    ├── components/            # 题库、做题、精听、模考、分析、上传等界面
+    ├── engine/                # 评分与模考组卷逻辑
+    ├── hooks/                 # 录音、语音播放、学习偏好
+    └── lib/                   # 题库数据、仓储层、题目校验与学习统计
 ```
 
 跨页面 UI 按职责放入 `app/components/` 的子目录；只服务某个功能的组件、类型、常量和引擎代码应保留在该功能目录内。
@@ -90,6 +102,9 @@ app/
 - `hooks/useAuth.ts`：读取并兼容历史本地登录标识。当前实现不是完整的服务端认证。
 - `lib/anniversaries.ts`：解析本地纪念日日期并计算下一次发生时间。
 - `lib/auth-session.ts`：统一读写和清理两个历史本地登录键。
+- `lib/couple-interactions.ts`：伴侣身份换算与双人通知写入。
+- `lib/pte-target-scores.ts`：读取最近一份 PTE 备考计划的目标分数，供练习平台的学习分析使用。
+- `lib/user-profiles.ts`：个人资料读取与规范化。
 - `lib/supabase.ts`：创建前端 Supabase 客户端。
 - `lib/features.ts`：统一登记功能名称、路由、分类以及首页和导航的展示方式。
 
@@ -98,7 +113,7 @@ app/
 ## 数据与身份边界
 
 - 浏览器页面通过 `lib/supabase.ts` 使用匿名客户端访问 Supabase。
-- `app/api/chat/route.ts` 在服务端读取 AI 服务密钥，不把密钥返回客户端。
+- `app/api/` 下的路由在服务端读取 AI、YouTube 和 PTE 评分服务密钥，不把密钥返回客户端。
 - `hooks/useAuth.ts` 的当前用户来自浏览器本地存储，只用于界面身份，不是服务端认证。
 - 相册使用 `photos` Storage bucket，自定义头像使用 `avatars` bucket。
 - 多个历史 SQL 使用公开 RLS；公开部署前需要接入认证并重写策略。
@@ -136,7 +151,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-服务端 AI Key 只应存在于 `.env.local` 或部署平台的环境变量中，不得提交到仓库。
+可选的服务端变量（AI 聊天、YouTube 搜索、PTE 评分服务）见 `.env.local.example` 和 [部署与持续集成](../getting-started/DEPLOYMENT.md#环境变量)。这些密钥只应存在于 `.env.local` 或部署平台的环境变量中，不得提交到仓库。
 
 ## 开发命令
 

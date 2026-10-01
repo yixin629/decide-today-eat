@@ -13,22 +13,19 @@
 - [个人资料与提醒](./guides/PROFILE_GUIDE.md)
 - [互动功能与数据库依赖](./guides/INTERACTIVE_FEATURES.md)
 - [计划与记录功能](./guides/PLANNING_AND_RECORDS.md)
+- [PTE 备考与练习](./guides/PTE_STUDY.md)：备考计划、练习平台、上传题目与评分服务
 
 ## 架构
 
 - [项目结构说明](./architecture/PROJECT_STRUCTURE.md)
 - [数据库脚本说明](../database/README.md)
+- [PTE 自托管评分服务](../pte-scoring-service/README.md)
 
 ## 历史报告
 
-`reports/` 保存开发阶段产生的实现总结、优化进度和版本说明。这些文件是历史快照，不是当前部署、功能完成度或待办事项的依据；每份报告顶部都标明了这一点。
+`reports/` 保存开发阶段的历史快照，不是当前部署、功能完成度或待办事项的依据。
 
-- [V2 功能实现总结](./reports/IMPLEMENTATION_SUMMARY_V2.md)
-- [V2 新功能说明](./reports/NEW_FEATURES_V2.md)
-- [全面优化完成报告](./reports/COMPLETE_OPTIMIZATION_REPORT.md)
-- [优化进度](./reports/OPTIMIZATION_PROGRESS.md)
-- [UI 优化报告](./reports/UI_OPTIMIZATION_REPORT.md)
-- [UI 优化第二阶段](./reports/UI_OPTIMIZATION_PHASE2.md)
+- [2024 年开发历史摘要](./reports/HISTORY_2024.md)：合并了 2024-11 的 UI 优化与 V2 功能报告，原文可在 git 历史中查看
 
 ## 文档优先级
 
