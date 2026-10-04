@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { AttemptRecord } from '../types'
+import { mergeAttemptHistory, parseLocalHistory } from './attempt-history'
 
 const STORAGE_KEY = 'pte-practice-attempts-v1'
 const MAX_STORED_ATTEMPTS = 200
@@ -44,23 +45,22 @@ function isBrowser() {
   return typeof window !== 'undefined'
 }
 
-function loadLocalAttempts(): AttemptRecord[] {
-  if (!isBrowser()) return []
+function loadLocalAttempts(): { attempts: AttemptRecord[]; error: string | null } {
+  if (!isBrowser()) return { attempts: [], error: null }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed as AttemptRecord[]
+    return parseLocalHistory(window.localStorage.getItem(STORAGE_KEY))
   } catch {
-    return []
+    return { attempts: [], error: '浏览器阻止了本机存储访问，无法读取离线记录。' }
   }
 }
 
 function saveLocalAttempt(attempt: AttemptRecord): boolean {
   if (!isBrowser()) return false
   const existing = loadLocalAttempts()
-  const next = [attempt, ...existing].slice(0, MAX_STORED_ATTEMPTS)
+  if (existing.error) return false
+  const own = existing.attempts.filter((record) => record.userId === attempt.userId && record.id !== attempt.id)
+  const others = existing.attempts.filter((record) => record.userId !== attempt.userId)
+  const next = [...[attempt, ...own].slice(0, MAX_STORED_ATTEMPTS), ...others]
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     return true
@@ -71,14 +71,15 @@ function saveLocalAttempt(attempt: AttemptRecord): boolean {
 
 export interface AttemptQueryResult {
   attempts: AttemptRecord[]
-  source: 'cloud' | 'local'
+  source: 'cloud' | 'local' | 'mixed'
   error: string | null
 }
 
 /** 加载指定用户的练习记录（"我的练习"）。 */
 export async function loadAttempts(userId: string | null): Promise<AttemptQueryResult> {
-  const localAttempts = loadLocalAttempts().filter((attempt) => (attempt.userId ?? null) === userId)
-  if (!userId) return { attempts: localAttempts, source: 'local', error: null }
+  const local = loadLocalAttempts()
+  const localAttempts = mergeAttemptHistory([], local.attempts, userId).attempts
+  if (!userId) return { attempts: localAttempts, source: 'local', error: local.error }
   try {
     const { data, error } = await supabase
       .from('pte_practice_attempts')
@@ -88,12 +89,13 @@ export async function loadAttempts(userId: string | null): Promise<AttemptQueryR
       .limit(MAX_STORED_ATTEMPTS)
 
     if (error) throw error
-    return { attempts: ((data ?? []) as AttemptRow[]).map(rowToAttempt), source: 'cloud', error: null }
-  } catch (err) {
+    const merged = mergeAttemptHistory(((data ?? []) as AttemptRow[]).map(rowToAttempt), localAttempts, userId)
+    return { attempts: merged.attempts, source: merged.hasLocal ? 'mixed' : 'cloud', error: local.error }
+  } catch {
     return {
       attempts: localAttempts,
       source: 'local',
-      error: err instanceof Error ? err.message : '练习记录加载失败，已显示本机历史',
+      error: ['云端记录暂时不可用，已显示当前身份的本机历史。', local.error].filter(Boolean).join(' '),
     }
   }
 }
@@ -141,7 +143,7 @@ export async function saveAttempt(
       if (error || !data) throw error ?? new Error('练习记录保存未返回结果')
       return { attempt: rowToAttempt(data as AttemptRow), source: 'cloud', error: null }
     } catch {
-      const localRecord: AttemptRecord = { ...attempt, id: `${attempt.itemId}-${Date.now()}`, userId: userId ?? undefined }
+      const localRecord: AttemptRecord = { ...attempt, id: crypto.randomUUID(), userId }
       const stored = saveLocalAttempt(localRecord)
       return {
         attempt: localRecord,
@@ -151,7 +153,7 @@ export async function saveAttempt(
     }
   }
 
-  const localRecord: AttemptRecord = { ...attempt, id: `${attempt.itemId}-${Date.now()}` }
+  const localRecord: AttemptRecord = { ...attempt, id: crypto.randomUUID() }
   const stored = saveLocalAttempt(localRecord)
   return { attempt: localRecord, source: 'local', error: stored ? null : '本机存储不可用，本次反馈仅在当前页面可见，请勿关闭页面。' }
 }

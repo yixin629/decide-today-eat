@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BodyLimitError, readLimitedBody } from '../lib/body-limit'
+import { parseReadAloudResult } from '../lib/response-contract'
 
 export const runtime = 'nodejs'
 
@@ -25,22 +27,31 @@ const FETCH_TIMEOUT_MS = 45000
  *   分数均为 0-5 的小分制（与 Pearson 公开的 Read Aloud 单题评分维度量表一致）。
  */
 export async function POST(req: NextRequest) {
-  if (!SERVICE_URL) {
+  if (!SERVICE_URL || !SERVICE_TOKEN) {
     return NextResponse.json(
-      { error: 'not_configured', message: 'PTE_SCORING_SERVICE_URL 未配置，请使用本地估算回退。' },
+      { error: 'not_configured', message: '评分服务尚未完成配置，请使用本地练习反馈。' },
       { status: 501 }
     )
   }
 
   let formData: FormData
   try {
-    formData = await req.formData()
-  } catch {
+    const contentType = req.headers.get('content-type') ?? ''
+    if (contentType.split(';')[0].trim().toLowerCase() !== 'multipart/form-data') {
+      return NextResponse.json({ error: 'invalid_request', message: '请求体必须是 multipart/form-data。' }, { status: 415 })
+    }
+    const bytes = await readLimitedBody(req, MAX_AUDIO_BYTES + 64 * 1024)
+    formData = await new Response(bytes, { headers: { 'Content-Type': contentType } }).formData()
+  } catch (error) {
+    if (error instanceof BodyLimitError) return NextResponse.json({ error: 'invalid_request', message: error.message }, { status: error.status })
     return NextResponse.json({ error: 'invalid_request', message: '请求体必须是 multipart/form-data。' }, { status: 400 })
   }
 
   const promptText = formData.get('promptText')
   const audio = formData.get('audio')
+  if (formData.getAll('promptText').length !== 1 || formData.getAll('audio').length !== 1) {
+    return NextResponse.json({ error: 'invalid_request', message: 'promptText 和 audio 必须各提供一次。' }, { status: 400 })
+  }
 
   if (typeof promptText !== 'string' || promptText.trim().length === 0) {
     return NextResponse.json({ error: 'invalid_request', message: 'promptText 为必填字段。' }, { status: 400 })
@@ -65,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const upstreamRes = await fetch(`${SERVICE_URL.replace(/\/$/, '')}/score/read-aloud`, {
       method: 'POST',
-      headers: SERVICE_TOKEN ? { Authorization: `Bearer ${SERVICE_TOKEN}` } : undefined,
+      headers: { Authorization: `Bearer ${SERVICE_TOKEN}` },
       body: upstreamForm,
       signal: controller.signal,
     })
@@ -77,9 +88,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const data: unknown = await upstreamRes.json()
-    return NextResponse.json(data)
+    const bytes = await readLimitedBody(upstreamRes, 512 * 1024)
+    const data = parseReadAloudResult(JSON.parse(new TextDecoder().decode(bytes)))
+    if (!data) return NextResponse.json({ error: 'invalid_response', message: '评分服务返回了无效结果，请稍后重试。' }, { status: 502 })
+    return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
+    if (error instanceof BodyLimitError || error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'invalid_response', message: '评分服务结果无法读取，请稍后重试。' }, { status: 502 })
+    }
     const isAbort = error instanceof Error && error.name === 'AbortError'
     return NextResponse.json(
       { error: isAbort ? 'timeout' : 'network_error', message: isAbort ? '评分服务响应超时。' : '无法连接到评分服务。' },

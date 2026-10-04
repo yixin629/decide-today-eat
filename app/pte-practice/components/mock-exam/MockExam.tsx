@@ -15,7 +15,7 @@ type MockExamView =
 export default function MockExam({ userId, onRunningChange, onAttemptSaved }: {
   userId: string | null
   onRunningChange: (running: boolean) => void
-  onAttemptSaved: (attempt: AttemptRecord) => void
+  onAttemptSaved: (attempt: AttemptRecord, source: 'cloud' | 'local') => void
 }) {
   const [view, setView] = useState<MockExamView>({ name: 'entry' })
   const [starting, setStarting] = useState(false)

@@ -10,16 +10,17 @@ LanguageTool（语法/拼写）。任何一个下游不可用时，网关会尽�
 的字段，缺失的字段留空/省略，由 Next.js 侧的 scoring.ts 决定怎么和本地
 启发式结果合并——网关本身不做"整体降级"的决定。
 
-鉴权：如果设置了 SHARED_TOKEN 环境变量，会校验 Authorization: Bearer 头。
-这是一个只给两个人用的私有网站，共享密钥已经足够，没有做用户级别的权限。
+鉴权：必须配置 SHARED_TOKEN 并校验 Authorization: Bearer 头。
+共享密钥仅保护服务间通信，不替代网站的用户认证、权限与配额。
 """
 
 import os
 import re
+import secrets
 
 import httpx
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 WHISPER_URL = os.environ.get("WHISPER_SERVICE_URL", "http://whisper-service:8001")
 OPENPRONOUNCE_URL = os.environ.get("OPENPRONOUNCE_SERVICE_URL", "http://openpronounce-service:8002")
@@ -33,8 +34,8 @@ app = FastAPI(title="pte-scoring-gateway")
 
 def _check_auth(authorization: str | None) -> None:
     if not SHARED_TOKEN:
-        return
-    if authorization != f"Bearer {SHARED_TOKEN}":
+        raise HTTPException(status_code=503, detail="authentication_not_configured")
+    if not secrets.compare_digest((authorization or "").encode(), f"Bearer {SHARED_TOKEN}".encode()):
         raise HTTPException(status_code=401, detail="unauthorized")
 
 
@@ -95,7 +96,11 @@ async def score_read_aloud(
 ) -> dict:
     _check_auth(authorization)
 
-    audio_bytes = await audio.read()
+    if not promptText.strip() or len(promptText) > 2000:
+        raise HTTPException(status_code=422, detail="invalid_prompt")
+    audio_bytes = await audio.read(15 * 1024 * 1024 + 1)
+    if not audio_bytes or len(audio_bytes) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="invalid_audio_size")
     filename = audio.filename or "recording.webm"
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -140,14 +145,16 @@ async def score_read_aloud(
 
 
 class WritingScoringRequest(BaseModel):
-    promptText: str
-    sourceText: str | None = None
-    text: str
+    promptText: str = Field(min_length=1, max_length=8000)
+    sourceText: str | None = Field(default=None, max_length=8000)
+    text: str = Field(min_length=1, max_length=8000)
 
 
 @app.post("/score/writing")
 async def score_writing(payload: WritingScoringRequest, authorization: str | None = Header(default=None)) -> dict:
     _check_auth(authorization)
+    if not payload.promptText.strip() or not payload.text.strip():
+        raise HTTPException(status_code=422, detail="empty_writing_input")
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         try:
@@ -157,8 +164,13 @@ async def score_writing(payload: WritingScoringRequest, authorization: str | Non
             )
             lt_res.raise_for_status()
             lt_data = lt_res.json()
-        except Exception:  # noqa: BLE001 - LanguageTool 不可用时返回空结果，由 Next.js 侧回退
-            lt_data = None
+        except (httpx.HTTPError, ValueError) as error:
+            raise HTTPException(status_code=503, detail="grammar_service_unavailable") from error
+
+    if not isinstance(lt_data, dict) or not isinstance(lt_data.get("matches"), list):
+        raise HTTPException(status_code=503, detail="invalid_grammar_service_response")
+    if not all(isinstance(match, dict) and isinstance(match.get("rule"), dict) for match in lt_data["matches"]):
+        raise HTTPException(status_code=503, detail="invalid_grammar_service_response")
 
     grammar_issues: list[dict] = []
     spelling_issues: list[dict] = []

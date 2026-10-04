@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { BodyLimitError, readLimitedBody } from '../lib/body-limit'
+import { parseWritingResult } from '../lib/response-contract'
 
 export const runtime = 'nodejs'
 
@@ -35,17 +37,22 @@ function parseBody(body: unknown): WritingScoringBody | null {
  *          vocabularyDiversity, contentKeywordCoverage }
  */
 export async function POST(req: NextRequest) {
-  if (!SERVICE_URL) {
+  if (!SERVICE_URL || !SERVICE_TOKEN) {
     return NextResponse.json(
-      { error: 'not_configured', message: 'PTE_SCORING_SERVICE_URL 未配置，请使用本地估算回退。' },
+      { error: 'not_configured', message: '评分服务尚未完成配置，请使用本地练习反馈。' },
       { status: 501 }
     )
   }
 
   let raw: unknown
   try {
-    raw = await req.json()
-  } catch {
+    if (req.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') {
+      return NextResponse.json({ error: 'invalid_request', message: '请求体必须是 application/json。' }, { status: 415 })
+    }
+    const bytes = await readLimitedBody(req, 160 * 1024)
+    raw = JSON.parse(new TextDecoder().decode(bytes))
+  } catch (error) {
+    if (error instanceof BodyLimitError) return NextResponse.json({ error: 'invalid_request', message: error.message }, { status: error.status })
     return NextResponse.json({ error: 'invalid_request', message: '请求体必须是合法 JSON。' }, { status: 400 })
   }
 
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(SERVICE_TOKEN ? { Authorization: `Bearer ${SERVICE_TOKEN}` } : {}),
+        Authorization: `Bearer ${SERVICE_TOKEN}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -81,9 +88,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const data: unknown = await upstreamRes.json()
-    return NextResponse.json(data)
+    const bytes = await readLimitedBody(upstreamRes, 512 * 1024)
+    const data = parseWritingResult(JSON.parse(new TextDecoder().decode(bytes)))
+    if (!data) return NextResponse.json({ error: 'invalid_response', message: '评分服务返回了无效结果，请稍后重试。' }, { status: 502 })
+    return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
+    if (error instanceof BodyLimitError || error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'invalid_response', message: '评分服务结果无法读取，请稍后重试。' }, { status: 502 })
+    }
     const isAbort = error instanceof Error && error.name === 'AbortError'
     return NextResponse.json(
       { error: isAbort ? 'timeout' : 'network_error', message: isAbort ? '评分服务响应超时。' : '无法连接到评分服务。' },

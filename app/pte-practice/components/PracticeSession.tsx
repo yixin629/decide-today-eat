@@ -27,7 +27,7 @@ export default function PracticeSession({
   onQuit?: () => void
   onNext?: () => void
   onRetry?: () => void
-  onAttemptSaved: (attempt: AttemptRecord) => void
+  onAttemptSaved: (attempt: AttemptRecord, source: 'cloud' | 'local') => void
   exitLabel?: string
   hideCommentThread?: boolean
 }) {
@@ -115,7 +115,7 @@ export default function PracticeSession({
       }, userId)
       if (!mounted.current) return
       if (saveResult.error) setSaveError(saveResult.error)
-      onAttemptSaved(saveResult.attempt)
+      onAttemptSaved(saveResult.attempt, saveResult.source)
     } catch (error) {
       if (mounted.current) setSubmitError(error instanceof Error ? error.message : '提交失败，请重试。')
     } finally {

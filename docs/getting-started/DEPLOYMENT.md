@@ -27,7 +27,7 @@ npm run cf:build
 | `CHATANYWHERE_API_KEY` | AI 聊天备用服务端密钥 | 按需 | 按需、必须作为 Secret |
 | `YOUTUBE_API_KEY` | 音乐播放器的 YouTube 站内搜索 | 不需要 | 按需、必须作为 Secret |
 | `PTE_SCORING_SERVICE_URL` | PTE 自托管评分服务网关地址（可选，见 `pte-scoring-service/README.md`） | 不需要 | 按需 |
-| `PTE_SCORING_SERVICE_TOKEN` | 网站与评分网关之间的共享密钥（可选） | 不需要 | 按需、必须作为 Secret |
+| `PTE_SCORING_SERVICE_TOKEN` | 网站与评分网关之间的共享密钥（启用评分服务时必填） | 不需要 | 启用服务时必须作为 Secret |
 
 不要把真实值写入 `.env.local.example`、`wrangler.toml`、源码或文档。Supabase `service_role` 密钥也不能放进客户端变量。
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
-import { loadAttempts } from '../lib/attempt-repository'
+import { loadAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
 import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
 import { itemKey, latestByItem, needsReview } from '../lib/study'
@@ -42,7 +42,7 @@ export default function PtePractice() {
   const [libraryKey, setLibraryKey] = useState(0)
   const [catalog, setCatalog] = useState({ items: TASK_TYPES.flatMap(getItemsForTaskType), cloudIds: [] as string[], customItems: [] as CustomItemInfo[], error: null as string | null })
   const [catalogLoading, setCatalogLoading] = useState(true)
-  const [history, setHistory] = useState({ attempts: [] as AttemptRecord[], source: 'local' as 'local' | 'cloud', error: null as string | null })
+  const [history, setHistory] = useState<AttemptQueryResult>({ attempts: [], source: 'local', error: null })
   const [historyLoading, setHistoryLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [session, setSession] = useState<{ queue: PracticeItem[]; index: number } | null>(null)
@@ -106,8 +106,8 @@ export default function PtePractice() {
     update((p) => ({ ...p, bookmarks: p.bookmarks.includes(key) ? p.bookmarks.filter((id) => id !== key) : [...p.bookmarks, key] }))
   }
 
-  function saved(attempt: AttemptRecord) {
-    setHistory((previous) => ({ ...previous, attempts: [attempt, ...previous.attempts.filter((a) => a.id !== attempt.id)].slice(0, 200) }))
+  function saved(attempt: AttemptRecord, source: 'cloud' | 'local') {
+    setHistory((previous) => ({ ...previous, source: previous.attempts.length === 0 ? source : previous.source === source ? source : 'mixed', attempts: [attempt, ...previous.attempts.filter((a) => a.id !== attempt.id)].slice(0, 200) }))
     setRefreshKey((key) => key + 1)
     setSessionSaved(true)
   }
@@ -127,10 +127,10 @@ export default function PtePractice() {
         <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
       </aside>
       <div className="pte-workspace">
-        <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : '本机练习记录'}</span></div>
+        <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : history.source === 'mixed' ? '云端 + 本机记录' : '本机练习记录'}</span></div>
         <div className="pte-content">
           {catalog.error && <div className="pte-notice" role="status">{catalog.error}<button onClick={() => setCatalogRefresh((n) => n + 1)} disabled={catalogLoading}>{catalogLoading ? '连接中' : '重试'}</button></div>}
-          {history.error && <div className="pte-notice" role="status">云端记录暂时不可用，已加载当前身份的本机记录。</div>}
+          {history.error && <div className="pte-notice" role="status">{history.error}</div>}
           {preferenceError && <div className="pte-notice" role="alert">{preferenceError}</div>}
           {session && currentItem ? <div>
             <div className="pte-session-context"><button className="pte-button" onClick={() => navigate(tab)}><ArrowLeft size={16} />返回列表</button><span>本组 {session.index + 1} / {session.queue.length} 题</span><button className={`pte-button ${preferences.bookmarks.includes(activeKey) ? 'bookmarked' : ''}`} disabled={!ready} aria-pressed={preferences.bookmarks.includes(activeKey)} onClick={() => bookmark(activeKey)}><Bookmark size={16} fill={preferences.bookmarks.includes(activeKey) ? 'currentColor' : 'none'} />{preferences.bookmarks.includes(activeKey) ? '已收藏' : '收藏'}</button></div>

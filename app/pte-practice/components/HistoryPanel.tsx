@@ -12,7 +12,7 @@ export default function HistoryPanel({
   onClear?: () => void
   /** 点击某条历史记录时，回到对应题目重新练习一次（可选，不传则记录仅作展示）。 */
   onPractice?: (taskType: TaskType, itemId: string) => void
-  source?: 'cloud' | 'local'
+  source?: 'cloud' | 'local' | 'mixed'
 }) {
   if (attempts.length === 0) {
     return <p className="empty-state">还没有练习记录，完成一次练习后会显示在这里。</p>
@@ -23,7 +23,7 @@ export default function HistoryPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-gray-500">
           共 {attempts.length} 条记录（
-          {source === 'cloud' ? '已同步到云端，可跨设备查看' : '当前保存在本机浏览器，不会同步到其他设备'}
+          {source === 'cloud' ? '云端记录，可跨设备查看' : source === 'mixed' ? '包含仅保存在本机的记录，本机部分尚未同步' : '本机记录，不会同步到其他设备'}
           ）
         </p>
         {source === 'local' && onClear && (

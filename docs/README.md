@@ -20,6 +20,7 @@
 - [项目结构说明](./architecture/PROJECT_STRUCTURE.md)
 - [数据库脚本说明](../database/README.md)
 - [PTE 自托管评分服务](../pte-scoring-service/README.md)
+- [PTE 商业上线验收](./architecture/PTE_RELEASE_READINESS.md)：上线阻断项、测试边界与人工环境准备
 
 ## 历史报告
 
