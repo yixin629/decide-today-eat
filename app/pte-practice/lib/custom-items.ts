@@ -511,7 +511,12 @@ export function applyProvenanceTemplate(text: string, template: Omit<QuestionPro
   if (error) return { text, filled: 0, error }
   let filled = 0
   const next = list.map((entry) => {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || (entry as Raw).provenance) return entry
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry
+    const provenance = (entry as Raw).provenance
+    const hasCompleteProvenance = provenance && typeof provenance === 'object' && !Array.isArray(provenance)
+      && typeof (provenance as Raw).sourceTitle === 'string' && !!((provenance as Raw).sourceTitle as string).trim()
+      && typeof (provenance as Raw).rightsBasis === 'string' && !!((provenance as Raw).rightsBasis as string).trim()
+    if (hasCompleteProvenance) return entry
     filled += 1
     return { ...(entry as Raw), provenance: template }
   })

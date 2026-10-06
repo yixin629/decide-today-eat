@@ -262,9 +262,10 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
 @media (max-width: 767px) {
   .pte-type-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   body:has(.pte-app) [data-global-mobile-nav] { display: none; }
-  body:has(.pte-app) [data-global-utility="music"] { left: 16px; }
-  body:has(.pte-app) [data-global-utility="theme"] { left: 60px; }
-  body:has(.pte-app) [data-global-utility="assistant"] { left: 104px; }
+  body:has(.pte-app) [data-global-utility] { top: auto; bottom: calc(env(safe-area-inset-bottom) + 14px); left: auto; }
+  body:has(.pte-app) [data-global-utility="music"] { right: 104px; }
+  body:has(.pte-app) [data-global-utility="theme"] { right: 60px; }
+  body:has(.pte-app) [data-global-utility="assistant"] { right: 16px; }
   .pte-mobile-home { display: inline-flex; }
   .pte-page { padding: 75px 0 170px; }
   .pte-app { border-left: 0; border-right: 0; }
