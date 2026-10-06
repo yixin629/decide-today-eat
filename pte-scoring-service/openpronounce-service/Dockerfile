@@ -24,21 +24,20 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git ffmpeg espeak-ng build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# 克隆源码。若仓库结构或依赖文件名与预期不同，构建会在这一步之后失败，
-# 请对照实际仓库内容调整下面几行。
-RUN git clone --depth 1 https://github.com/Halleck45/OpenPronounce.git /app/OpenPronounce
+# 固定到已经完成本机端到端验证的提交，避免上游依赖变化造成不可重复构建。
+ARG OPENPRONOUNCE_COMMIT=74bc17ea406e6f057f15eea0e70951e1931af868
+RUN git clone https://github.com/Halleck45/OpenPronounce.git /app/OpenPronounce \
+    && git -C /app/OpenPronounce checkout "${OPENPRONOUNCE_COMMIT}"
 
 WORKDIR /app/OpenPronounce
 
-# 优先尝试 requirements.txt；如果仓库改用 poetry/pyproject.toml，需要把
-# 这一行换成 `pip install --no-cache-dir .` 或对应的 poetry 安装命令。
-RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir .
+COPY constraints.txt /app/constraints.txt
+RUN pip install --no-cache-dir -c /app/constraints.txt -r requirements.txt
 
 # 本项目自带的最小 HTTP 包装层：如果 OpenPronounce 本身没有暴露 HTTP 服务，
 # 就用这个文件把它的 Python API 包成 /score 端点。见同目录 wrapper_server.py
 # 的注释——里面明确写了它调用的函数名是猜测的，需要你对照实际源码修正。
 COPY wrapper_server.py /app/wrapper_server.py
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart
 
 EXPOSE 8002
 

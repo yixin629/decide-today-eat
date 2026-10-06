@@ -126,6 +126,26 @@ HuggingFace Hub 下载权重（默认 `small`，约 500MB），OpenPronounce 镜
 9. **触发重新部署**：加完环境变量后，Vercel/Cloudflare 不会自动让已发布的版本生效，需要手动点一次 Redeploy，或者推一个新 commit。
 10. **验证**：打开网站的 PTE 练习模块，做一次口语朗读练习，提交后如果看到"基于开源评分服务的估算，仍非 Pearson 官方评分"这样的说明文字（而不是"本地估算，评分服务未配置/不可用"），说明已经接通。
 
+### Windows 本机 Docker + 线上网站
+
+只启动 Docker Desktop 不会自动把服务发布到互联网。Compose 把唯一入口绑定在
+`127.0.0.1:8080`，需要再用稳定的 HTTPS 反向代理或 Cloudflare Tunnel 把该入口提供给
+Vercel。正式使用应创建有固定域名的 named tunnel；临时 Quick Tunnel 地址会变化，
+只适合联调。完成后按以下顺序验收：
+
+1. 在 PowerShell 当前会话设置 `SHARED_TOKEN`，然后在 `pte-scoring-service` 目录运行
+   `docker compose up -d --build --force-recreate`。不要把 token 写入仓库。
+2. 运行 `docker compose ps`，确认 `gateway`、`whisper-service`、
+   `openpronounce-service` 和 `languagetool` 最终均为 healthy。
+3. 确认公网 `https://你的评分域名/health` 返回 `{"status":"ok"}`。公网只代理
+   `127.0.0.1:8080`；8001、8002、8010 不应开放。
+4. Vercel Production 环境中的 `PTE_SCORING_SERVICE_URL` 填公网 HTTPS 地址，
+   `PTE_SCORING_SERVICE_TOKEN` 与 `SHARED_TOKEN` 完全一致，然后重新部署。
+5. 若使用 Vercel 的自动生成部署地址做外部测试，确认 Production 部署没有被
+   Deployment Protection 重定向到 Vercel 登录页，或改用已公开的正式域名。
+6. 从仓库根目录运行线上 Playwright 验收：
+   PowerShell 使用 `$env:PTE_ONLINE_URL='https://你的正式网站域名'; node scripts/test-pte-online.mjs`。
+
 ## 7. 资源需求（粗略估计，未做正式压测）
 
 | 服务 | CPU | 内存 | 磁盘 | 是否需要 GPU |
@@ -153,6 +173,9 @@ OpenPronounce 未优化时）可能到几秒甚至十几秒，属于预期行为
   仍是下面几条已知局限，没有因为"能跑通"而变成"官方认证的评分"。就算它未来某次
   因上游仓库改动而起不来，网关会把 `pronunciationScore` 留空，Next.js 侧会对应
   回退到本地启发式，不影响其余功能。
+  Docker 构建固定到已验证的 OpenPronounce 提交
+  `74bc17ea406e6f057f15eea0e70951e1931af868`，升级前必须重新执行真实音频回归，
+  不能直接跟随上游最新分支。
 - **LanguageTool 不是 Pearson 官方算法**，是通用规则+统计的语法检查器，对学术写作
   中"技术上没错但不够地道"的表达不一定敏感，也可能误报合理但非标准的表达。
 - **faster-whisper 对非母语者口音的转写准确率**是行业共性局限，重音、语速不均、
