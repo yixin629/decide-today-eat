@@ -1,4 +1,5 @@
 import { getTaskTypeMeta } from '../lib/taskTypes'
+import { keyPointCoverage } from './keyPoints'
 import { alignWords, scoresFromAlignment } from './wordAlignment'
 import type {
   AnswerPayload,
@@ -17,10 +18,12 @@ import type {
   PracticeItem,
   ReadAloudItem,
   RepeatSentenceItem,
+  RespondToSituationItem,
   ReorderItem,
   RetellLectureItem,
   ScoreDimensionResult,
   SelectMissingWordItem,
+  SummarizeGroupDiscussionItem,
   TaskType,
   WriteFromDictationItem,
   WritingItem,
@@ -756,6 +759,53 @@ export function scoreRetellLecture(item: RetellLectureItem, recordingSeconds: nu
   })
 }
 
+/**
+ * Summarize Group Discussion / Respond to a Situation 的本地估分：
+ * - Content：参考要点覆盖率（见 keyPoints.ts），没有转写文本时为占位分；
+ * - Oral Fluency：语速（100–170 词/分钟视为自然）与作答时长是否充足；
+ * - Pronunciation：自由表达没有固定原文，无法逐词比对，标注为占位分（界面显示"未评估"）。
+ */
+export function scoreOpenSpeaking(item: SummarizeGroupDiscussionItem | RespondToSituationItem, recordingSeconds: number, recognizedTranscript: string | null): ScoreDimensionResult[] {
+  const meta = getTaskTypeMeta(item.taskType)
+  const [contentMeta, pronunciationMeta, fluencyMeta] = meta.scoringDimensions
+  const limit = meta.timeLimitSeconds ?? 60
+  const spokenWords = recognizedTranscript ? countWords(recognizedTranscript) : 0
+
+  let content = Math.round((contentMeta.maxScore / 2) * 10) / 10
+  let contentNote = '未采集到语音转写文本，无法估算要点覆盖，此处为中性占位分；请对照参考要点自评。'
+  if (recognizedTranscript) {
+    const coverage = keyPointCoverage(item.keyPoints, recognizedTranscript)
+    content = Math.round((coverage.coveredCount / Math.max(item.keyPoints.length, 1)) * contentMeta.maxScore)
+    contentNote = `按转写文本对参考要点的关键词覆盖估算：覆盖 ${coverage.coveredCount}/${item.keyPoints.length} 条要点${
+      item.taskType === 'speaking-summarize-group-discussion' ? '（需兼顾三位发言人的观点和讨论结论）' : '（语气是否得体请对照参考回答自评）'
+    }。无法识别同义改写，仅供练习参考。`
+  }
+
+  // 作答达到时限一半视为时长充足；语速过慢或过快按比例扣减。
+  const timeFactor = Math.min(1, recordingSeconds / (limit * 0.5))
+  let fluencyNote = `录音 ${recordingSeconds.toFixed(1)} 秒（时限 ${limit} 秒），未采集到转写文本，仅按作答时长粗略估算。`
+  let rateFactor = 1
+  if (spokenWords > 0 && recordingSeconds > 0) {
+    const wpm = spokenWords / (recordingSeconds / 60)
+    rateFactor = wpm < 100 ? wpm / 100 : wpm > 170 ? 170 / wpm : 1
+    fluencyNote = `录音 ${recordingSeconds.toFixed(1)} 秒、约 ${Math.round(wpm)} 词/分钟（100–170 视为自然语速），按语速和作答时长粗略估算，不代表真实流利度评测。`
+  }
+  const fluency = recordingSeconds > 0 ? Math.round(fluencyMeta.maxScore * timeFactor * rateFactor) : 0
+
+  return [
+    { id: 'content', label: contentMeta.label, score: content, maxScore: contentMeta.maxScore, isHeuristic: true, note: contentNote },
+    {
+      id: 'pronunciation',
+      label: pronunciationMeta.label,
+      score: Math.round((pronunciationMeta.maxScore / 2) * 10) / 10,
+      maxScore: pronunciationMeta.maxScore,
+      isHeuristic: true,
+      note: '自由表达题型没有固定原文，无法逐词比对发音，此处为占位分；请回放录音自评。',
+    },
+    { id: 'fluency', label: fluencyMeta.label, score: fluency, maxScore: fluencyMeta.maxScore, isHeuristic: true, note: fluencyNote },
+  ]
+}
+
 export interface ListeningSummarizeHeuristicInput {
   item: ListeningSummarizeItem
   text: string
@@ -1009,6 +1059,11 @@ export function scoreAttempt(taskType: TaskType, item: PracticeItem, answer: Ans
     case 'speaking-answer-short-question':
       if (item.taskType !== 'speaking-answer-short-question' || answer.taskType !== 'speaking-answer-short-question') throw new Error('题目与作答类型不匹配')
       return scoreAnswerShortQuestion(item, answer.recognizedTranscript)
+    case 'speaking-summarize-group-discussion':
+    case 'speaking-respond-to-situation':
+      if ((item.taskType !== 'speaking-summarize-group-discussion' && item.taskType !== 'speaking-respond-to-situation') || item.taskType !== taskType) throw new Error('题目与作答类型不匹配')
+      if (answer.taskType !== 'speaking-summarize-group-discussion' && answer.taskType !== 'speaking-respond-to-situation') throw new Error('题目与作答类型不匹配')
+      return scoreOpenSpeaking(item, answer.recordingSeconds, answer.recognizedTranscript)
     default: {
       const exhaustiveCheck: never = taskType
       throw new Error(`未知的 PTE 任务类型: ${String(exhaustiveCheck)}`)

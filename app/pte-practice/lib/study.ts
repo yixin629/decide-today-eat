@@ -5,6 +5,7 @@ export const STUDY_SKILLS: PteSkill[] = ['speaking', 'writing', 'reading', 'list
 export const TASK_CODES: Record<TaskType, string> = {
   'speaking-read-aloud': 'RA', 'speaking-repeat-sentence': 'RS', 'speaking-describe-image': 'DI',
   'speaking-retell-lecture': 'RL', 'speaking-answer-short-question': 'ASQ',
+  'speaking-summarize-group-discussion': 'SGD', 'speaking-respond-to-situation': 'RTS',
   'writing-summarize-text': 'SWT', 'writing-essay': 'WE',
   'reading-mcq-single': 'MCS', 'reading-mcq-multiple': 'MCM', 'reading-reorder': 'RO',
   'reading-fill-blanks-drag': 'FIB', 'reading-fill-blanks-dropdown': 'FIB-D',
@@ -35,6 +36,8 @@ export function attemptKey(attempt: AttemptRecord) {
 export function itemPreview(item: PracticeItem): string {
   if ('passage' in item) return item.passage
   if ('chart' in item) return item.chart.title
+  if (item.taskType === 'speaking-summarize-group-discussion') return `小组讨论：${item.topic}`
+  if (item.taskType === 'speaking-respond-to-situation') return item.situation
   if ('sourceText' in item && item.sourceText) return item.sourceText
   if ('prompt' in item) return item.prompt
   if ('textSegments' in item) return item.textSegments.join(' ____ ')

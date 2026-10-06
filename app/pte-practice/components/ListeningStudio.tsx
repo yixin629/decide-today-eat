@@ -17,6 +17,8 @@ function listeningText(item: PracticeItem): { display: string; speech: string } 
   if (item.taskType === 'listening-write-from-dictation') return { display: item.sentence, speech: item.sentence }
   if (item.taskType === 'speaking-read-aloud' || item.taskType === 'speaking-repeat-sentence') return { display: item.text, speech: item.text }
   if (item.taskType === 'speaking-answer-short-question') return { display: item.question, speech: item.question }
+  if (item.taskType === 'speaking-summarize-group-discussion') return { display: item.turns.map((turn) => `${turn.speaker}: ${turn.text}`).join(' '), speech: item.turns.map((turn) => turn.text).join(' ') }
+  if (item.taskType === 'speaking-respond-to-situation') return { display: item.situation, speech: item.situation }
   if ('transcript' in item) return { display: item.transcript, speech: item.transcript }
   return null
 }

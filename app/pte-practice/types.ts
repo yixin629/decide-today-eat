@@ -20,6 +20,8 @@ export const TASK_TYPES = [
   'speaking-describe-image',
   'speaking-retell-lecture',
   'speaking-answer-short-question',
+  'speaking-summarize-group-discussion',
+  'speaking-respond-to-situation',
   'writing-summarize-text',
   'writing-essay',
 ] as const
@@ -255,6 +257,37 @@ export interface AnswerShortQuestionItem {
   acceptableAnswers: string[]
 }
 
+// ---- Speaking: Summarize group discussion（2025-08 新题型）----
+export interface GroupDiscussionTurn {
+  speaker: string
+  text: string
+}
+
+export interface SummarizeGroupDiscussionItem {
+  id: string
+  taskType: 'speaking-summarize-group-discussion'
+  /** 讨论主题，作答前可见。 */
+  topic: string
+  /** 三人讨论的逐句台词，按顺序用不同音色播放。 */
+  turns: GroupDiscussionTurn[]
+  /** 参考要点（覆盖每位发言人的观点与讨论结论），用于内容估分与作答后对照。 */
+  keyPoints: string[]
+  prepSeconds: number
+}
+
+// ---- Speaking: Respond to a situation（2025-08 新题型）----
+export interface RespondToSituationItem {
+  id: string
+  taskType: 'speaking-respond-to-situation'
+  /** 不超过约 60 词的日常情境描述，屏幕显示并朗读。 */
+  situation: string
+  /** 一个合适回应应覆盖的要点，用于内容估分与作答后对照。 */
+  keyPoints: string[]
+  /** 参考回答，作答后展示。 */
+  sampleResponse: string
+  prepSeconds: number
+}
+
 type PracticeItemContent =
   | McqSingleItem
   | ReorderItem
@@ -275,6 +308,8 @@ type PracticeItemContent =
   | DescribeImageItem
   | RetellLectureItem
   | AnswerShortQuestionItem
+  | SummarizeGroupDiscussionItem
+  | RespondToSituationItem
 
 export type PracticeItem = PracticeItemContent & { provenance?: QuestionProvenance }
 
@@ -310,6 +345,12 @@ export type AnswerPayload =
       audioBlob?: Blob | null
     }
   | { taskType: 'speaking-answer-short-question'; recordingSeconds: number; recognizedTranscript: string | null; audioBlob?: Blob | null }
+  | {
+      taskType: 'speaking-summarize-group-discussion' | 'speaking-respond-to-situation'
+      recordingSeconds: number
+      recognizedTranscript: string | null
+      audioBlob?: Blob | null
+    }
 
 export interface AttemptRecord {
   id: string

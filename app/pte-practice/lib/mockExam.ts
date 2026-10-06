@@ -31,6 +31,8 @@ export const MOCK_EXAM_SECTIONS: MockExamSection[] = [
       'speaking-describe-image',
       'speaking-retell-lecture',
       'speaking-answer-short-question',
+      'speaking-summarize-group-discussion',
+      'speaking-respond-to-situation',
       'writing-summarize-text',
       'writing-essay',
     ],

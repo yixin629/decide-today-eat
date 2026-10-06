@@ -154,6 +154,8 @@ ALTER TABLE pte_practice_items ADD CONSTRAINT pte_practice_items_task_type_check
   'speaking-describe-image',
   'speaking-retell-lecture',
   'speaking-answer-short-question',
+  'speaking-summarize-group-discussion',
+  'speaking-respond-to-situation',
   'writing-summarize-text',
   'writing-essay'
 ));

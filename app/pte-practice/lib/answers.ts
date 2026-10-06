@@ -21,6 +21,8 @@ export function emptyAnswerFor(taskType: TaskType, item?: PracticeItem): AnswerP
     case 'speaking-repeat-sentence':
     case 'speaking-describe-image':
     case 'speaking-retell-lecture':
-    case 'speaking-answer-short-question': return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
+    case 'speaking-answer-short-question':
+    case 'speaking-summarize-group-discussion':
+    case 'speaking-respond-to-situation': return { taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }
   }
 }

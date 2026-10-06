@@ -257,6 +257,38 @@ export const TASK_TYPE_META: Record<string, TaskTypeMeta> = {
     officialNote:
       '官方只考察内容维度的对错。本练习在浏览器提供语音识别转写文本时，会将转写结果与预设的可接受答案列表做精确文本匹配（忽略大小写与标点），可视为客观判定；但由于依赖浏览器语音识别的可用性与准确性，且无法保证转写本身可靠，因此该维度仍标记为启发式，未采集到转写文本时给出占位分。',
   },
+  'speaking-summarize-group-discussion': {
+    id: 'speaking-summarize-group-discussion',
+    skill: 'speaking',
+    label: '小组讨论总结（Summarize Group Discussion）',
+    shortLabel: '口语讨论总结',
+    description: '听三人约 3 分钟的学术讨论，准备 10 秒后用最多 2 分钟口头总结每位发言人的观点和讨论结论。',
+    timeLimitSeconds: 120,
+    prepSeconds: 10,
+    scoringDimensions: [
+      { id: 'content', label: '内容 Content', maxScore: 6, isHeuristic: true },
+      { id: 'pronunciation', label: '发音 Pronunciation', maxScore: 5, isHeuristic: true },
+      { id: 'fluency', label: '口语流利度 Oral Fluency', maxScore: 5, isHeuristic: true },
+    ],
+    officialNote:
+      '2025 年 8 月新增题型，官方按 Content（0–6）、Oral Fluency（0–5）、Pronunciation（0–5）评分，需要覆盖三位发言人的观点。内置练习讨论约 1 分钟，短于真实考试的约 3 分钟。本练习按转写文本对参考要点的覆盖率估算内容、按语速估算流利度；自由表达无法逐词比对发音，发音维度不评估。',
+  },
+  'speaking-respond-to-situation': {
+    id: 'speaking-respond-to-situation',
+    skill: 'speaking',
+    label: '情景回应（Respond to a Situation）',
+    shortLabel: '口语情景回应',
+    description: '阅读并听一段不超过 60 词的日常情境，准备 10 秒后用最多 40 秒做出得体的口头回应。',
+    timeLimitSeconds: 40,
+    prepSeconds: 10,
+    scoringDimensions: [
+      { id: 'content', label: '内容 Content', maxScore: 6, isHeuristic: true },
+      { id: 'pronunciation', label: '发音 Pronunciation', maxScore: 5, isHeuristic: true },
+      { id: 'fluency', label: '口语流利度 Oral Fluency', maxScore: 5, isHeuristic: true },
+    ],
+    officialNote:
+      '2025 年 8 月新增题型，官方按 Content（0–6）、Oral Fluency（0–5）、Pronunciation（0–5）评分，内容看回应是否切题、完整且语气得体。本练习按转写文本对参考要点的覆盖率估算内容、按语速估算流利度；语气是否得体需对照参考回答自评，发音维度不评估。',
+  },
 }
 
 export function getTaskTypeMeta(taskType: string): TaskTypeMeta {

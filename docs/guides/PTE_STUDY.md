@@ -18,6 +18,9 @@
 | `database/migrations/pte-practice-attempts-table.sql` | 练习记录与"练习集锦"（`pte_practice_attempts`，Realtime） |
 | `database/migrations/pte-practice-comments-table.sql` | 题目留言和"在哪里/哪天考过"（`pte_practice_comments`，Realtime） |
 | `database/migrations/pte-practice-custom-items.sql` | 开启"上传题目"；会放宽 `pte_practice_items` 的写入策略，见下方安全说明 |
+| `database/migrations/pte-practice-task-types-v2.sql` | 把三张练习表的题型约束放开到 22 种（含 SGD、RTS）；在上面三份建表脚本之后执行 |
+
+**已有数据库请务必执行 `pte-practice-task-types-v2.sql`**：旧版练习记录表和留言表只允许最早的 8 种题型，其余题型的练习记录会写入失败并回退到本机保存，留言也无法保存。
 
 已经执行过旧版题库种子的数据库，如果题干或选项仍是中文，再执行一次 `database/fixes/pte-practice-items-english-text.sql`。可以用下面的查询确认，结果为 0 即已完成：
 
@@ -41,7 +44,7 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 | 入口 | 说明 |
 | --- | --- |
 | 学习工作台 | 今日目标、继续上次练习、各题型进度 |
-| 专项题库 | 按题型、练习状态和关键词筛选当前支持的 20 种题型；尚未包含 SGD 与 RTS |
+| 专项题库 | 按题型、练习状态和关键词筛选全部 22 种题型，包括 2025 年 8 月新增的 Summarize Group Discussion（SGD）和 Respond to a Situation（RTS） |
 | 精听跟读 | 用浏览器语音合成逐句播放听力和口语素材，可调口音、音色、语速和循环方式 |
 | 模拟考试 | 按考试板块连续作答，结束后汇总估分 |
 | 错题复习 / 我的收藏 | 客观题最近一次未全对的题目，以及收藏的题目 |

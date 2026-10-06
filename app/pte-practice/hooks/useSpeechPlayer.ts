@@ -31,7 +31,7 @@ export function useSpeechPlayer() {
     }
   }, [])
 
-  const play = useCallback((text: string, options: { rate?: number; voice?: SpeechSynthesisVoice | null; onEnd?: () => void } = {}) => {
+  const play = useCallback((text: string, options: { rate?: number; pitch?: number; voice?: SpeechSynthesisVoice | null; onEnd?: () => void } = {}) => {
     stop()
     if (!supported || !text.trim()) return
     setError(null)
@@ -39,6 +39,7 @@ export function useSpeechPlayer() {
     next.voice = options.voice ?? null
     next.lang = options.voice ? normalizeLang(options.voice.lang) : 'en-US'
     next.rate = options.rate ?? 1
+    next.pitch = options.pitch ?? 1
     next.onend = () => { if (utterance.current === next) { setStatus('idle'); options.onEnd?.() } }
     next.onerror = (event) => {
       if (utterance.current !== next) return

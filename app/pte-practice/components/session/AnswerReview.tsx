@@ -2,7 +2,9 @@ import type { AnswerPayload, PracticeItem } from '../../types'
 
 export default function AnswerReview({ item, answer }: { item: PracticeItem; answer: AnswerPayload }) {
   let reference = ''
-  if ('correctIndex' in item) reference = item.options[item.correctIndex]
+  if (item.taskType === 'speaking-summarize-group-discussion') reference = item.keyPoints.map((point) => `• ${point}`).join('\n')
+  else if (item.taskType === 'speaking-respond-to-situation') reference = `${item.sampleResponse}\n\n要点：\n${item.keyPoints.map((point) => `• ${point}`).join('\n')}`
+  else if ('correctIndex' in item) reference = item.options[item.correctIndex]
   else if ('correctIndexes' in item) reference = item.correctIndexes.map((index) => item.options[index]).join('\n')
   else if ('correctAnswers' in item) reference = item.correctAnswers.map((word, i) => `${i + 1}. ${word}`).join('   ')
   else if ('correctOrder' in item) reference = item.correctOrder.map((index, i) => `${i + 1}. ${item.paragraphs[index]}`).join('\n\n')

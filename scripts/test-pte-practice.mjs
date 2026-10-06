@@ -18,7 +18,10 @@ const { isAssessed, scoreSummary } = loadModule('../app/pte-practice/lib/score-d
 const { computeSkillTrends, computeTargetGaps } = loadModule('../app/pte-practice/lib/analyticsEngine.ts')
 const { TASK_TYPES } = loadModule('../app/pte-practice/types.ts')
 const { alignWords } = loadModule('../app/pte-practice/engine/wordAlignment.ts')
-const { applyProvenanceTemplate, parseImportJson } = loadModule('../app/pte-practice/lib/custom-items.ts')
+const { applyProvenanceTemplate, parseImportJson, validateCustomItem } = loadModule('../app/pte-practice/lib/custom-items.ts')
+const { keyPointCoverage } = loadModule('../app/pte-practice/engine/keyPoints.ts')
+const { QUESTION_BANK } = loadModule('../app/pte-practice/lib/questionBank.ts')
+const { pickVoices } = loadModule('../app/pte-practice/lib/voices.ts')
 const { itemSourceLabel } = loadModule('../app/pte-practice/lib/study.ts')
 const reorder = { id: 'test-order', taskType: 'reading-reorder', paragraphs: ['A', 'B', 'C', 'D'], correctOrder: [0, 1, 2, 3] }
 assert.equal(scoring.scoreReorder(reorder, [2, 3, 0, 1])[0].score, 2)
@@ -52,6 +55,25 @@ assert.equal(parseImportJson(templated.text, true).items.length, 2)
 assert.equal(itemSourceLabel(reading, false), '原创')
 assert.equal(itemSourceLabel(reading, true), '来源未登记')
 assert.equal(itemSourceLabel({ ...reading, provenance: { ...source, sourceType: 'public-domain' } }, true), '公共领域')
+const coverage = keyPointCoverage(['Recorded lectures offer flexibility', 'Live sessions allow questions'], 'She said recorded lectures are flexible')
+assert.deepEqual(coverage.points.map((p) => p.covered), [true, false])
+for (const task of TASK_TYPES) assert.ok(QUESTION_BANK[task].length > 0, `${task} has built-in items`)
+for (const item of Object.values(QUESTION_BANK).flat()) {
+  const result = validateCustomItem({ ...item, provenance: { ...source, commercialUseAllowed: true } })
+  assert.deepEqual(result.errors, [], `${item.id} passes upload validation`)
+}
+const voicePool = [['A', 'en-US'], ['B', 'en-US'], ['C', 'en-GB'], ['D', 'en-AU']].map(([name, lang]) => ({ name, lang, voiceURI: name }))
+assert.equal(new Set(pickVoices(voicePool, { accent: 'random' }, 's-sgd-1', 3).map((v) => v.lang)).size, 3, 'random accent gives each speaker a different accent')
+assert.equal(new Set(pickVoices(voicePool, { accent: 'en-US' }, 's-sgd-1', 2).map((v) => v.name)).size, 2, 'fixed accent rotates voices within that accent')
+assert.deepEqual(pickVoices([], { accent: 'random' }, 'x', 3), [null, null, null])
+const sgd = QUESTION_BANK['speaking-summarize-group-discussion'][0]
+const sgdFull = scoring.scoreAttempt(sgd.taskType, sgd, { taskType: sgd.taskType, recordingSeconds: 90, recognizedTranscript: sgd.keyPoints.join(' '), audioBlob: null }, 120)
+assert.equal(sgdFull[0].score, 6)
+assert.equal(isAssessed(sgdFull[1]), false, 'free-speech pronunciation stays unassessed')
+const rts = QUESTION_BANK['speaking-respond-to-situation'][0]
+const rtsSilent = scoring.scoreAttempt(rts.taskType, rts, { taskType: rts.taskType, recordingSeconds: 0, recognizedTranscript: null, audioBlob: null }, 40)
+assert.equal(isAssessed(rtsSilent[0]), false)
+assert.equal(rtsSilent[2].score, 0)
 const placeholder = { id: 'content', label: 'Content', score: 2.5, maxScore: 5, isHeuristic: true, note: '中性占位分' }
 assert.equal(isAssessed(placeholder), false)
 assert.match(scoreSummary([placeholder]), /未评估/)
@@ -61,4 +83,4 @@ const target = computeTargetGaps([attempt], { speaking: 79 }, ['speaking'])[0]
 assert.equal(target.currentPct, null)
 assert.equal(target.targetScore, 79)
 assert.equal('gapPct' in target, false)
-console.log('PTE pure-function checks passed: answer defaults, adjacent pairs, duplicate words, word alignment, provenance, unavailable scores and target scales.')
+console.log('PTE pure-function checks passed: answer defaults, adjacent pairs, duplicate words, word alignment, provenance, SGD/RTS scoring, built-in item validation, unavailable scores and target scales.')

@@ -3,7 +3,7 @@
 import type { AnswerPayload, PracticeItem } from '../../types'
 import { FillBlanksDragInput, FillBlanksDropdownInput, McqMultipleInput, McqSingleInput, ReorderInput } from '../inputs/ReadingInputs'
 import { HighlightIncorrectWordsInput, HighlightSummaryInput, ListeningFillBlanksInput, ListeningMcqMultipleInput, ListeningMcqSingleInput, ListeningSummarizeInput, SelectMissingWordInput, WriteFromDictationInput } from '../inputs/ListeningInputs'
-import { AnswerShortQuestionInput, DescribeImageInput, ReadAloudInput, RepeatSentenceInput, RetellLectureInput } from '../inputs/SpeakingInput'
+import { AnswerShortQuestionInput, DescribeImageInput, ReadAloudInput, RepeatSentenceInput, RespondToSituationInput, RetellLectureInput, SummarizeGroupDiscussionInput } from '../inputs/SpeakingInput'
 import { WritingInput } from '../inputs/WritingInput'
 
 export default function PracticeInput({ item, onChange }: { item: PracticeItem; onChange: (answer: AnswerPayload) => void }) {
@@ -28,5 +28,7 @@ export default function PracticeInput({ item, onChange }: { item: PracticeItem; 
     case 'speaking-describe-image': return <DescribeImageInput item={item} onChange={(result) => onChange({ taskType: item.taskType, ...result })} />
     case 'speaking-retell-lecture': return <RetellLectureInput item={item} onChange={(result) => onChange({ taskType: item.taskType, ...result })} />
     case 'speaking-answer-short-question': return <AnswerShortQuestionInput item={item} onChange={(result) => onChange({ taskType: item.taskType, ...result })} />
+    case 'speaking-summarize-group-discussion': return <SummarizeGroupDiscussionInput item={item} onChange={(result) => onChange({ taskType: item.taskType, ...result })} />
+    case 'speaking-respond-to-situation': return <RespondToSituationInput item={item} onChange={(result) => onChange({ taskType: item.taskType, ...result })} />
   }
 }

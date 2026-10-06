@@ -79,6 +79,18 @@ export const CUSTOM_FIELDS: Record<TaskType, FieldDef[]> = {
     { key: 'question', label: '问题', kind: 'text', placeholder: 'What do you call a person who designs buildings?' },
     { key: 'acceptableAnswers', label: '可接受答案（每行一个）', kind: 'textarea', placeholder: 'architect\nan architect' },
   ],
+  'speaking-summarize-group-discussion': [
+    { key: 'topic', label: '讨论主题', kind: 'text', placeholder: 'Should universities replace lectures with online videos?' },
+    { key: 'discussion', label: '讨论台词（每行"发言人: 内容"）', kind: 'textarea', help: '按顺序每行一段，至少 3 段、2 位发言人（真实考试为 3 位）。', placeholder: 'Maya: I think recorded lectures give students more flexibility...\nDaniel: But we lose the chance to ask questions...\nPriya: Maybe a blended model could work...' },
+    { key: 'keyPoints', label: '参考要点（每行一条）', kind: 'textarea', help: '覆盖每位发言人的观点和讨论结论，用于内容估分和作答后对照。', placeholder: 'Maya: recorded lectures offer flexibility\nDaniel: live lectures allow questions\nThe group leans towards a blended model' },
+    { key: 'prepSeconds', label: '准备时间（秒）', kind: 'number', defaultValue: '10' },
+  ],
+  'speaking-respond-to-situation': [
+    { key: 'situation', label: '情境描述（约 60 词以内）', kind: 'textarea', placeholder: 'You borrowed a laptop from your classmate, but it stopped working while you were using it. Explain what happened and suggest what you will do.' },
+    { key: 'keyPoints', label: '回应要点（每行一条）', kind: 'textarea', placeholder: 'Apologise to the classmate\nExplain what happened\nOffer to pay for the repair' },
+    { key: 'sampleResponse', label: '参考回答', kind: 'textarea', placeholder: 'Hi Sam, I am really sorry...' },
+    { key: 'prepSeconds', label: '准备时间（秒）', kind: 'number', defaultValue: '10' },
+  ],
   'writing-summarize-text': [
     { key: 'prompt', label: '题目要求', kind: 'text', defaultValue: SWT_PROMPT },
     { key: 'sourceText', label: '原文', kind: 'textarea', placeholder: 'Passage to summarize…' },
@@ -229,6 +241,15 @@ export function buildFromFields(taskType: TaskType, values: FieldValues): Record
       return { taskType, transcript: v('transcript'), prepSeconds: toInt(v('prepSeconds')) }
     case 'speaking-answer-short-question':
       return { taskType, question: v('question'), acceptableAnswers: lines(v('acceptableAnswers')) }
+    case 'speaking-summarize-group-discussion': {
+      const turns = lines(v('discussion')).map((line) => {
+        const index = line.search(/[:：]/)
+        return index > 0 ? { speaker: line.slice(0, index).trim(), text: line.slice(index + 1).trim() } : { speaker: '', text: line }
+      })
+      return { taskType, topic: v('topic'), turns, keyPoints: lines(v('keyPoints')), prepSeconds: toInt(v('prepSeconds')) }
+    }
+    case 'speaking-respond-to-situation':
+      return { taskType, situation: v('situation'), keyPoints: lines(v('keyPoints')), sampleResponse: v('sampleResponse'), prepSeconds: toInt(v('prepSeconds')) }
     case 'writing-summarize-text':
       return { taskType, prompt: v('prompt'), sourceText: v('sourceText'), minWords: toInt(v('minWords')), maxWords: toInt(v('maxWords')) }
     case 'writing-essay':
@@ -431,6 +452,20 @@ function buildValidated(taskType: TaskType, c: Checker, data: Raw): NewItemConte
       return { taskType, transcript: c.text('transcript', '录音文字稿'), prepSeconds: c.int('prepSeconds', '准备时间', 0, 120) }
     case 'speaking-answer-short-question':
       return { taskType, question: c.text('question', '问题', MAX_SHORT), acceptableAnswers: c.textList('acceptableAnswers', '可接受答案', 1, 10, 80) }
+    case 'speaking-summarize-group-discussion': {
+      const rawTurns = Array.isArray(data.turns) ? (data.turns as unknown[]) : []
+      const turns = rawTurns.map((turn) => {
+        const value = turn && typeof turn === 'object' ? (turn as Raw) : {}
+        return { speaker: typeof value.speaker === 'string' ? value.speaker.trim() : '', text: typeof value.text === 'string' ? value.text.trim() : '' }
+      })
+      if (turns.length < 3 || turns.length > 20) c.errors.push(`讨论需要 3-20 段台词（当前 ${turns.length} 段）`)
+      if (turns.some((turn) => !turn.speaker || !turn.text)) c.errors.push('每段台词都需要"发言人: 内容"格式')
+      if (turns.some((turn) => turn.speaker.length > 40 || turn.text.length > 1500)) c.errors.push('发言人名称最多 40 字符、每段台词最多 1500 字符')
+      if (new Set(turns.map((turn) => turn.speaker)).size < 2) c.errors.push('讨论至少需要 2 位发言人')
+      return { taskType, topic: c.text('topic', '讨论主题', 200), turns, keyPoints: c.textList('keyPoints', '参考要点', 2, 10, 300), prepSeconds: c.int('prepSeconds', '准备时间', 0, 60) }
+    }
+    case 'speaking-respond-to-situation':
+      return { taskType, situation: c.text('situation', '情境描述', 800), keyPoints: c.textList('keyPoints', '回应要点', 1, 8, 300), sampleResponse: c.text('sampleResponse', '参考回答', 1500), prepSeconds: c.int('prepSeconds', '准备时间', 0, 60) }
     case 'writing-summarize-text':
       return { taskType, prompt: c.text('prompt', '题目要求', MAX_SHORT), sourceText: c.text('sourceText', '原文'), ...c.wordRange() }
     case 'writing-essay':

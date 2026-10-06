@@ -21,6 +21,7 @@ import type {
   WriteFromDictationItem,
   WritingItem,
 } from '../types'
+import { speakingRespondToSituation, speakingSummarizeGroupDiscussion } from './questionBankNewTasks'
 
 /**
  * 原创示例题库（非 Pearson 官方真题，非"机经"）。
@@ -2626,6 +2627,8 @@ export const QUESTION_BANK: Record<TaskType, PracticeItem[]> = {
   'speaking-describe-image': speakingDescribeImage,
   'speaking-retell-lecture': speakingRetellLecture,
   'speaking-answer-short-question': speakingAnswerShortQuestion,
+  'speaking-summarize-group-discussion': speakingSummarizeGroupDiscussion,
+  'speaking-respond-to-situation': speakingRespondToSituation,
   'writing-summarize-text': writingSummarizeText,
   'writing-essay': writingEssay,
 }

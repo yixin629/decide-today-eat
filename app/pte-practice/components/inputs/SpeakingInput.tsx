@@ -1,9 +1,10 @@
 'use client'
 
 import { Mic, Square } from 'lucide-react'
-import type { AnswerShortQuestionItem, DescribeImageItem, ReadAloudItem, RepeatSentenceItem, RetellLectureItem } from '../../types'
+import type { AnswerShortQuestionItem, DescribeImageItem, ReadAloudItem, RepeatSentenceItem, RespondToSituationItem, RetellLectureItem, SummarizeGroupDiscussionItem } from '../../types'
 import { useAudioRecorder, type AudioRecorderResult } from '../../hooks/useAudioRecorder'
 import AudioOrTranscript from './AudioOrTranscript'
+import DiscussionPlayer from './DiscussionPlayer'
 
 export function ReadAloudInput({
   item,
@@ -157,6 +158,26 @@ export function AnswerShortQuestionInput({ item, onChange }: { item: AnswerShort
     <div className="space-y-4">
       <AudioOrTranscript text={item.question} />
       <RecorderControls hint="用 1-3 个词口头回答问题并录音。若浏览器支持语音识别，会用转写文本与参考答案做精确匹配。" onChange={onChange} />
+    </div>
+  )
+}
+
+export function SummarizeGroupDiscussionInput({ item, onChange }: { item: SummarizeGroupDiscussionItem; onChange: (result: AudioRecorderResult) => void }) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">讨论主题：<strong className="text-gray-800">{item.topic}</strong></p>
+      <DiscussionPlayer seed={item.id} turns={item.turns} />
+      <RecorderControls hint="听完三人讨论后准备 10 秒，用最多 2 分钟总结每位发言人的观点和讨论结论，并录音。" onChange={onChange} />
+    </div>
+  )
+}
+
+export function RespondToSituationInput({ item, onChange }: { item: RespondToSituationItem; onChange: (result: AudioRecorderResult) => void }) {
+  return (
+    <div className="space-y-4">
+      <p className="rounded-lg bg-gray-50 p-4 text-base leading-relaxed text-gray-800">{item.situation}</p>
+      <AudioOrTranscript text={item.situation} />
+      <RecorderControls hint="阅读并听完情境后准备 10 秒，用最多 40 秒像在真实场景中一样得体地回应，并录音。" onChange={onChange} />
     </div>
   )
 }

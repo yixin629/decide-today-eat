@@ -17,7 +17,7 @@
 
 | # | 事项 | 说明 | 状态 |
 | --- | --- | --- | --- |
-| 5 | 补齐新题型 | 实现 Summarize Group Discussion（SGD）和 Respond to a Situation（RTS），并纳入题库、模考与评分 | ⬜ |
+| 5 | 补齐新题型 | 实现 Summarize Group Discussion（SGD）和 Respond to a Situation（RTS），并纳入题库、模考与评分；已有数据库需执行 `pte-practice-task-types-v2.sql` | ✅ |
 | 6 | 离线记录补传 | 断网时保存在本机的练习记录，联网后可一键同步到云端，避免记录分散 | ⬜ |
 | 7 | 编辑已上传题目 | 支持修改自定义题目内容，并为来源登记前上传的题目补填 provenance | ⬜ |
 | 8 | 评分服务逐词结果 | 部署评分服务后，由 whisper / OpenPronounce 返回逐词识别与发音结果，替代浏览器识别做颜色标注 | ⬜ |

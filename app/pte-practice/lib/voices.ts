@@ -70,6 +70,32 @@ function hash(text: string) {
 }
 
 /**
+ * 为多位发言人（如小组讨论）分配尽量不同的音色。选定具体口音时在该口音内轮换；
+ * 每题随机或默认时按口音交错排列，让相邻发言人听起来有区别。
+ * 可用音色少于发言人数时会重复使用，调用方可再用音高区分。
+ */
+export function pickVoices<T extends VoiceLike>(voices: T[], prefs: { accent: AccentChoice }, seed: string, count: number): (T | null)[] {
+  if (!voices.length) return Array.from({ length: count }, () => null)
+  const rotate = <V,>(list: V[], by: number) => list.map((_, i) => list[(i + by) % list.length])
+  let pool: T[]
+  if (prefs.accent === 'random' || prefs.accent === 'any') {
+    // 先按题目轮换口音顺序、组内轮换音色，再逐轮交错，保证前几位发言人口音各不相同。
+    const accents = availableAccents(voices)
+    const groups = rotate(accents, hash(seed) % accents.length).map((accent) => {
+      const group = sortVoices(voices.filter((voice) => accentOf(voice) === accent))
+      return rotate(group, hash(`${seed}:${accent}`) % group.length)
+    })
+    pool = []
+    for (let i = 0; groups.some((group) => group[i]); i += 1) groups.forEach((group) => { if (group[i]) pool.push(group[i]) })
+  } else {
+    const sameAccent = sortVoices(voices.filter((voice) => accentOf(voice) === prefs.accent))
+    pool = sameAccent.length ? sameAccent : sortVoices(voices)
+    pool = rotate(pool, hash(seed) % pool.length)
+  }
+  return Array.from({ length: count }, (_, i) => pool[i % pool.length])
+}
+
+/**
  * 按偏好选择音色；返回 null 表示交给浏览器默认英语音色。
  * seed 用于"每题随机"：同一段素材总是得到同一个音色，换题才会换口音。
  */
