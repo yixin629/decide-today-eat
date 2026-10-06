@@ -122,11 +122,12 @@ export default function MusicPlayerPage() {
   }, [songs, tab, artistFilter])
 
   // Auto-scroll the active track into view instead of making people hunt for it after adding/searching.
+  const currentSongId = currentSong?.id
   useEffect(() => {
-    if (!currentSong) return
-    const node = rowRefs.current.get(currentSong.id)
+    if (!currentSongId) return
+    const node = rowRefs.current.get(currentSongId)
     node?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [currentSong?.id])
+  }, [currentSongId])
 
   const artistCounts = useMemo(() => {
     const counts = new Map<string, number>()

@@ -189,11 +189,15 @@ export default function GlobalMusicPlayer() {
     consumePendingSync()
   }, [pendingSync, currentSong, audioRef, consumePendingSync])
 
+  // Only refetch lyrics when the song identity changes, not when liked/pinned flags update.
+  const lyricsSongId = currentSong?.id
+  const lyricsTitle = currentSong?.title
+  const lyricsArtist = currentSong?.artist
   useEffect(() => {
-    if (!lyricsOpen || !currentSong) return
+    if (!lyricsOpen || !lyricsSongId || lyricsTitle === undefined || lyricsArtist === undefined) return
     let cancelled = false
     setLyrics({ loading: true, found: false, text: null, error: false })
-    const params = new URLSearchParams({ title: currentSong.title, artist: currentSong.artist })
+    const params = new URLSearchParams({ title: lyricsTitle, artist: lyricsArtist })
     fetch(`/api/lyrics?${params}`)
       .then((response) => response.json() as Promise<{ found?: boolean; plainLyrics?: string | null; error?: string }>)
       .then((data) => {
@@ -203,7 +207,7 @@ export default function GlobalMusicPlayer() {
       })
       .catch(() => { if (!cancelled) setLyrics({ loading: false, found: false, text: null, error: true }) })
     return () => { cancelled = true }
-  }, [lyricsOpen, currentSong?.id, currentSong?.title, currentSong?.artist])
+  }, [lyricsOpen, lyricsSongId, lyricsTitle, lyricsArtist])
 
   // Bake `autoplay=1` into an embed's src only for the moment a new song becomes current
   // (and only if it should already be playing) — never in response to later play/pause
