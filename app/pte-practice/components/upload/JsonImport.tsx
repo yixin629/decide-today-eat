@@ -2,11 +2,12 @@
 
 import { FileJson, Upload } from 'lucide-react'
 import { useState } from 'react'
-import { parseImportJson, type NewPracticeItem } from '../../lib/custom-items'
+import { applyProvenanceTemplate, parseImportJson, type NewPracticeItem } from '../../lib/custom-items'
 import { getItemsForTaskType } from '../../lib/questionBank'
 import { TASK_TYPE_META } from '../../lib/taskTypes'
 import { TASK_CODES } from '../../lib/study'
 import { TASK_TYPES, type TaskType } from '../../types'
+import ProvenanceFields, { EMPTY_PROVENANCE, provenanceTemplate, type ProvenanceDraft } from './ProvenanceFields'
 
 const MAX_FILE_BYTES = 500_000
 
@@ -16,9 +17,11 @@ export default function JsonImport({ canSave, onSave }: { canSave: boolean; onSa
   const [errors, setErrors] = useState<string[]>([])
   const [ready, setReady] = useState<NewPracticeItem[]>([])
   const [saving, setSaving] = useState(false)
+  const [provenance, setProvenance] = useState<ProvenanceDraft>(EMPTY_PROVENANCE)
+  const [notice, setNotice] = useState<string | null>(null)
 
   function check(value = text) {
-    const result = parseImportJson(value)
+    const result = parseImportJson(value, provenance.commercialUseAllowed)
     setErrors(result.errors)
     setReady(result.items)
     return result
@@ -29,9 +32,19 @@ export default function JsonImport({ canSave, onSave }: { canSave: boolean; onSa
     if (!example) return
     const rest: Record<string, unknown> = { ...example }
     delete rest.id
+    rest.provenance = provenanceTemplate(provenance)
     const value = JSON.stringify([rest], null, 2)
     setText(value)
-    check(value)
+    if (provenance.commercialUseAllowed) check(value)
+  }
+
+  function applyTemplate() {
+    const result = applyProvenanceTemplate(text, provenanceTemplate(provenance))
+    if (result.error) { setErrors([result.error]); setReady([]); return }
+    setText(result.text)
+    setReady([])
+    setErrors([])
+    setNotice(result.filled ? `已为 ${result.filled} 道题写入来源模板，请检查后再校验。` : '所有题目都已带有 provenance，未做修改。')
   }
 
   async function readFile(file: File | undefined) {
@@ -39,7 +52,7 @@ export default function JsonImport({ canSave, onSave }: { canSave: boolean; onSa
     if (file.size > MAX_FILE_BYTES) { setErrors(['文件过大（最多 500KB）']); setReady([]); return }
     const value = await file.text()
     setText(value)
-    check(value)
+    if (provenance.commercialUseAllowed) check(value)
   }
 
   async function save() {
@@ -61,8 +74,13 @@ export default function JsonImport({ canSave, onSave }: { canSave: boolean; onSa
     </div>
     <label className="pte-upload-field">
       <span>题目 JSON</span>
-      <textarea rows={14} spellCheck={false} className="font-mono text-xs" value={text} placeholder='[{ "taskType": "reading-mcq-single", "passage": "...", "question": "...", "options": ["...", "..."], "correctIndex": 0 }]' onChange={(e) => { setText(e.target.value); setReady([]); setErrors([]) }} />
+      <textarea rows={14} spellCheck={false} className="font-mono text-xs" value={text} placeholder='[{ "taskType": "reading-mcq-single", "passage": "...", "question": "...", "options": ["...", "..."], "correctIndex": 0 }]' onChange={(e) => { setText(e.target.value); setReady([]); setErrors([]); setNotice(null) }} />
     </label>
+    <ProvenanceFields mode="json" value={provenance} onChange={(next) => { setProvenance(next); setReady([]); setErrors([]) }} />
+    <div className="flex flex-wrap items-center gap-3">
+      <button type="button" className="pte-button" disabled={!text.trim()} onClick={applyTemplate}>写入来源模板</button>
+      {notice && <span className="pte-small-note" role="status">{notice}</span>}
+    </div>
     {errors.length > 0 && <ul className="pte-upload-errors" role="alert">{errors.slice(0, 20).map((error) => <li key={error}>{error}</li>)}</ul>}
     {ready.length > 0 && !errors.length && <p className="pte-small-note" role="status">校验通过：{ready.length} 道题可以导入。</p>}
     <div className="flex flex-wrap gap-3">

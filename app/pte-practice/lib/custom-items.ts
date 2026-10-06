@@ -1,4 +1,4 @@
-import { TASK_TYPES, type DescribeImageChart, type PracticeItem, type TaskType } from '../types'
+import { QUESTION_SOURCE_TYPES, TASK_TYPES, type DescribeImageChart, type PracticeItem, type QuestionProvenance, type QuestionSourceType, type TaskType } from '../types'
 
 /**
  * 自定义题目：表单字段定义、"轻量标记文本 -> PracticeItem" 转换和统一校验。
@@ -300,7 +300,40 @@ class Checker {
   }
 }
 
-type NewItem = PracticeItem extends infer T ? (T extends PracticeItem ? Omit<T, 'id'> : never) : never
+type NewItemContent = PracticeItem extends infer T ? (T extends PracticeItem ? Omit<T, 'id' | 'provenance'> : never) : never
+type NewItem = NewItemContent & { provenance: QuestionProvenance }
+
+function validateProvenance(raw: unknown): { provenance: QuestionProvenance | null; errors: string[] } {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { provenance: null, errors: ['缺少题目来源与授权信息 provenance'] }
+  const data = raw as Raw
+  const errors: string[] = []
+  const sourceType = data.sourceType
+  const sourceTitle = typeof data.sourceTitle === 'string' ? data.sourceTitle.trim() : ''
+  const sourceUrl = typeof data.sourceUrl === 'string' ? data.sourceUrl.trim() : ''
+  const rightsBasis = typeof data.rightsBasis === 'string' ? data.rightsBasis.trim() : ''
+  if (typeof sourceType !== 'string' || !(QUESTION_SOURCE_TYPES as readonly string[]).includes(sourceType)) errors.push('provenance.sourceType 必须是 original、licensed、public-domain 或 user-provided')
+  if (!sourceTitle || sourceTitle.length > 200) errors.push('provenance.sourceTitle 需要填写且不超过 200 字符')
+  if (!rightsBasis || rightsBasis.length > 1000) errors.push('provenance.rightsBasis 需要说明授权依据且不超过 1000 字符')
+  if (data.commercialUseAllowed !== true) errors.push('必须确认 provenance.commercialUseAllowed 为 true')
+  if (sourceUrl) {
+    try {
+      const url = new URL(sourceUrl)
+      if (url.protocol !== 'https:') errors.push('provenance.sourceUrl 必须使用 HTTPS')
+    } catch { errors.push('provenance.sourceUrl 不是有效网址') }
+  }
+  if (errors.length) return { provenance: null, errors }
+  return {
+    provenance: {
+      sourceType: sourceType as QuestionSourceType,
+      sourceTitle,
+      ...(sourceUrl ? { sourceUrl } : {}),
+      rightsBasis,
+      commercialUseAllowed: true,
+      attestedAt: new Date().toISOString(),
+    },
+    errors: [],
+  }
+}
 
 export function validateCustomItem(raw: unknown): { item: NewItem | null; errors: string[] } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { item: null, errors: ['题目必须是一个 JSON 对象'] }
@@ -308,12 +341,15 @@ export function validateCustomItem(raw: unknown): { item: NewItem | null; errors
   const taskType = data.taskType
   if (typeof taskType !== 'string' || !(TASK_TYPES as readonly string[]).includes(taskType)) return { item: null, errors: ['taskType 不是支持的题型'] }
   const c = new Checker(data)
-  const item = buildValidated(taskType as TaskType, c, data)
-  if (!c.errors.length && JSON.stringify(item).length > MAX_PAYLOAD_CHARS) c.errors.push(`题目内容过长（整体最多 ${MAX_PAYLOAD_CHARS} 字符）`)
+  const content = buildValidated(taskType as TaskType, c, data)
+  const { provenance, errors: provenanceErrors } = validateProvenance(data.provenance)
+  c.errors.push(...provenanceErrors)
+  const item = provenance ? { ...content, provenance } as NewItem : null
+  if (!c.errors.length && item && JSON.stringify(item).length > MAX_PAYLOAD_CHARS) c.errors.push(`题目内容过长（整体最多 ${MAX_PAYLOAD_CHARS} 字符）`)
   return c.errors.length ? { item: null, errors: c.errors } : { item, errors: [] }
 }
 
-function buildValidated(taskType: TaskType, c: Checker, data: Raw): NewItem {
+function buildValidated(taskType: TaskType, c: Checker, data: Raw): NewItemContent {
   switch (taskType) {
     case 'reading-mcq-single': {
       const options = c.textList('options', '选项', 2, 8)
@@ -402,21 +438,49 @@ function buildValidated(taskType: TaskType, c: Checker, data: Raw): NewItem {
   }
 }
 
-/** 解析 JSON 批量导入：支持单个对象或数组，忽略其中的 id 字段。 */
-export function parseImportJson(text: string): { items: NewItem[]; errors: string[] } {
+function parseList(text: string): { list: unknown[]; error: string | null } {
   let parsed: unknown
-  try { parsed = JSON.parse(text) } catch { return { items: [], errors: ['不是有效的 JSON'] } }
-  const list = Array.isArray(parsed) ? parsed : [parsed]
+  try { parsed = JSON.parse(text) } catch { return { list: [], error: '不是有效的 JSON' } }
+  return { list: Array.isArray(parsed) ? parsed : [parsed], error: null }
+}
+
+/**
+ * 解析 JSON 批量导入：支持单个对象或数组，忽略其中的 id 字段。
+ * 每道题必须自带 provenance（sourceType / sourceTitle / rightsBasis，可选 sourceUrl）；
+ * 商用授权确认由上传者在页面上勾选（attested），不从文件中读取，避免确认被文件内容代替。
+ */
+export function parseImportJson(text: string, attested: boolean): { items: NewItem[]; errors: string[] } {
+  const { list, error } = parseList(text)
+  if (error) return { items: [], errors: [error] }
+  if (!attested) return { items: [], errors: ['请先勾选商用授权确认，再校验或导入'] }
   if (!list.length) return { items: [], errors: ['JSON 中没有题目'] }
   if (list.length > 50) return { items: [], errors: ['一次最多导入 50 道题'] }
   const items: NewItem[] = []
   const errors: string[] = []
   list.forEach((entry, index) => {
-    const { item, errors: itemErrors } = validateCustomItem(entry)
+    const own = entry && typeof entry === 'object' && !Array.isArray(entry) ? (entry as Raw).provenance : undefined
+    if (!own || typeof own !== 'object' || Array.isArray(own)) {
+      errors.push(`第 ${index + 1} 题：缺少 provenance 来源信息（可用"写入来源模板"补上）`)
+      return
+    }
+    const { item, errors: itemErrors } = validateCustomItem({ ...(entry as Raw), provenance: { ...(own as Raw), commercialUseAllowed: true } })
     if (item) items.push(item)
     else errors.push(`第 ${index + 1} 题：${itemErrors.join('；')}`)
   })
   return { items, errors }
+}
+
+/** 把来源模板写入缺少 provenance 的题目，返回格式化后的 JSON；已有 provenance 的题目保持不变。 */
+export function applyProvenanceTemplate(text: string, template: Omit<QuestionProvenance, 'commercialUseAllowed' | 'attestedAt'>): { text: string; filled: number; error: string | null } {
+  const { list, error } = parseList(text)
+  if (error) return { text, filled: 0, error }
+  let filled = 0
+  const next = list.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || (entry as Raw).provenance) return entry
+    filled += 1
+    return { ...(entry as Raw), provenance: template }
+  })
+  return { text: JSON.stringify(next, null, 2), filled, error: null }
 }
 
 export type { NewItem as NewPracticeItem }

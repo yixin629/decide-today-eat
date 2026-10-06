@@ -212,6 +212,13 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
 .pte-upload-field textarea { resize: vertical; }
 .pte-upload-field :is(input, select, textarea):focus { outline: 2px solid var(--pte-accent); outline-offset: 1px; }
 .pte-upload-field small { font-size: 11px; color: var(--pte-muted); line-height: 1.7; }
+.pte-rights-fields { margin: 18px 0 4px; padding: 16px; border: 1px solid var(--pte-line); border-radius: 8px; background: var(--pte-bg); }
+.pte-rights-fields legend { padding: 0 6px; color: var(--pte-text); font-size: 13px; font-weight: 700; }
+.pte-rights-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+.pte-rights-grid .pte-upload-field:last-child { grid-column: 1 / -1; }
+.pte-rights-confirm { display: flex; align-items: flex-start; gap: 9px; margin-top: 14px; color: var(--pte-text); font-size: 12px; line-height: 1.7; }
+.pte-rights-confirm input { width: 16px; height: 16px; margin-top: 3px; accent-color: var(--pte-accent); }
+@media (max-width: 680px) { .pte-rights-grid { grid-template-columns: 1fr; } .pte-rights-grid .pte-upload-field:last-child { grid-column: auto; } }
 .pte-upload-errors { list-style: disc; padding-left: 20px; font-size: 12px; line-height: 1.8; color: #b42318; }
 .dark-mode .pte-upload-errors { color: #f3a39a; }
 .pte-upload-preview { border-top: 1px dashed var(--pte-line); padding-top: 18px; display: grid; gap: 12px; }

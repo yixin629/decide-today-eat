@@ -7,6 +7,7 @@ import { TASK_TYPE_META } from '../../lib/taskTypes'
 import type { PracticeItem, TaskType } from '../../types'
 import TaskTypePicker from '../TaskTypePicker'
 import PracticeInput from '../session/PracticeInput'
+import ProvenanceFields, { EMPTY_PROVENANCE, provenancePayload, type ProvenanceDraft } from './ProvenanceFields'
 
 export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; onSave: (items: NewPracticeItem[]) => Promise<boolean> }) {
   const [taskType, setTaskType] = useState<TaskType>('reading-mcq-single')
@@ -15,6 +16,7 @@ export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; 
   const [preview, setPreview] = useState<PracticeItem | null>(null)
   const [previewKey, setPreviewKey] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [provenance, setProvenance] = useState<ProvenanceDraft>(EMPTY_PROVENANCE)
 
   function changeTask(next: TaskType) {
     setTaskType(next)
@@ -24,7 +26,7 @@ export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; 
   }
 
   function validate() {
-    const { item, errors: found } = validateCustomItem(buildFromFields(taskType, values))
+    const { item, errors: found } = validateCustomItem({ ...buildFromFields(taskType, values), provenance: provenancePayload(provenance) })
     setErrors(found)
     return item
   }
@@ -58,6 +60,7 @@ export default function CustomItemForm({ canSave, onSave }: { canSave: boolean; 
         : <input type={field.kind === 'number' ? 'number' : 'text'} placeholder={field.placeholder} value={values[field.key] ?? ''} onChange={(e) => setValues({ ...values, [field.key]: e.target.value })} />}
       {field.help && <small>{field.help}</small>}
     </label>)}
+    <ProvenanceFields value={provenance} onChange={setProvenance} />
     {errors.length > 0 && <ul className="pte-upload-errors" role="alert">{errors.map((error) => <li key={error}>{error}</li>)}</ul>}
     <div className="flex flex-wrap gap-3">
       <button type="button" className="pte-button" onClick={showPreview}><Eye size={16} />预览</button>

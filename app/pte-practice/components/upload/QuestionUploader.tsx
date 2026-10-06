@@ -5,7 +5,7 @@ import { useState } from 'react'
 import type { NewPracticeItem } from '../../lib/custom-items'
 import { deleteCustomItem, saveCustomItems, type CustomItemInfo } from '../../lib/item-repository'
 import { TASK_TYPE_META } from '../../lib/taskTypes'
-import { itemKey, itemPreview, TASK_CODES } from '../../lib/study'
+import { itemKey, itemPreview, itemSourceLabel, TASK_CODES } from '../../lib/study'
 import type { PracticeItem, TaskType } from '../../types'
 import CustomItemForm from './CustomItemForm'
 import JsonImport from './JsonImport'
@@ -63,7 +63,7 @@ export default function QuestionUploader({ items, customItems, userId, onChanged
           return <article className="pte-question-row" key={key}>
             <span className={`pte-task-code skill-${meta.skill}`}>{TASK_CODES[item.taskType]}</span>
             <div className="pte-question-copy">
-              <div className="pte-question-meta"><span>#{item.id}</span><span>{info?.createdBy} 上传</span>{info?.createdAt && <span>{new Date(info.createdAt).toLocaleDateString('zh-CN')}</span>}</div>
+              <div className="pte-question-meta"><span>#{item.id}</span><span>{info?.createdBy} 上传</span><span>{itemSourceLabel(item, true)}{item.provenance ? ` · ${item.provenance.sourceTitle}` : ''}</span>{info?.createdAt && <span>{new Date(info.createdAt).toLocaleDateString('zh-CN')}</span>}</div>
               <button className="pte-question-title" onClick={() => onPractice(item.taskType, item.id)}>{itemPreview(item)}</button>
               <p>{meta.shortLabel}</p>
             </div>

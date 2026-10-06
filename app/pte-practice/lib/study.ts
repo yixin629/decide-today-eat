@@ -1,4 +1,4 @@
-import type { AttemptRecord, PracticeItem, PteSkill, TaskType } from '../types'
+import { QUESTION_SOURCE_LABELS, type AttemptRecord, type PracticeItem, type PteSkill, type TaskType } from '../types'
 
 export const SKILL_NAMES: Record<PteSkill, string> = { speaking: '口语', writing: '写作', reading: '阅读', listening: '听力' }
 export const STUDY_SKILLS: PteSkill[] = ['speaking', 'writing', 'reading', 'listening']
@@ -12,6 +12,15 @@ export const TASK_CODES: Record<TaskType, string> = {
   'listening-mcq-single': 'MCS-L', 'listening-mcq-multiple': 'MCM-L',
   'listening-summarize-spoken-text': 'SST', 'listening-select-missing-word': 'SMW',
   'listening-highlight-incorrect-words': 'HIW', 'listening-write-from-dictation': 'WFD',
+}
+
+/**
+ * 题目来源标签：登记了 provenance 的按登记类型显示；内置题库均为原创练习；
+ * 早于来源登记功能上传的自定义题目不做推断，显示"来源未登记"。
+ */
+export function itemSourceLabel(item: PracticeItem, isCustom: boolean) {
+  if (item.provenance) return QUESTION_SOURCE_LABELS[item.provenance.sourceType]
+  return isCustom ? '来源未登记' : QUESTION_SOURCE_LABELS.original
 }
 
 export function itemKey(item: { taskType: TaskType; id: string }) {

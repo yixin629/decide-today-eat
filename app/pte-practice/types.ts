@@ -53,6 +53,24 @@ export interface ScoreDimensionResult {
   note: string
 }
 
+export const QUESTION_SOURCE_TYPES = ['original', 'licensed', 'public-domain', 'user-provided'] as const
+export type QuestionSourceType = (typeof QUESTION_SOURCE_TYPES)[number]
+export const QUESTION_SOURCE_LABELS: Record<QuestionSourceType, string> = {
+  original: '原创',
+  licensed: '已授权',
+  'public-domain': '公共领域',
+  'user-provided': '用户自有',
+}
+
+export interface QuestionProvenance {
+  sourceType: QuestionSourceType
+  sourceTitle: string
+  sourceUrl?: string
+  rightsBasis: string
+  commercialUseAllowed: true
+  attestedAt: string
+}
+
 // ---- Reading: MCQ single answer ----
 export interface McqSingleItem {
   id: string
@@ -237,7 +255,7 @@ export interface AnswerShortQuestionItem {
   acceptableAnswers: string[]
 }
 
-export type PracticeItem =
+type PracticeItemContent =
   | McqSingleItem
   | ReorderItem
   | FillBlanksDragItem
@@ -257,6 +275,8 @@ export type PracticeItem =
   | DescribeImageItem
   | RetellLectureItem
   | AnswerShortQuestionItem
+
+export type PracticeItem = PracticeItemContent & { provenance?: QuestionProvenance }
 
 export type AnswerPayload =
   | { taskType: 'reading-mcq-single'; selectedIndex: number | null }
