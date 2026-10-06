@@ -65,7 +65,7 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 ### 上传题目
 
-需要先执行 `pte-practice-custom-items.sql` 并登录。上传的题目两个人都能看到，在题库中标记为"自定义题目"，id 以 `custom-` 开头。题目内容应使用英文。
+需要先执行 `pte-practice-custom-items.sql` 并登录。上传的题目两个人都能看到，在题库中标记为"自定义"，id 以 `custom-` 开头。题目内容应使用英文。
 
 表单录入使用以下简单标记：
 
@@ -81,6 +81,24 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 JSON 批量导入一次最多 50 题，格式与内置题库一致（可以在页面上"填入示例"后修改）。表单和 JSON 都在保存前用 `app/pte-practice/lib/custom-items.ts` 统一校验。
 
+#### 来源与授权（provenance）
+
+每道上传的题目都必须登记来源，信息随题目存进 `pte_practice_items.payload.provenance`，不新增数据库列，不需要执行 SQL：
+
+| 字段 | 说明 |
+| --- | --- |
+| `sourceType` | `original`（原创）、`licensed`（已授权）、`public-domain`（公共领域或开放许可）、`user-provided`（用户自有） |
+| `sourceTitle` | 来源名称，最多 200 字符 |
+| `sourceUrl` | 可选，必须是 HTTPS 网址 |
+| `rightsBasis` | 授权依据：原创人、许可证名称、合同编号或用户权利声明，最多 1000 字符 |
+
+- 表单录入：在"内容来源与商业授权"中填写，并勾选商用授权确认。
+- JSON 导入：每道题都必须带自己的 `provenance` 对象。页面上的来源字段可作为模板，点"写入来源模板"补给缺少来源的题目；商用授权确认只能在页面上勾选，文件里的 `commercialUseAllowed` 会被忽略。
+- 保存时会记录确认时间 `attestedAt`。
+- 题库列表显示"原创 / 已授权 / 公共领域 / 用户自有"。内置题目统一显示"原创"；来源登记功能上线前上传的自定义题目显示"来源未登记"。
+
+公开可访问不代表可以商用；不得录入考场回忆题或未经许可复制的第三方付费题库。
+
 ### 评分
 
 - 参考 [Pearson Score Guide](https://www.pearsonpte.com/content/dam/ELL/pte/pearsonpte/pdfs/pte-academic-pdfs/PTE-Academic-Test-Taker-Score-Guide.pdf)。段落排序按正确相邻段落对计分。其他本地规则与服务估分不构成完整官方算法复现。
@@ -88,7 +106,7 @@ JSON 批量导入一次最多 50 题，格式与内置题库一致（可以在�
 
 - 客观题（选择、排序、填空、听写等）按答案精确判分。
 - Read Aloud 和 Repeat Sentence 提交后会按语音识别结果逐词标注：绿色清晰一致、黄色读音接近但不准（如单复数、相近词）、红色漏读或读错，点击单词可听标准发音；内容和发音分据此估算（`app/pte-practice/engine/wordAlignment.ts`）。需要浏览器支持实时语音转写（Chrome / Edge），否则只能回放录音自评。这不是音素级发音评测。
-- 其他口语题和写作默认使用本地启发式估分。配置可选的自托管评分服务后，Read Aloud 发音和写作语法会改用开源模型估算，部署方式见 [pte-scoring-service/README.md](../../pte-scoring-service/README.md)。
+- 其他口语题和写作默认使用本地启发式估分。配置可选的自托管评分服务后，Read Aloud 发音和写作语法会改用开源模型估算，部署方式见 [pte-scoring-service/README.md](../../pte-scoring-service/README.md)，长期在线的云服务器部署见 [PTE 评分服务云服务器部署方案](../getting-started/PTE_SCORING_CLOUD_DEPLOYMENT.md)。
 - 评分服务通过服务端环境变量 `PTE_SCORING_SERVICE_URL`、`PTE_SCORING_SERVICE_TOKEN` 接入，只在 `app/api/pte-scoring/*/route.ts` 中读取，见 [部署与持续集成](../getting-started/DEPLOYMENT.md)。
 
 ### 本机数据

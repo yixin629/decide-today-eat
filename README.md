@@ -149,6 +149,8 @@ npm start
 
 Cloudflare Workers Builds 的 Dashboard 命令、构建变量与运行时 Secret 统一维护在 [部署与持续集成](./docs/getting-started/DEPLOYMENT.md)；不要在同一流水线中重复调用包含构建步骤的 `npm run deploy`，也不要把真实值写入 `wrangler.toml`。
 
+推送到 `main` 或发起 PR 时，GitHub Actions（`.github/workflows/ci.yml`）会自动运行零警告 lint、类型检查、PTE 单元测试和生产构建；它只做检查，不部署。
+
 `scripts/verify-project.bat` 和 `scripts/verify-project.sh` 会安装锁定依赖并执行
 `npm run check`（lint、类型检查和生产构建），不会把项目发布到 Vercel 或 Cloudflare。
 

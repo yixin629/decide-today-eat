@@ -7,6 +7,7 @@
 - [快速启动](./getting-started/QUICKSTART.md)：从克隆仓库到本地运行
 - [Supabase 配置](./getting-started/SUPABASE_SETUP.md)：数据库、Storage 与安全边界
 - [部署与持续集成](./getting-started/DEPLOYMENT.md)：Vercel、Cloudflare Workers Builds 与故障排查
+- [PTE 评分服务云服务器部署](./getting-started/PTE_SCORING_CLOUD_DEPLOYMENT.md)：把自托管评分服务迁到长期在线的云服务器并接入 Vercel
 
 ## 使用指南
 
@@ -21,6 +22,7 @@
 - [数据库脚本说明](../database/README.md)
 - [PTE 自托管评分服务](../pte-scoring-service/README.md)
 - [PTE 商业上线验收](./architecture/PTE_RELEASE_READINESS.md)：上线阻断项、测试边界与人工环境准备
+- [PTE 平台改进计划](./architecture/PTE_ROADMAP.md)：工程收尾、功能完善与收费前置条件的分档计划
 
 ## 历史报告
 

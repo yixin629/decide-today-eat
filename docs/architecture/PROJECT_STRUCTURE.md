@@ -6,6 +6,8 @@
 
 ```text
 .
+├── .github/workflows/ci.yml   # GitHub Actions：lint、类型检查、PTE 单元测试与构建
+├── .gitattributes             # 统一 LF 换行（.bat 保持 CRLF）
 ├── app/                       # Next.js App Router 应用
 ├── hooks/                     # 通用 React Hooks
 ├── lib/                       # 服务客户端、功能注册表与工具函数

@@ -29,6 +29,8 @@ npm run cf:build
 | `PTE_SCORING_SERVICE_URL` | PTE 自托管评分服务网关地址（可选，见 `pte-scoring-service/README.md`） | 不需要 | 按需 |
 | `PTE_SCORING_SERVICE_TOKEN` | 网站与评分网关之间的共享密钥（启用评分服务时必填） | 不需要 | 启用服务时必须作为 Secret |
 
+评分服务的云服务器部署、固定 HTTPS 域名和上线验收见 [PTE 评分服务云服务器部署方案](./PTE_SCORING_CLOUD_DEPLOYMENT.md)。
+
 不要把真实值写入 `.env.local.example`、`wrangler.toml`、源码或文档。Supabase `service_role` 密钥也不能放进客户端变量。
 
 ## Vercel
