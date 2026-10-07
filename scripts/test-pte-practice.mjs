@@ -23,7 +23,7 @@ const { keyPointCoverage } = loadModule('../app/pte-practice/engine/keyPoints.ts
 const { QUESTION_BANK } = loadModule('../app/pte-practice/lib/questionBank.ts')
 const { pickVoices } = loadModule('../app/pte-practice/lib/voices.ts')
 const { itemSourceLabel } = loadModule('../app/pte-practice/lib/study.ts')
-const { completeStarredReview } = loadModule('../app/pte-plan/lib/review-book.ts')
+const { completeStarredReview, removeStarredReview } = loadModule('../app/pte-plan/lib/review-book.ts')
 const reorder = { id: 'test-order', taskType: 'reading-reorder', paragraphs: ['A', 'B', 'C', 'D'], correctOrder: [0, 1, 2, 3] }
 assert.equal(scoring.scoreReorder(reorder, [2, 3, 0, 1])[0].score, 2)
 assert.equal(scoring.scoreReorder(reorder, [0, 1, 2, 3])[0].score, 3)
@@ -52,7 +52,7 @@ const plan = { version: 1, id: 'plan-1', name: 'Fixture', createdAt: '2026-10-01
 const completed = completeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07', '2026-10-07T12:00:00Z')
 assert.equal(completed.error, null)
 assert.equal(completed.copiedToToday, true)
-assert.equal(completed.plan.days[0].tasks[0].rows[0].starred, false)
+assert.equal(completed.plan.days[0].tasks[0].rows[0].starred, true)
 assert.equal(completed.plan.days[1].tasks[0].rows[0].questionId, 's-rs-12')
 const duplicate = completeStarredReview({ ...plan, days: [plan.days[0], { ...plan.days[1], tasks: [{ ...plan.days[1].tasks[0], rows: [{ ...emptyRow, questionId: 's-rs-12' }] }] }] }, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07')
 assert.equal(duplicate.alreadyInToday, true)
@@ -60,6 +60,8 @@ assert.equal(duplicate.plan.days[1].tasks[0].rows.length, 1)
 const outsidePlan = completeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-08')
 assert.ok(outsidePlan.error)
 assert.equal(outsidePlan.plan.days[0].tasks[0].rows[0].starred, true)
+const unstarred = removeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07T13:00:00Z')
+assert.equal(unstarred.days[0].tasks[0].rows[0].starred, false)
 const importItem = { taskType: 'speaking-read-aloud', text: 'Read this sentence aloud.' }
 const source = { sourceType: 'original', sourceTitle: 'Team bank', rightsBasis: 'Written by our team.' }
 assert.match(parseImportJson(JSON.stringify([importItem]), true).errors[0], /provenance/)

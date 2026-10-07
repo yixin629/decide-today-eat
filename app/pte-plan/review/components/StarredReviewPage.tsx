@@ -5,8 +5,9 @@ import { ArrowLeft, BookOpenCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import PlanReviewBook from '../../components/PlanReviewBook'
-import { loadCloudPlans, saveCloudPlans } from '../../lib/plan-repository'
-import { completeStarredReview } from '../../lib/review-book'
+import { ensureAllTaskCoverage } from '../../engine/generate-plan'
+import { loadCloudPlans, saveCloudPlanIfCurrent } from '../../lib/plan-repository'
+import { completeStarredReview, removeStarredReview } from '../../lib/review-book'
 import type { SavedPtePlan } from '../../types'
 
 export default function StarredReviewPage() {
@@ -36,22 +37,44 @@ export default function StarredReviewPage() {
   const activePlan = plans.find((plan) => plan.id === activePlanId) ?? null
   const total = plans.reduce((count, plan) => count + plan.days.reduce((dayCount, day) => dayCount + day.tasks.reduce((taskCount, task) => taskCount + task.rows.filter((row) => row.starred).length, 0), 0), 0)
 
-  async function toggleStar(dayIndex: number, taskId: string, rowId: string) {
+  async function completeReview(dayIndex: number, taskId: string, rowId: string) {
     if (!activePlan || !user || saving) return
-    const today = new Date()
-    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    const result = completeStarredReview(activePlan, { dayIndex, taskId, rowId }, date)
-    if (result.error) { setError(result.error); return }
-    const updated = result.plan
     setSaving(true)
     setError(null)
     setMessage(null)
     try {
-      await saveCloudPlans(user, [updated])
+      const latest = (await loadCloudPlans(user)).find((plan) => plan.id === activePlan.id)
+      if (!latest) throw new Error('PTE_PLAN_NOT_FOUND')
+      const today = new Date()
+      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const result = completeStarredReview(ensureAllTaskCoverage(latest), { dayIndex, taskId, rowId }, date)
+      if (result.error) { setError(result.error); return }
+      const updated = result.plan
+      await saveCloudPlanIfCurrent(user, updated, latest.updatedAt)
       setPlans((current) => current.map((plan) => plan.id === updated.id ? updated : plan))
-      setMessage(result.copiedToToday ? '已完成复习，并把 RS 题号自动登记到今日练习。' : result.alreadyInToday ? '已完成复习；今日 RS 已有相同题号，没有重复添加。' : '已完成复习并取消星标。')
-    } catch {
-      setError('更新星标失败，原记录没有改变，请稍后重试。')
+      setMessage(result.copiedToToday ? '已把 RS 题号登记到今日练习，星标继续保留。' : result.alreadyInToday ? '今日 RS 已有相同题号，没有重复添加；星标继续保留。' : '已登记今日完成，星标继续保留。')
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message === 'PTE_PLAN_VERSION_CONFLICT' ? '计划刚刚在其他页面更新过。为保护已填写题号，本次没有覆盖，请刷新复习本后重试。' : '更新星标失败，原记录没有改变，请稍后重试。')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeStar(dayIndex: number, taskId: string, rowId: string) {
+    if (!activePlan || !user || saving) return
+    setSaving(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const latest = (await loadCloudPlans(user)).find((plan) => plan.id === activePlan.id)
+      if (!latest) throw new Error('PTE_PLAN_NOT_FOUND')
+      const updated = removeStarredReview(latest, { dayIndex, taskId, rowId })
+      if (!updated) throw new Error('PTE_REVIEW_NOT_FOUND')
+      await saveCloudPlanIfCurrent(user, updated, latest.updatedAt)
+      setPlans((current) => current.map((plan) => plan.id === updated.id ? updated : plan))
+      setMessage('已取消星标，该题不再显示在重点复习本。')
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message === 'PTE_PLAN_VERSION_CONFLICT' ? '计划刚刚在其他页面更新过。为保护已填写题号，本次没有覆盖，请刷新复习本后重试。' : '取消星标失败，原记录没有改变，请稍后重试。')
     } finally {
       setSaving(false)
     }
@@ -69,7 +92,7 @@ export default function StarredReviewPage() {
       </section>
       {error && <div role="alert" className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</div>}
       {message && <div role="status" className="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</div>}
-      {loading ? <div className="py-16 text-center text-sm text-slate-500">正在读取重点复习本…</div> : activePlan ? <PlanReviewBook plan={activePlan} onToggleStar={toggleStar} /> : <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-500">还没有可用的备考计划。</div>}
+      {loading ? <div className="py-16 text-center text-sm text-slate-500">正在读取重点复习本…</div> : activePlan ? <PlanReviewBook plan={activePlan} onComplete={completeReview} onRemoveStar={removeStar} /> : <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-500">还没有可用的备考计划。</div>}
     </div>
   </main>
 }

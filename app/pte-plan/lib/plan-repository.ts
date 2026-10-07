@@ -53,6 +53,25 @@ export async function saveCloudPlans(userId: string, plans: SavedPtePlan[]) {
   if (error) throw error
 }
 
+/** 保存单份计划时核对读取版本，避免另一个页面用旧的 days JSON 覆盖新填写的题号。 */
+export async function saveCloudPlanIfCurrent(userId: string, plan: SavedPtePlan, expectedUpdatedAt: string) {
+  const { data, error } = await supabase
+    .from('pte_plans')
+    .update({
+      name: plan.name.trim() || '未命名计划',
+      config: plan.config,
+      days: plan.days,
+      updated_at: plan.updatedAt,
+    })
+    .eq('id', plan.id)
+    .eq('user_id', userId)
+    .eq('updated_at', expectedUpdatedAt)
+    .select('id')
+
+  if (error) throw error
+  if (!data?.length) throw new Error('PTE_PLAN_VERSION_CONFLICT')
+}
+
 export async function deleteCloudPlan(userId: string, planId: string) {
   const { error } = await supabase.from('pte_plans').delete().eq('id', planId).eq('user_id', userId)
 

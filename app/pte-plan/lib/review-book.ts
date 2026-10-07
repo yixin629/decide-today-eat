@@ -30,9 +30,7 @@ export function completeStarredReview(
   const days = plan.days.map((day, dayIndex) => ({
     ...day,
     tasks: day.tasks.map((task) => {
-      let rows = task.rows.map((row) => dayIndex === location.dayIndex && task.id === location.taskId && row.id === location.rowId
-        ? { ...row, starred: false }
-        : row)
+      let rows = task.rows
       if (!isRepeatSentence || dayIndex !== todayIndex || task.shortLabel !== 'RS' || alreadyInToday) return { ...task, rows }
       const emptyIndex = rows.findIndex((row) => !row.questionId.trim())
       if (emptyIndex >= 0) {
@@ -47,4 +45,24 @@ export function completeStarredReview(
   }))
 
   return { plan: { ...plan, days, updatedAt: now }, copiedToToday, alreadyInToday, error: null }
+}
+
+export function removeStarredReview(
+  plan: SavedPtePlan,
+  location: { dayIndex: number; taskId: string; rowId: string },
+  now = new Date().toISOString()
+) {
+  let found = false
+  const days = plan.days.map((day, dayIndex) => ({
+    ...day,
+    tasks: day.tasks.map((task) => ({
+      ...task,
+      rows: task.rows.map((row) => {
+        if (dayIndex !== location.dayIndex || task.id !== location.taskId || row.id !== location.rowId) return row
+        found = true
+        return { ...row, starred: false }
+      }),
+    })),
+  }))
+  return found ? { ...plan, days, updatedAt: now } : null
 }
