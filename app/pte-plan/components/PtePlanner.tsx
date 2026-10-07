@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { readSessionUser } from '@/lib/auth-session'
-import { ensureAllTaskCoverage, generateStudyPlan } from '../engine/generate-plan'
+import { generateStudyPlan } from '../engine/generate-plan'
 import { deleteCloudPlan, loadCloudPlans, saveCloudPlans } from '../lib/plan-repository'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
 import {
@@ -114,17 +114,9 @@ export default function PtePlanner() {
         const cloudPlans = await loadCloudPlans(user)
         if (cancelled) return
 
-        const resolvedPlans = cloudPlans
-          .map(ensureAllTaskCoverage)
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-        // 用"补全后"的 updatedAt（而不是云端原始的 updatedAt）初始化 syncedVersions：
-        // ensureAllTaskCoverage 只是给旧计划补全新增题型覆盖率的只读时迁移，会把
-        // updatedAt 刷新成当前时间，如果拿云端原始时间戳去比对，会被自动保存的
-        // effect 误判成"用户改过了"，从而在用户只是打开页面看一眼时就静默触发一次
-        // 写回数据库——这不仅是多余的写操作，还会和"删除计划"竞态：如果这次静默
-        // 自动保存的请求还没返回，用户就删除了该计划，请求返回时可能把刚删除的
-        // 计划重新插回去。用补全后的时间戳标记为"已同步"，可以避免这次自动
-        // 迁移本身触发任何网络写入；真正的用户编辑之后依然会正常触发同步。
+        // 已有计划必须按云端原结构载入。题型只在用户明确生成新计划时创建，
+        // 不能在读取阶段补齐，否则后续保存会把旧计划改写成另一套结构。
+        const resolvedPlans = cloudPlans.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
         setSyncedVersions(Object.fromEntries(resolvedPlans.map((plan) => [plan.id, plan.updatedAt])))
         const requestedPlanId = new URLSearchParams(window.location.search).get('plan')
         const active = resolvedPlans.find((plan) => plan.id === requestedPlanId) ?? resolvedPlans[0] ?? null

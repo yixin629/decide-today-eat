@@ -5,7 +5,6 @@ import { ArrowLeft, BookOpenCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import PlanReviewBook from '../../components/PlanReviewBook'
-import { ensureAllTaskCoverage } from '../../engine/generate-plan'
 import { loadCloudPlans, saveCloudPlanIfCurrent } from '../../lib/plan-repository'
 import { completeStarredReview, removeStarredReview } from '../../lib/review-book'
 import type { SavedPtePlan } from '../../types'
@@ -47,7 +46,7 @@ export default function StarredReviewPage() {
       if (!latest) throw new Error('PTE_PLAN_NOT_FOUND')
       const today = new Date()
       const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-      const result = completeStarredReview(ensureAllTaskCoverage(latest), { dayIndex, taskId, rowId }, date)
+      const result = completeStarredReview(latest, { dayIndex, taskId, rowId }, date)
       if (result.error) { setError(result.error); return }
       const updated = result.plan
       await saveCloudPlanIfCurrent(user, updated, latest.updatedAt)
