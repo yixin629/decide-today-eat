@@ -69,6 +69,16 @@ function saveLocalAttempt(attempt: AttemptRecord): boolean {
   }
 }
 
+function replaceLocalAttempts(attempts: AttemptRecord[]): boolean {
+  if (!isBrowser()) return false
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(attempts))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export interface AttemptQueryResult {
   attempts: AttemptRecord[]
   source: 'cloud' | 'local' | 'mixed'
@@ -156,6 +166,56 @@ export async function saveAttempt(
   const localRecord: AttemptRecord = { ...attempt, id: crypto.randomUUID() }
   const stored = saveLocalAttempt(localRecord)
   return { attempt: localRecord, source: 'local', error: stored ? null : '本机存储不可用，本次反馈仅在当前页面可见，请勿关闭页面。' }
+}
+
+export interface AttemptSyncResult {
+  synced: number
+  remaining: number
+  error: string | null
+}
+
+/**
+ * 把当前身份的有效本机记录补传到云端。先查询已存在的 UUID，避免重试时重复；
+ * 只有云端确认成功后才移除对应本机副本，其他身份的记录保持不变。
+ */
+export async function syncLocalAttempts(userId: string | null): Promise<AttemptSyncResult> {
+  if (!userId) return { synced: 0, remaining: 0, error: '登录后才能同步本机练习记录。' }
+  const local = loadLocalAttempts()
+  if (local.error) return { synced: 0, remaining: 0, error: local.error }
+  const pending = local.attempts.filter((attempt) => attempt.userId === userId)
+  if (!pending.length) return { synced: 0, remaining: 0, error: null }
+
+  try {
+    const ids = pending.map((attempt) => attempt.id)
+    const { data: existingData, error: existingError } = await supabase
+      .from('pte_practice_attempts')
+      .select('id')
+      .eq('user_id', userId)
+      .in('id', ids)
+    if (existingError) throw existingError
+    const existingIds = new Set(((existingData ?? []) as { id: string }[]).map((row) => row.id))
+    const missing = pending.filter((attempt) => !existingIds.has(attempt.id))
+    if (missing.length) {
+      const { error } = await supabase.from('pte_practice_attempts').insert(missing.map((attempt) => ({
+        id: attempt.id,
+        user_id: userId,
+        task_type: attempt.taskType,
+        item_id: attempt.itemId,
+        duration_seconds: attempt.durationSeconds,
+        dimensions: attempt.dimensions,
+        summary: attempt.summary,
+        created_at: attempt.createdAt,
+      })))
+      if (error) throw error
+    }
+
+    const syncedIds = new Set(ids)
+    const remainingAttempts = local.attempts.filter((attempt) => attempt.userId !== userId || !syncedIds.has(attempt.id))
+    if (!replaceLocalAttempts(remainingAttempts)) return { synced: 0, remaining: pending.length, error: '云端已收到记录，但无法清理本机副本；下次同步会自动去重。' }
+    return { synced: pending.length, remaining: 0, error: null }
+  } catch {
+    return { synced: 0, remaining: pending.length, error: '同步失败，本机记录仍已保留，请检查网络后重试。' }
+  }
 }
 
 /** 订阅练习记录表的新增事件，用于"练习集锦"共享动态实时刷新。 */

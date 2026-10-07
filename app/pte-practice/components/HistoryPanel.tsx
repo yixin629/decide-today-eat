@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { RotateCcw, Search } from 'lucide-react'
+import { CloudUpload, RotateCcw, Search } from 'lucide-react'
 import { getTaskTypeMeta } from '../lib/taskTypes'
 import { isAssessed, scoreSummary } from '../lib/score-display'
 import { TASK_TYPES, type AttemptRecord, type TaskType } from '../types'
@@ -11,12 +11,16 @@ export default function HistoryPanel({
   onClear,
   onPractice,
   source = 'cloud',
+  onSync,
+  syncing = false,
 }: {
   attempts: AttemptRecord[]
   onClear?: () => void
   /** 点击某条历史记录时，回到对应题目重新练习一次（可选，不传则记录仅作展示）。 */
   onPractice?: (taskType: TaskType, itemId: string) => void
   source?: 'cloud' | 'local' | 'mixed'
+  onSync?: () => void
+  syncing?: boolean
 }) {
   const [query, setQuery] = useState('')
   const [task, setTask] = useState('all')
@@ -50,11 +54,10 @@ export default function HistoryPanel({
           {source === 'cloud' ? '云端记录，可跨设备查看' : source === 'mixed' ? '包含仅保存在本机的记录，本机部分尚未同步' : '本机记录，不会同步到其他设备'}
           ）
         </p>
-        {source === 'local' && onClear && (
-          <button type="button" onClick={onClear} className="text-sm text-red-500 underline transition-colors hover:text-red-700">
-            清空本机记录
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {source !== 'cloud' && onSync && <button type="button" className="pte-button" disabled={syncing} onClick={onSync}><CloudUpload size={15} />{syncing ? '同步中…' : '同步本机记录'}</button>}
+          {source === 'local' && onClear && <button type="button" onClick={onClear} className="text-sm text-red-500 underline transition-colors hover:text-red-700">清空本机记录</button>}
+        </div>
       </div>
       <ul className="space-y-2">
         {filtered.slice(0, limit).map((attempt) => {

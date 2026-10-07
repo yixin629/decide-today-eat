@@ -6,8 +6,11 @@ import ts from 'typescript'
 const loadModule = createRequire(import.meta.url)
 let cloudAvailable = false
 let cloudRows = []
+let insertedRows = []
 const query = {
-  select() { return this }, eq() { return this }, order() { return this }, insert() { return this },
+  select() { return this }, eq() { return this }, order() { return this },
+  insert(value) { if (Array.isArray(value)) { insertedRows.push(...value); return Promise.resolve({ data: null, error: cloudAvailable ? null : new Error('Fixture offline') }) }; return this },
+  async in(_column, ids) { return { data: cloudRows.filter((row) => ids.includes(row.id)).map((row) => ({ id: row.id })), error: cloudAvailable ? null : new Error('Fixture offline') } },
   async limit() { return { data: cloudRows, error: cloudAvailable ? null : new Error('Fixture offline') } },
   async single() { return { data: null, error: new Error('Fixture offline') } },
 }
@@ -23,7 +26,7 @@ globalThis.window = { localStorage: {
   getItem: (key) => { if (blocked) throw new Error('Blocked'); return storage.get(key) ?? null },
   setItem: (key, value) => { if (blocked) throw new Error('Blocked'); storage.set(key, value) },
 } }
-const { loadAttempts, saveAttempt } = loadModule('../app/pte-practice/lib/attempt-repository.ts')
+const { loadAttempts, saveAttempt, syncLocalAttempts } = loadModule('../app/pte-practice/lib/attempt-repository.ts')
 const { parseLocalHistory, mergeAttemptHistory } = loadModule('../app/pte-practice/lib/attempt-history.ts')
 const key = 'pte-practice-attempts-v1'
 const record = { id: 'offline-a', userId: 'fixture-a', taskType: 'reading-mcq-single', itemId: 'fixture-question', createdAt: '2026-10-01T12:00:00Z', durationSeconds: 10, dimensions: [{ id: 'content', label: 'Content', score: 1, maxScore: 1, isHeuristic: false, note: 'Correct' }], summary: 'Fixture', isEstimate: true }
@@ -40,6 +43,10 @@ assert.deepEqual(recovered.attempts.map((entry) => entry.id), ['cloud-a', 'offli
 assert.equal(storage.get(key), JSON.stringify([record, other]), 'Reading must not upload or rewrite offline records')
 assert.equal(mergeAttemptHistory([record], [record, other], 'fixture-a').attempts.length, 1)
 assert.equal(mergeAttemptHistory([record], [record], 'fixture-a').hasLocal, false)
+const synced = await syncLocalAttempts('fixture-a')
+assert.equal(synced.synced, 1)
+assert.equal(insertedRows[0].id, 'offline-a')
+assert.deepEqual(parseLocalHistory(storage.get(key)).attempts.map((entry) => entry.id), ['offline-b'])
 
 assert.ok(parseLocalHistory('bad-json').error)
 assert.ok(parseLocalHistory(JSON.stringify([null, { ...record, taskType: 'unknown' }])).error)

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
-import { loadAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
+import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
 import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
 import { itemKey, latestByItem, needsReview } from '../lib/study'
@@ -49,6 +49,8 @@ export default function PtePractice() {
   const [sessionSaved, setSessionSaved] = useState(false)
   const [mockRunning, setMockRunning] = useState(false)
   const [catalogRefresh, setCatalogRefresh] = useState(0)
+  const [syncingHistory, setSyncingHistory] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<{ error: boolean; text: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -112,6 +114,18 @@ export default function PtePractice() {
     setSessionSaved(true)
   }
 
+  async function syncHistory() {
+    if (syncingHistory) return
+    setSyncingHistory(true)
+    setSyncMessage(null)
+    const result = await syncLocalAttempts(user)
+    if (result.error) setSyncMessage({ error: true, text: result.error })
+    else setSyncMessage({ error: false, text: result.synced ? `已将 ${result.synced} 条本机记录同步到云端。` : '没有需要同步的本机记录。' })
+    const refreshed = await loadAttempts(user)
+    setHistory(refreshed)
+    setSyncingHistory(false)
+  }
+
   const reviewCount = [...latestByItem(history.attempts).values()].filter(needsReview).length
   const currentItem = session?.queue[session.index]
   const activeKey = currentItem ? itemKey(currentItem) : ''
@@ -132,6 +146,7 @@ export default function PtePractice() {
           {catalog.error && <div className="pte-notice" role="status">{catalog.error}<button onClick={() => setCatalogRefresh((n) => n + 1)} disabled={catalogLoading}>{catalogLoading ? '连接中' : '重试'}</button></div>}
           {history.error && <div className="pte-notice" role="status">{history.error}</div>}
           {preferenceError && <div className="pte-notice" role="alert">{preferenceError}</div>}
+          {syncMessage && <div className="pte-notice" role={syncMessage.error ? 'alert' : 'status'}>{syncMessage.text}</div>}
           {session && currentItem ? <div>
             <div className="pte-session-context"><button className="pte-button" onClick={() => navigate(tab)}><ArrowLeft size={16} />返回列表</button><span>本组 {session.index + 1} / {session.queue.length} 题</span><button className={`pte-button ${preferences.bookmarks.includes(activeKey) ? 'bookmarked' : ''}`} disabled={!ready} aria-pressed={preferences.bookmarks.includes(activeKey)} onClick={() => bookmark(activeKey)}><Bookmark size={16} fill={preferences.bookmarks.includes(activeKey) ? 'currentColor' : 'none'} />{preferences.bookmarks.includes(activeKey) ? '已收藏' : '收藏'}</button></div>
             <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onRetry={() => setSessionSaved(false)} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
@@ -142,7 +157,7 @@ export default function PtePractice() {
             {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}
-            {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} />}
+            {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} onSync={user ? () => void syncHistory() : undefined} syncing={syncingHistory} />}
             {tab === 'analytics' && <AnalyticsDashboard userId={user} refreshKey={refreshKey} onSelectTaskType={openTask} />}
             {tab === 'feed' && <CommunityFeed currentUserId={user} />}
             {tab === 'upload' && <QuestionUploader items={catalog.items} customItems={catalog.customItems} userId={user} onChanged={() => setCatalogRefresh((n) => n + 1)} onPractice={startItem} />}
