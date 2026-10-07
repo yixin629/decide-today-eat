@@ -11,16 +11,16 @@ export type LibraryFilter = 'all' | 'unpracticed' | 'practiced' | 'bookmarked' |
 const FILTER_LABELS: Record<LibraryFilter, string> = { all: '全部题目', unpracticed: '未练习', practiced: '已练习', bookmarked: '我的收藏', review: '错题复习' }
 const PAGE_SIZE = 12
 
-export default function QuestionLibrary({ items, cloudIds, customKeys = [], attempts, bookmarks, initialTask, initialFilter = 'all', onBookmark, onStart }: {
+export default function QuestionLibrary({ items, cloudIds, customKeys = [], attempts, bookmarks, initialTask, initialFilter = 'all', initialQuery = '', onBookmark, onStart }: {
   items: PracticeItem[]; cloudIds: string[]; customKeys?: string[]; attempts: AttemptRecord[]; bookmarks: string[]
-  initialTask?: TaskType; initialFilter?: LibraryFilter
+  initialTask?: TaskType; initialFilter?: LibraryFilter; initialQuery?: string
   onBookmark: (key: string) => void
   onStart: (items: PracticeItem[], index: number) => void
 }) {
   const [task, setTask] = useState<TaskType | 'all'>(initialTask ?? 'all')
   const [skill, setSkill] = useState<SkillFilter>(initialTask ? TASK_TYPE_META[initialTask].skill : 'all')
   const [filter, setFilter] = useState<LibraryFilter>(initialFilter)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [sort, setSort] = useState('default')
   const [page, setPage] = useState(0)
   const latest = useMemo(() => latestByItem(attempts), [attempts])

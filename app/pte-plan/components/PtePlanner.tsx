@@ -18,6 +18,7 @@ import {
   type Skill,
 } from '../types'
 import PteReport from './PteReport'
+import PlanReviewBook from './PlanReviewBook'
 import TemplateLibrary from './TemplateLibrary'
 
 const DISPLAY_SKILLS: Skill[] = ['speaking', 'writing', 'reading', 'listening']
@@ -383,6 +384,28 @@ export default function PtePlanner() {
             }
       )
     )
+  }
+
+  const toggleReviewBookRow = (dayIndex: number, taskId: string, rowId: string) => {
+    if (!activePlanId) return
+    setPlans((current) => current.map((plan) => plan.id !== activePlanId ? plan : {
+      ...plan,
+      updatedAt: new Date().toISOString(),
+      days: plan.days.map((day, index) => index !== dayIndex ? day : {
+        ...day,
+        tasks: day.tasks.map((task) => task.id !== taskId ? task : {
+          ...task,
+          rows: task.rows.map((row) => row.id === rowId ? { ...row, starred: !row.starred } : row),
+        }),
+      }),
+    }))
+  }
+
+  const openReviewBookRow = (dayIndex: number, taskId: string) => {
+    setActiveDay(dayIndex)
+    window.requestAnimationFrame(() => {
+      document.getElementById(`pte-task-${taskId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const addExtraRow = (taskId: string) => {
@@ -876,6 +899,12 @@ export default function PtePlanner() {
               </article>
             ))}
           </section>
+
+          <PlanReviewBook
+            plan={savedPlan}
+            onOpenDay={openReviewBookRow}
+            onToggleStar={toggleReviewBookRow}
+          />
 
           <section className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
             <div className="rounded-t-[calc(1.5rem-1px)] border-b border-slate-200 bg-[#16324f] px-4 py-4 text-white sm:px-6">

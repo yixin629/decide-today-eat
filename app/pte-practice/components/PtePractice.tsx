@@ -39,6 +39,7 @@ export default function PtePractice() {
   const { preferences, error: preferenceError, update, ready } = useStudyPreferences(user)
   const [tab, setTab] = useState<Tab>('dashboard')
   const [libraryTask, setLibraryTask] = useState<TaskType | undefined>()
+  const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryKey, setLibraryKey] = useState(0)
   const [catalog, setCatalog] = useState({ items: TASK_TYPES.flatMap(getItemsForTaskType), cloudIds: [] as string[], customItems: [] as CustomItemInfo[], error: null as string | null })
   const [catalogLoading, setCatalogLoading] = useState(true)
@@ -71,6 +72,17 @@ export default function PtePractice() {
     return () => { cancelled = true }
   }, [user, authLoading])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const task = params.get('task')
+    const question = params.get('question')?.trim() ?? ''
+    if (!TASK_TYPES.includes(task as TaskType) || !question) return
+    setLibraryTask(task as TaskType)
+    setLibraryQuery(question)
+    setTab('library')
+    setLibraryKey((key) => key + 1)
+  }, [])
+
   function navigate(nextTab: Tab) {
     if (mockRunning && !window.confirm('离开模拟考试？已提交的作答会保留，当前模考进度不会保存。')) return
     setMockRunning(false)
@@ -78,6 +90,7 @@ export default function PtePractice() {
     setSession(null)
     setTab(nextTab)
     setLibraryTask(undefined)
+    setLibraryQuery('')
     setLibraryKey((key) => key + 1)
   }
 
@@ -154,7 +167,7 @@ export default function PtePractice() {
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
-            {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} onBookmark={bookmark} onStart={start} />}
+            {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}
             {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} onSync={user ? () => void syncHistory() : undefined} syncing={syncingHistory} />}
