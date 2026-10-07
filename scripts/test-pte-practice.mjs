@@ -23,6 +23,7 @@ const { keyPointCoverage } = loadModule('../app/pte-practice/engine/keyPoints.ts
 const { QUESTION_BANK } = loadModule('../app/pte-practice/lib/questionBank.ts')
 const { pickVoices } = loadModule('../app/pte-practice/lib/voices.ts')
 const { itemSourceLabel } = loadModule('../app/pte-practice/lib/study.ts')
+const { completeStarredReview } = loadModule('../app/pte-plan/lib/review-book.ts')
 const reorder = { id: 'test-order', taskType: 'reading-reorder', paragraphs: ['A', 'B', 'C', 'D'], correctOrder: [0, 1, 2, 3] }
 assert.equal(scoring.scoreReorder(reorder, [2, 3, 0, 1])[0].score, 2)
 assert.equal(scoring.scoreReorder(reorder, [0, 1, 2, 3])[0].score, 3)
@@ -41,6 +42,24 @@ const perfect = scoring.scoreReadAloud({ item: reading, recordingSeconds: 2, rec
 assert.equal(perfect[1].score, 5)
 assert.equal(isAssessed(perfect[1]), true)
 assert.equal(isAssessed(scoring.scoreReadAloud({ item: reading, recordingSeconds: 2, recognizedTranscript: null })[1]), false)
+
+const reviewRow = { id: 'old-rs', category: 'planned', questionId: 's-rs-12', starred: true, score: '', attempts: '', note: '' }
+const emptyRow = { id: 'today-rs', category: 'planned', questionId: '', starred: false, score: '', attempts: '', note: '' }
+const plan = { version: 1, id: 'plan-1', name: 'Fixture', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z', config: {}, days: [
+  { date: '2026-10-06', dayNumber: 1, phase: '', focus: '', plannedMinutes: 10, hiddenTaskIds: [], summary: {}, tasks: [{ id: 'rs', shortLabel: 'RS', rows: [reviewRow] }] },
+  { date: '2026-10-07', dayNumber: 2, phase: '', focus: '', plannedMinutes: 10, hiddenTaskIds: [], summary: {}, tasks: [{ id: 'rs', shortLabel: 'RS', rows: [emptyRow] }] },
+] }
+const completed = completeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07', '2026-10-07T12:00:00Z')
+assert.equal(completed.error, null)
+assert.equal(completed.copiedToToday, true)
+assert.equal(completed.plan.days[0].tasks[0].rows[0].starred, false)
+assert.equal(completed.plan.days[1].tasks[0].rows[0].questionId, 's-rs-12')
+const duplicate = completeStarredReview({ ...plan, days: [plan.days[0], { ...plan.days[1], tasks: [{ ...plan.days[1].tasks[0], rows: [{ ...emptyRow, questionId: 's-rs-12' }] }] }] }, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07')
+assert.equal(duplicate.alreadyInToday, true)
+assert.equal(duplicate.plan.days[1].tasks[0].rows.length, 1)
+const outsidePlan = completeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-08')
+assert.ok(outsidePlan.error)
+assert.equal(outsidePlan.plan.days[0].tasks[0].rows[0].starred, true)
 const importItem = { taskType: 'speaking-read-aloud', text: 'Read this sentence aloud.' }
 const source = { sourceType: 'original', sourceTitle: 'Team bank', rightsBasis: 'Written by our team.' }
 assert.match(parseImportJson(JSON.stringify([importItem]), true).errors[0], /provenance/)

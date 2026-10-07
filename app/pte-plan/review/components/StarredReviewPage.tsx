@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import PlanReviewBook from '../../components/PlanReviewBook'
 import { loadCloudPlans, saveCloudPlans } from '../../lib/plan-repository'
+import { completeStarredReview } from '../../lib/review-book'
 import type { SavedPtePlan } from '../../types'
 
 export default function StarredReviewPage() {
@@ -15,6 +16,7 @@ export default function StarredReviewPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -36,22 +38,18 @@ export default function StarredReviewPage() {
 
   async function toggleStar(dayIndex: number, taskId: string, rowId: string) {
     if (!activePlan || !user || saving) return
-    const updated: SavedPtePlan = {
-      ...activePlan,
-      updatedAt: new Date().toISOString(),
-      days: activePlan.days.map((day, index) => index !== dayIndex ? day : {
-        ...day,
-        tasks: day.tasks.map((task) => task.id !== taskId ? task : {
-          ...task,
-          rows: task.rows.map((row) => row.id === rowId ? { ...row, starred: !row.starred } : row),
-        }),
-      }),
-    }
+    const today = new Date()
+    const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const result = completeStarredReview(activePlan, { dayIndex, taskId, rowId }, date)
+    if (result.error) { setError(result.error); return }
+    const updated = result.plan
     setSaving(true)
     setError(null)
+    setMessage(null)
     try {
       await saveCloudPlans(user, [updated])
       setPlans((current) => current.map((plan) => plan.id === updated.id ? updated : plan))
+      setMessage(result.copiedToToday ? '已完成复习，并把 RS 题号自动登记到今日练习。' : result.alreadyInToday ? '已完成复习；今日 RS 已有相同题号，没有重复添加。' : '已完成复习并取消星标。')
     } catch {
       setError('更新星标失败，原记录没有改变，请稍后重试。')
     } finally {
@@ -70,6 +68,7 @@ export default function StarredReviewPage() {
         <p className="text-sm font-bold text-amber-700">全部方案共 {total} 道待复习{saving ? ' · 正在保存…' : ''}</p>
       </section>
       {error && <div role="alert" className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</div>}
+      {message && <div role="status" className="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</div>}
       {loading ? <div className="py-16 text-center text-sm text-slate-500">正在读取重点复习本…</div> : activePlan ? <PlanReviewBook plan={activePlan} onToggleStar={toggleStar} /> : <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-500">还没有可用的备考计划。</div>}
     </div>
   </main>
