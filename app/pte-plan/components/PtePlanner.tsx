@@ -2,6 +2,7 @@
 
 import { addDays, format, parseISO } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { readSessionUser } from '@/lib/auth-session'
@@ -18,7 +19,6 @@ import {
   type Skill,
 } from '../types'
 import PteReport from './PteReport'
-import PlanReviewBook from './PlanReviewBook'
 import TemplateLibrary from './TemplateLibrary'
 
 const DISPLAY_SKILLS: Skill[] = ['speaking', 'writing', 'reading', 'listening']
@@ -126,12 +126,15 @@ export default function PtePlanner() {
         // 计划重新插回去。用补全后的时间戳标记为"已同步"，可以避免这次自动
         // 迁移本身触发任何网络写入；真正的用户编辑之后依然会正常触发同步。
         setSyncedVersions(Object.fromEntries(resolvedPlans.map((plan) => [plan.id, plan.updatedAt])))
-        const active = resolvedPlans[0] ?? null
+        const requestedPlanId = new URLSearchParams(window.location.search).get('plan')
+        const active = resolvedPlans.find((plan) => plan.id === requestedPlanId) ?? resolvedPlans[0] ?? null
         setPlans(resolvedPlans)
         setActivePlanId(active?.id ?? null)
         if (active) {
           setConfig(active.config)
-          setActiveDay(nextActiveDay(active))
+          const requestedDayValue = new URLSearchParams(window.location.search).get('day')
+          const requestedDay = requestedDayValue === null ? Number.NaN : Number(requestedDayValue)
+          setActiveDay(Number.isInteger(requestedDay) && requestedDay >= 0 && requestedDay < active.days.length ? requestedDay : nextActiveDay(active))
         }
         setCloudReady(true)
         setSyncStatus('saved')
@@ -187,6 +190,16 @@ export default function PtePlanner() {
   useEffect(() => {
     activePlanRef.current = savedPlan
   }, [savedPlan])
+
+  useEffect(() => {
+    if (!savedPlan) return
+    const taskId = new URLSearchParams(window.location.search).get('task')
+    if (!taskId) return
+    const timer = window.setTimeout(() => {
+      document.getElementById(`pte-task-${taskId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    return () => window.clearTimeout(timer)
+  }, [activeDay, savedPlan])
 
   useEffect(() => {
     if (!activePlanId) return
@@ -384,28 +397,6 @@ export default function PtePlanner() {
             }
       )
     )
-  }
-
-  const toggleReviewBookRow = (dayIndex: number, taskId: string, rowId: string) => {
-    if (!activePlanId) return
-    setPlans((current) => current.map((plan) => plan.id !== activePlanId ? plan : {
-      ...plan,
-      updatedAt: new Date().toISOString(),
-      days: plan.days.map((day, index) => index !== dayIndex ? day : {
-        ...day,
-        tasks: day.tasks.map((task) => task.id !== taskId ? task : {
-          ...task,
-          rows: task.rows.map((row) => row.id === rowId ? { ...row, starred: !row.starred } : row),
-        }),
-      }),
-    }))
-  }
-
-  const openReviewBookRow = (dayIndex: number, taskId: string) => {
-    setActiveDay(dayIndex)
-    window.requestAnimationFrame(() => {
-      document.getElementById(`pte-task-${taskId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
   }
 
   const addExtraRow = (taskId: string) => {
@@ -616,6 +607,7 @@ export default function PtePlanner() {
             </div>
 
             <div className="flex flex-wrap gap-2">
+              <Link href="/pte-plan/review" className="inline-flex min-h-11 items-center rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-black text-amber-800 transition hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">重点复习本{totals.starred > 0 ? `（${totals.starred}）` : ''}</Link>
               <button
                 type="button"
                 onClick={startNewPlan}
@@ -899,12 +891,6 @@ export default function PtePlanner() {
               </article>
             ))}
           </section>
-
-          <PlanReviewBook
-            plan={savedPlan}
-            onOpenDay={openReviewBookRow}
-            onToggleStar={toggleReviewBookRow}
-          />
 
           <section className="rounded-3xl border border-slate-200 bg-white/90 shadow-xl">
             <div className="rounded-t-[calc(1.5rem-1px)] border-b border-slate-200 bg-[#16324f] px-4 py-4 text-white sm:px-6">
