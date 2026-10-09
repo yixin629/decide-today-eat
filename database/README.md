@@ -118,6 +118,8 @@
 | `pte-practice-task-types-v2.sql` | 把 `pte_practice_items`、`pte_practice_attempts`、`pte_practice_comments` 的 `task_type` 约束统一重建为 22 种题型（含 SGD、RTS）；只放宽取值范围，不改数据，可重复执行 |
 | `pte-practice-custom-items.sql` | PTE 题库自定义题目：`created_by`/`created_at` 列、payload 大小约束、仅限 `custom-` 行的匿名 INSERT/DELETE（放宽 RLS） |
 | `pte-practice-custom-item-editing.sql` | PTE 自定义题编辑：仅授予 `custom-` 行 `payload` 列的 UPDATE（仍需真实认证才能商用） |
+| `pte-commercial-foundation.sql` | 独立 PTE 商业站的 Auth 资料、会员、权益和 Stripe 事件表；当前私人库不执行 |
+| `pte-support-tickets.sql` | PTE 商业站客服工单和客服角色；在 `pte-commercial-foundation.sql` 之后执行，用户按 `auth.uid()` 隔离，客服角色仅由管理员授予 |
 | `replace-food-options-seed.sql` | 破坏性清空并重建食物种子                         |
 | `supabase-new-features.sql`     | 尚未拆分完的互动功能、默认数据和遗留表           |
 | `tarot-table.sql`               | 塔罗记录                                         |

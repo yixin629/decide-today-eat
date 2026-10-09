@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
+import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, Headset, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
 import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
@@ -151,7 +151,7 @@ export default function PtePractice() {
       <aside className="pte-sidebar">
         <p className="pte-nav-label">学习中心</p>
         <nav aria-label="PTE 学习导航">{NAV.map(({ id, label, icon: Icon }, index) => <button key={id} className={`pte-nav-item ${tab === id ? 'active' : ''} ${index === 4 ? 'pte-nav-break' : ''}`} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === 'review' && reviewCount > 0 && <small>{reviewCount}</small>}{id === 'bookmarks' && preferences.bookmarks.length > 0 && <small>{preferences.bookmarks.length}</small>}</button>)}</nav>
-        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
+        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
       </aside>
       <div className="pte-workspace">
         <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : history.source === 'mixed' ? '云端 + 本机记录' : '本机练习记录'}</span></div>

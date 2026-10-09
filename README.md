@@ -55,6 +55,9 @@ PTE 练习平台（`/pte-practice`）的口语朗读发音评分与写作语法�
 两个服务端环境变量接入；不配置时会自动回退到本地启发式估分，网站其余功能不受
 影响。部署方式见 [`pte-scoring-service/README.md`](./pte-scoring-service/README.md)，
 PTE 功能的数据库脚本、上传题目和使用说明见 [PTE 备考与练习](./docs/guides/PTE_STUDY.md)。
+未来独立 PTE 商业站的 Supabase Auth、会员权益和 Stripe 沙箱配置见
+[PTE 正式账号与支付配置](./docs/getting-started/PTE_COMMERCIAL_SETUP.md)；当前私人站默认关闭该模式。
+PTE 练习页可进入独立支持中心，使用可选 AI 助教或提交正式账号隔离的客服工单。
 
 ### 3. 初始化数据库
 

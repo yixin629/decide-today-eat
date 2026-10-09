@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { readSessionUser } from '@/lib/auth-session'
+import { pteCommercialEnabled } from '@/lib/pte-commercial/public-config'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isChecking, setIsChecking] = useState(true)
+  const publicPtePath = pteCommercialEnabled && (pathname === '/pte-account' || pathname.startsWith('/pte-support'))
 
   useEffect(() => {
     const loggedInUser = readSessionUser()
 
     // 如果在登录页面，不需要检查
-    if (pathname === '/login') {
+    if (pathname === '/login' || publicPtePath) {
       setIsChecking(false)
       return
     }
@@ -24,10 +26,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     } else {
       setIsChecking(false)
     }
-  }, [pathname, router])
+  }, [pathname, publicPtePath, router])
 
   // 显示加载中
-  if (isChecking && pathname !== '/login') {
+  if (isChecking && pathname !== '/login' && !publicPtePath) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

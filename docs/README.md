@@ -8,6 +8,7 @@
 - [Supabase 配置](./getting-started/SUPABASE_SETUP.md)：数据库、Storage 与安全边界
 - [部署与持续集成](./getting-started/DEPLOYMENT.md)：Vercel、Cloudflare Workers Builds 与故障排查
 - [PTE 评分服务云服务器部署](./getting-started/PTE_SCORING_CLOUD_DEPLOYMENT.md)：把自托管评分服务迁到长期在线的云服务器并接入 Vercel
+- [PTE 正式账号与支付配置](./getting-started/PTE_COMMERCIAL_SETUP.md)：Supabase Auth、会员权益与 Stripe 沙箱
 
 ## 使用指南
 

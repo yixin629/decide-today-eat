@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHmac } from 'node:crypto'
 import fs from 'node:fs'
 import ts from 'typescript'
 import { createRequire } from 'node:module'
@@ -24,6 +25,7 @@ const { QUESTION_BANK } = loadModule('../app/pte-practice/lib/questionBank.ts')
 const { pickVoices } = loadModule('../app/pte-practice/lib/voices.ts')
 const { itemSourceLabel } = loadModule('../app/pte-practice/lib/study.ts')
 const { completeStarredReview, removeStarredReview } = loadModule('../app/pte-plan/lib/review-book.ts')
+const { verifyStripeSignature } = loadModule('../lib/pte-commercial/stripe-signature.ts')
 const reorder = { id: 'test-order', taskType: 'reading-reorder', paragraphs: ['A', 'B', 'C', 'D'], correctOrder: [0, 1, 2, 3] }
 assert.equal(scoring.scoreReorder(reorder, [2, 3, 0, 1])[0].score, 2)
 assert.equal(scoring.scoreReorder(reorder, [0, 1, 2, 3])[0].score, 3)
@@ -118,4 +120,11 @@ const target = computeTargetGaps([attempt], { speaking: 79 }, ['speaking'])[0]
 assert.equal(target.currentPct, null)
 assert.equal(target.targetScore, 79)
 assert.equal('gapPct' in target, false)
+const stripePayload = JSON.stringify({ id: 'evt_test', type: 'customer.subscription.updated' })
+const stripeTimestamp = 1791518400
+const stripeSecret = 'whsec_test_only'
+const stripeDigest = createHmac('sha256', stripeSecret).update(`${stripeTimestamp}.${stripePayload}`).digest('hex')
+assert.equal(verifyStripeSignature(stripePayload, `t=${stripeTimestamp},v1=${stripeDigest}`, stripeSecret, stripeTimestamp * 1000), true)
+assert.equal(verifyStripeSignature(`${stripePayload}x`, `t=${stripeTimestamp},v1=${stripeDigest}`, stripeSecret, stripeTimestamp * 1000), false)
+assert.equal(verifyStripeSignature(stripePayload, `t=${stripeTimestamp},v1=${stripeDigest}`, stripeSecret, (stripeTimestamp + 301) * 1000), false)
 console.log('PTE pure-function checks passed: answer defaults, adjacent pairs, duplicate words, word alignment, provenance, SGD/RTS scoring, built-in item validation, unavailable scores and target scales.')
