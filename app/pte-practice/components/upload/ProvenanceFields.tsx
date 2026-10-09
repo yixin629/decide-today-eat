@@ -1,6 +1,6 @@
 'use client'
 
-import type { QuestionSourceType } from '../../types'
+import type { QuestionProvenance, QuestionSourceType } from '../../types'
 
 export interface ProvenanceDraft {
   sourceType: QuestionSourceType
@@ -16,6 +16,16 @@ export const EMPTY_PROVENANCE: ProvenanceDraft = {
   sourceUrl: '',
   rightsBasis: '',
   commercialUseAllowed: false,
+}
+
+export function provenanceDraft(value?: QuestionProvenance): ProvenanceDraft {
+  return value ? {
+    sourceType: value.sourceType,
+    sourceTitle: value.sourceTitle,
+    sourceUrl: value.sourceUrl ?? '',
+    rightsBasis: value.rightsBasis,
+    commercialUseAllowed: false,
+  } : EMPTY_PROVENANCE
 }
 
 export function provenancePayload(value: ProvenanceDraft) {

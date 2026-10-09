@@ -108,6 +108,66 @@ export function defaultValues(taskType: TaskType): FieldValues {
   return Object.fromEntries(CUSTOM_FIELDS[taskType].map((field) => [field.key, field.defaultValue ?? '']))
 }
 
+function markedOptions(options: string[], correctIndexes: number[]) {
+  const correct = new Set(correctIndexes)
+  return options.map((option, index) => `${correct.has(index) ? '*' : ''}${option}`).join('\n')
+}
+
+function markedBlanks(segments: string[], blanks: string[]) {
+  return segments.map((segment, index) => `${segment}${index < blanks.length ? `{${blanks[index]}}` : ''}`).join('')
+}
+
+/** Convert a saved custom item back to the uploader's editable lightweight fields. */
+export function fieldsFromItem(item: PracticeItem): FieldValues {
+  switch (item.taskType) {
+    case 'reading-mcq-single':
+      return { passage: item.passage, question: item.question, options: markedOptions(item.options, [item.correctIndex]) }
+    case 'reading-mcq-multiple':
+      return { passage: item.passage, question: item.question, options: markedOptions(item.options, item.correctIndexes) }
+    case 'reading-reorder':
+      return { paragraphs: item.correctOrder.map((index) => item.paragraphs[index]).join('\n') }
+    case 'reading-fill-blanks-drag':
+      return { text: markedBlanks(item.textSegments, item.correctAnswers), distractors: item.wordBank.filter((word) => !item.correctAnswers.includes(word)).join(', ') }
+    case 'reading-fill-blanks-dropdown':
+      return { text: markedBlanks(item.textSegments, item.correctAnswers.map((answer, index) => [answer, ...(item.blankOptions[index] ?? []).filter((word) => word !== answer)].join('|'))) }
+    case 'listening-fill-blanks-typed':
+      return { text: markedBlanks(item.textSegments, item.correctAnswers) }
+    case 'listening-highlight-summary':
+    case 'listening-mcq-single':
+      return { transcript: item.transcript, question: item.question, options: markedOptions(item.options, [item.correctIndex]) }
+    case 'listening-mcq-multiple':
+      return { transcript: item.transcript, question: item.question, options: markedOptions(item.options, item.correctIndexes) }
+    case 'listening-summarize-spoken-text':
+      return { transcript: item.transcript, minWords: String(item.minWords), maxWords: String(item.maxWords) }
+    case 'listening-select-missing-word':
+      return { text: item.displayedTranscript.replace('____', `{${item.options[item.correctIndex] ?? ''}}`), options: markedOptions(item.options, [item.correctIndex]) }
+    case 'listening-highlight-incorrect-words': {
+      const spoken = item.audioTranscript.split(/\s+/)
+      const incorrect = new Set(item.incorrectWordIndexes)
+      return { text: item.displayedWords.map((word, index) => incorrect.has(index) ? `{${word}|${spoken[index] ?? word}}` : word).join(' ') }
+    }
+    case 'listening-write-from-dictation':
+      return { sentence: item.sentence }
+    case 'speaking-read-aloud':
+    case 'speaking-repeat-sentence':
+      return { text: item.text }
+    case 'speaking-describe-image':
+      return { chartType: item.chart.type, title: item.chart.title, data: item.chart.categories.map((category, index) => `${category}: ${item.chart.values[index]}`).join('\n'), unit: item.chart.unit ?? '', referenceDescription: item.referenceDescription, prepSeconds: String(item.prepSeconds) }
+    case 'speaking-retell-lecture':
+      return { transcript: item.transcript, prepSeconds: String(item.prepSeconds) }
+    case 'speaking-answer-short-question':
+      return { question: item.question, acceptableAnswers: item.acceptableAnswers.join('\n') }
+    case 'speaking-summarize-group-discussion':
+      return { topic: item.topic, discussion: item.turns.map((turn) => `${turn.speaker}: ${turn.text}`).join('\n'), keyPoints: item.keyPoints.join('\n'), prepSeconds: String(item.prepSeconds) }
+    case 'speaking-respond-to-situation':
+      return { situation: item.situation, keyPoints: item.keyPoints.join('\n'), sampleResponse: item.sampleResponse, prepSeconds: String(item.prepSeconds) }
+    case 'writing-summarize-text':
+      return { prompt: item.prompt, sourceText: item.sourceText ?? '', minWords: String(item.minWords), maxWords: String(item.maxWords) }
+    case 'writing-essay':
+      return { prompt: item.prompt, minWords: String(item.minWords), maxWords: String(item.maxWords) }
+  }
+}
+
 export function newCustomItemId() {
   return `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }

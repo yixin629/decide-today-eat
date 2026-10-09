@@ -18,6 +18,7 @@
 | `database/migrations/pte-practice-attempts-table.sql` | 练习记录与"练习集锦"（`pte_practice_attempts`，Realtime） |
 | `database/migrations/pte-practice-comments-table.sql` | 题目留言和"在哪里/哪天考过"（`pte_practice_comments`，Realtime） |
 | `database/migrations/pte-practice-custom-items.sql` | 开启"上传题目"；会放宽 `pte_practice_items` 的写入策略，见下方安全说明 |
+| `database/migrations/pte-practice-custom-item-editing.sql` | 开启已上传题目的编辑；只授予自定义题 `payload` 更新权限 |
 | `database/migrations/pte-practice-task-types-v2.sql` | 把三张练习表的题型约束放开到 22 种（含 SGD、RTS）；在上面三份建表脚本之后执行 |
 
 **已有数据库请务必执行 `pte-practice-task-types-v2.sql`**：旧版练习记录表和留言表只允许最早的 8 种题型，其余题型的练习记录会写入失败并回退到本机保存，留言也无法保存。
@@ -35,7 +36,7 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 - 按目标分数和考试日期生成逐日练习计划，可以保存多个方案。
 - 已保存计划按云端原结构读取；打开计划或复习本不会自动补齐、重排或重新生成题型。只有明确点击“生成并保存逐日计划”才会创建新的计划结构。
 - 每日题目点击 ☆ 可加入独立页面 `/pte-plan/review` 的“重点复习本”；复习本集中展示题型、题号、原计划日期、得分与备注，并可回到对应方案和日期，或携带题型和题号前往练习平台定位。
-- RS 星标题目点击“登记今日完成”后，会把题号自动登记到今日 RS 并继续保留星标：优先填写空行，没有空行时新增一条加练；同题号已存在时不会重复。只有单独点击“取消星标”才会移出复习本。今天不在计划日期内或今日没有 RS 时不会改变记录，并会提示原因。
+- 复习本支持按题号/备注搜索、题型筛选、登记状态筛选和日期排序。所有题型的星标题目点击“登记今日完成”后，都会把题号自动登记到今日对应题型并继续保留星标：优先填写空行，没有空行时新增一条加练；同题号已存在时不会重复。只有单独点击“取消星标”才会移出复习本。今天不在计划日期内或今日没有对应题型时不会改变记录，并会提示原因。
 - 复习本提交前会重新读取最新云端计划，并按 `updated_at` 做版本核对；检测到另一页面刚修改过计划时拒绝覆盖，以保护已填写题号和题型设置。
 - 每天按题型列出练习量，可记录完成情况并查看当日学习总结。
 - 模板库提供内置模板，也可以保存个人模板（`pte_templates`）。
@@ -70,9 +71,11 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 题库优先读取云端 `pte_practice_items`，并与 `app/pte-practice/lib/questionBank.ts` 中的内置题按 `taskType:id` 合并，同 id 以云端为准。云端不可用时自动使用内置题，练习不受影响。
 
-### 上传题目
+### 上传与编辑题目
 
 需要先执行 `pte-practice-custom-items.sql` 并登录。上传的题目两个人都能看到，在题库中标记为"自定义"，id 以 `custom-` 开头。题目内容应使用英文。
+
+执行 `pte-practice-custom-item-editing.sql` 后，上传列表会为当前身份自己上传的题目提供编辑入口。编辑保留原题号和题型，不删除历史练习记录；修改时需重新核对并确认内容来源与商业授权。
 
 表单录入使用以下简单标记：
 

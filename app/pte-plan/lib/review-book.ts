@@ -18,12 +18,11 @@ export function completeStarredReview(
   if (!sourceTask || !sourceRow) return { plan, copiedToToday: false, alreadyInToday: false, error: '找不到这条复习记录，请刷新后重试。' }
 
   const questionId = sourceRow.questionId.trim()
-  const isRepeatSentence = sourceTask.shortLabel === 'RS'
   const todayIndex = plan.days.findIndex((day) => day.date === today)
-  const todayTask = todayIndex >= 0 ? plan.days[todayIndex].tasks.find((task) => task.shortLabel === 'RS') : undefined
-  if (isRepeatSentence && !questionId) return { plan, copiedToToday: false, alreadyInToday: false, error: '请先填写 RS 题号，再完成复习。' }
-  if (isRepeatSentence && todayIndex < 0) return { plan, copiedToToday: false, alreadyInToday: false, error: '今天不在当前计划日期内，暂时不能自动登记今日练习。' }
-  if (isRepeatSentence && !todayTask) return { plan, copiedToToday: false, alreadyInToday: false, error: '今日计划中没有 RS 题型，暂时不能自动登记。' }
+  const todayTask = todayIndex >= 0 ? plan.days[todayIndex].tasks.find((task) => task.shortLabel === sourceTask.shortLabel) : undefined
+  if (!questionId) return { plan, copiedToToday: false, alreadyInToday: false, error: `请先填写 ${sourceTask.shortLabel} 题号，再完成复习。` }
+  if (todayIndex < 0) return { plan, copiedToToday: false, alreadyInToday: false, error: '今天不在当前计划日期内，暂时不能自动登记今日练习。' }
+  if (!todayTask) return { plan, copiedToToday: false, alreadyInToday: false, error: `今日计划中没有 ${sourceTask.shortLabel} 题型，暂时不能自动登记。` }
 
   const alreadyInToday = Boolean(todayTask?.rows.some((row) => row.questionId.trim() === questionId))
   let copiedToToday = false
@@ -31,7 +30,7 @@ export function completeStarredReview(
     ...day,
     tasks: day.tasks.map((task) => {
       let rows = task.rows
-      if (!isRepeatSentence || dayIndex !== todayIndex || task.shortLabel !== 'RS' || alreadyInToday) return { ...task, rows }
+      if (dayIndex !== todayIndex || task.shortLabel !== sourceTask.shortLabel || alreadyInToday) return { ...task, rows }
       const emptyIndex = rows.findIndex((row) => !row.questionId.trim())
       if (emptyIndex >= 0) {
         rows = rows.map((row, index) => index === emptyIndex ? { ...row, questionId } : row)

@@ -17,6 +17,12 @@ export default function StarredReviewPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [today, setToday] = useState('')
+
+  useEffect(() => {
+    const current = new Date()
+    setToday(`${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`)
+  }, [])
 
   useEffect(() => {
     if (authLoading) return
@@ -44,14 +50,14 @@ export default function StarredReviewPage() {
     try {
       const latest = (await loadCloudPlans(user)).find((plan) => plan.id === activePlan.id)
       if (!latest) throw new Error('PTE_PLAN_NOT_FOUND')
-      const today = new Date()
-      const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const current = new Date()
+      const date = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`
       const result = completeStarredReview(latest, { dayIndex, taskId, rowId }, date)
       if (result.error) { setError(result.error); return }
       const updated = result.plan
       await saveCloudPlanIfCurrent(user, updated, latest.updatedAt)
       setPlans((current) => current.map((plan) => plan.id === updated.id ? updated : plan))
-      setMessage(result.copiedToToday ? '已把 RS 题号登记到今日练习，星标继续保留。' : result.alreadyInToday ? '今日 RS 已有相同题号，没有重复添加；星标继续保留。' : '已登记今日完成，星标继续保留。')
+      setMessage(result.copiedToToday ? '已把题号登记到今日对应题型，星标继续保留。' : result.alreadyInToday ? '今日已有相同题号，没有重复添加；星标继续保留。' : '已登记今日完成，星标继续保留。')
     } catch (caught) {
       setError(caught instanceof Error && caught.message === 'PTE_PLAN_VERSION_CONFLICT' ? '计划刚刚在其他页面更新过。为保护已填写题号，本次没有覆盖，请刷新复习本后重试。' : '更新星标失败，原记录没有改变，请稍后重试。')
     } finally {
@@ -91,7 +97,7 @@ export default function StarredReviewPage() {
       </section>
       {error && <div role="alert" className="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</div>}
       {message && <div role="status" className="border-l-4 border-emerald-500 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{message}</div>}
-      {loading ? <div className="py-16 text-center text-sm text-slate-500">正在读取重点复习本…</div> : activePlan ? <PlanReviewBook plan={activePlan} onComplete={completeReview} onRemoveStar={removeStar} /> : <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-500">还没有可用的备考计划。</div>}
+      {loading ? <div className="py-16 text-center text-sm text-slate-500">正在读取重点复习本…</div> : activePlan ? <PlanReviewBook plan={activePlan} today={today} saving={saving} onComplete={completeReview} onRemoveStar={removeStar} /> : <div className="rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center text-sm text-slate-500">还没有可用的备考计划。</div>}
     </div>
   </main>
 }

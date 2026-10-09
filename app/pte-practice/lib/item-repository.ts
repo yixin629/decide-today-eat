@@ -26,6 +26,7 @@ export interface CustomItemInfo {
 }
 
 const SETUP_HINT = '云端还未开启题目上传：请先在 Supabase 执行 database/migrations/pte-practice-custom-items.sql。'
+const EDIT_SETUP_HINT = '云端还未开启题目编辑：请先在 Supabase 执行 database/migrations/pte-practice-custom-item-editing.sql。'
 
 function rowToItem(row: ItemRow): PracticeItem {
   return { ...row.payload, id: row.id, taskType: row.task_type } as PracticeItem
@@ -134,6 +135,25 @@ export async function saveCustomItems(items: NewPracticeItem[], userId: string):
   const { data, error } = await supabase.from('pte_practice_items').insert(rows).select('id,task_type,payload')
   if (error) return { saved: [], error: friendlyWriteError(error) }
   return { saved: ((data ?? []) as ItemRow[]).map(rowToItem), error: null }
+}
+
+/** Update only the caller's existing custom item; task type and stable item id are preserved. */
+export async function updateCustomItem(itemId: string, item: NewPracticeItem, userId: string): Promise<{ saved: PracticeItem | null; error: string | null }> {
+  const { taskType, ...payload } = item
+  const { data, error } = await supabase
+    .from('pte_practice_items')
+    .update({ payload })
+    .eq('id', itemId)
+    .eq('task_type', taskType)
+    .eq('created_by', userId)
+    .select('id,task_type,payload')
+  if (error) {
+    const permissionError = error.code === '42501' || /row-level security|permission denied/i.test(error.message ?? '')
+    return { saved: null, error: permissionError ? EDIT_SETUP_HINT : friendlyWriteError(error) }
+  }
+  const row = (data as ItemRow[] | null)?.[0]
+  if (!row) return { saved: null, error: '没有更新任何题目：题目可能已被删除、不属于当前用户，或云端尚未开启编辑权限。' }
+  return { saved: rowToItem(row), error: null }
 }
 
 export async function deleteCustomItem(taskType: TaskType, itemId: string): Promise<{ error: string | null }> {

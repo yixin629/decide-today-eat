@@ -18,7 +18,7 @@ const { isAssessed, scoreSummary } = loadModule('../app/pte-practice/lib/score-d
 const { computeSkillTrends, computeTargetGaps } = loadModule('../app/pte-practice/lib/analyticsEngine.ts')
 const { TASK_TYPES } = loadModule('../app/pte-practice/types.ts')
 const { alignWords } = loadModule('../app/pte-practice/engine/wordAlignment.ts')
-const { applyProvenanceTemplate, parseImportJson, validateCustomItem } = loadModule('../app/pte-practice/lib/custom-items.ts')
+const { applyProvenanceTemplate, buildFromFields, fieldsFromItem, parseImportJson, validateCustomItem } = loadModule('../app/pte-practice/lib/custom-items.ts')
 const { keyPointCoverage } = loadModule('../app/pte-practice/engine/keyPoints.ts')
 const { QUESTION_BANK } = loadModule('../app/pte-practice/lib/questionBank.ts')
 const { pickVoices } = loadModule('../app/pte-practice/lib/voices.ts')
@@ -60,6 +60,15 @@ assert.equal(duplicate.plan.days[1].tasks[0].rows.length, 1)
 const outsidePlan = completeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-08')
 assert.ok(outsidePlan.error)
 assert.equal(outsidePlan.plan.days[0].tasks[0].rows[0].starred, true)
+const wfdRow = { ...reviewRow, id: 'old-wfd', questionId: 'l-wfd-8' }
+const wfdPlan = { ...plan, days: [
+  { ...plan.days[0], tasks: [{ id: 'wfd', shortLabel: 'WFD', rows: [wfdRow] }] },
+  { ...plan.days[1], tasks: [{ id: 'wfd', shortLabel: 'WFD', rows: [{ ...emptyRow, id: 'today-wfd' }] }] },
+] }
+const completedWfd = completeStarredReview(wfdPlan, { dayIndex: 0, taskId: 'wfd', rowId: 'old-wfd' }, '2026-10-07')
+assert.equal(completedWfd.error, null)
+assert.equal(completedWfd.plan.days[1].tasks[0].rows[0].questionId, 'l-wfd-8')
+assert.equal(completedWfd.plan.days[0].tasks[0].rows[0].starred, true)
 const unstarred = removeStarredReview(plan, { dayIndex: 0, taskId: 'rs', rowId: 'old-rs' }, '2026-10-07T13:00:00Z')
 assert.equal(unstarred.days[0].tasks[0].rows[0].starred, false)
 const importItem = { taskType: 'speaking-read-aloud', text: 'Read this sentence aloud.' }
@@ -85,6 +94,8 @@ for (const task of TASK_TYPES) assert.ok(QUESTION_BANK[task].length > 0, `${task
 for (const item of Object.values(QUESTION_BANK).flat()) {
   const result = validateCustomItem({ ...item, provenance: { ...source, commercialUseAllowed: true } })
   assert.deepEqual(result.errors, [], `${item.id} passes upload validation`)
+  const roundTrip = validateCustomItem({ ...buildFromFields(item.taskType, fieldsFromItem(item)), provenance: { ...source, commercialUseAllowed: true } })
+  assert.deepEqual(roundTrip.errors, [], `${item.id} can be opened and saved by the edit form`)
 }
 const voicePool = [['A', 'en-US'], ['B', 'en-US'], ['C', 'en-GB'], ['D', 'en-AU']].map(([name, lang]) => ({ name, lang, voiceURI: name }))
 assert.equal(new Set(pickVoices(voicePool, { accent: 'random' }, 's-sgd-1', 3).map((v) => v.lang)).size, 3, 'random accent gives each speaker a different accent')
