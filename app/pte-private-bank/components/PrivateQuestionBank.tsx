@@ -39,6 +39,8 @@ export default function PrivateQuestionBank() {
   const [authReady, setAuthReady] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'reset'>('login')
+  const [recovering, setRecovering] = useState(false)
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState<Question[]>([])
   const [total, setTotal] = useState(0)
@@ -56,8 +58,12 @@ export default function PrivateQuestionBank() {
     void supabase.auth.getUser().then(({ data }) => {
       if (active) { setUser(data.user); setAuthReady(true) }
     })
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (active) { setUser(session?.user ?? null); setAuthReady(true) }
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (active) {
+        setUser(session?.user ?? null)
+        setAuthReady(true)
+        if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+      }
     })
     return () => { active = false; data.subscription.unsubscribe() }
   }, [])
@@ -93,13 +99,40 @@ export default function PrivateQuestionBank() {
     return () => { window.clearTimeout(timeout); searchRequestRef.current += 1 }
   }, [load, refreshKey])
 
-  async function signIn() {
+  async function submitAuth() {
     if (busy) return
     setBusy(true); setMessage('')
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    const normalizedEmail = email.trim().toLowerCase()
+    let errorMessage: string | null = null
+    if (authMode === 'register') {
+      const { error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/pte-private-bank` },
+      })
+      errorMessage = error?.message ?? null
+    } else if (authMode === 'reset') {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/pte-private-bank`,
+      })
+      errorMessage = error?.message ?? null
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+      errorMessage = error?.message ?? null
+    }
     setBusy(false)
-    setMessage(error ? error.message : '已登录私人题库。')
+    setMessage(errorMessage ?? (authMode === 'register' ? '注册请求已提交。请按邮箱验证邮件完成确认，然后返回登录。' : authMode === 'reset' ? '密码重置邮件已发送，请检查邮箱。' : '已登录私人题库。'))
     setPassword('')
+  }
+
+  async function updatePassword() {
+    if (busy || password.length < 8) return
+    setBusy(true); setMessage('')
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    setPassword('')
+    if (error) setMessage(error.message)
+    else { setRecovering(false); setMessage('密码已更新。') }
   }
 
   async function save() {
@@ -160,7 +193,7 @@ export default function PrivateQuestionBank() {
   return <main className="min-h-screen bg-[#f4f6f5] text-[#1d2c2a]">
     <header className="border-b border-[#dce4df] bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4"><div><p className="text-xs font-bold text-teal-700">PTE · PERSONAL</p><h1 className="text-xl font-bold">私人资料题库</h1></div><Link href="/pte-practice" className="inline-flex items-center gap-2 text-sm font-semibold text-teal-800"><ArrowLeft size={16} />练习平台</Link></div></header>
     <div className="mx-auto max-w-6xl px-4 py-6">
-      {!authReady ? <p role="status">正在检查登录状态...</p> : !user ? <section className="max-w-sm space-y-4 rounded border border-[#dce4df] bg-white p-5"><h2 className="font-bold">登录 Supabase 个人账号</h2><p className="text-sm text-[#53615f]">仅此账号可读取私人资料，情侣站的本地身份不能代替账号登录。</p><label className="block text-sm">邮箱<input className="mt-1 w-full rounded border p-2" type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label><label className="block text-sm">密码<input className="mt-1 w-full rounded border p-2" type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label><button className="inline-flex items-center gap-2 rounded bg-teal-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={busy || !email || !password} onClick={() => void signIn()}><LogIn size={17} />登录</button></section> : <>
+      {!authReady ? <p role="status">正在检查登录状态...</p> : recovering ? <section className="max-w-sm space-y-4 rounded border border-[#dce4df] bg-white p-5"><h2 className="font-bold">设置新密码</h2><label className="block text-sm">新密码<input className="mt-1 w-full rounded border p-2" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label><button className="rounded bg-teal-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={busy || password.length < 8} onClick={() => void updatePassword()}>更新密码</button><p className="text-xs text-[#53615f]">至少 8 位。</p></section> : !user ? <section className="max-w-sm space-y-4 rounded border border-[#dce4df] bg-white p-5"><h2 className="font-bold">{authMode === 'register' ? '创建私人题库账号' : authMode === 'reset' ? '重置题库账号密码' : '登录私人题库'}</h2><p className="text-sm text-[#53615f]">这里使用的是网站的私人题库账号，不是 Supabase 管理后台账号。没有预设密码；首次使用请用自己的邮箱创建账号。</p><label className="block text-sm">邮箱<input className="mt-1 w-full rounded border p-2" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>{authMode !== 'reset' && <label className="block text-sm">密码<input className="mt-1 w-full rounded border p-2" type="password" autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}<button className="inline-flex items-center gap-2 rounded bg-teal-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={busy || !email.trim() || (authMode !== 'reset' && (!password || (authMode === 'register' && password.length < 8)))} onClick={() => void submitAuth()}><LogIn size={17} />{authMode === 'register' ? '注册' : authMode === 'reset' ? '发送重置邮件' : '登录'}</button>{authMode === 'register' && <p className="text-xs text-[#53615f]">密码至少 8 位；如果项目要求邮箱验证，请先点击验证邮件中的链接。</p>}<div className="flex flex-wrap gap-3 text-sm text-teal-800">{authMode !== 'login' && <button type="button" onClick={() => { setAuthMode('login'); setMessage('') }}>返回登录</button>}{authMode !== 'register' && <button type="button" onClick={() => { setAuthMode('register'); setMessage('') }}>创建账号</button>}{authMode !== 'reset' && <button type="button" onClick={() => { setAuthMode('reset'); setMessage('') }}>忘记密码</button>}</div></section> : <>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-[#53615f]">仅 {user.email ?? '当前账号'} 可见 · {total} 题</p><div className="flex gap-3"><label className="inline-flex cursor-pointer items-center gap-2 rounded border border-teal-700 px-3 py-2 text-sm font-semibold text-teal-800"><FileUp size={16} />导入 JSON<input className="sr-only" type="file" accept="application/json,.json" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void importFile(file); event.target.value = '' }} /></label><button className="inline-flex items-center gap-2 text-sm" onClick={() => void supabase.auth.signOut()}><LogOut size={16} />退出</button></div></div>
         <label className="mb-5 flex items-center gap-2 rounded border border-[#cbd8d2] bg-white px-3"><Search size={18} className="text-[#64736c]" /><input className="w-full py-3 outline-none" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0) }} placeholder="搜索题号（如 RS 103）、题干或答案关键词" /></label>
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,1fr)]"><section className="min-w-0"><h2 className="mb-3 text-sm font-bold">{loading ? '正在搜索...' : `搜索结果 ${total} 条`}</h2><div className="divide-y border border-[#dce4df] bg-white">{rows.map((row) => <button key={row.id} className={`block w-full px-4 py-3 text-left hover:bg-[#eef6f2] ${selected?.id === row.id ? 'bg-[#e5f3ed]' : ''}`} onClick={() => { setSelected(row); setDraft(null) }}><span className="font-bold text-teal-800">{row.question_code} #{row.source_number}</span><span className="ml-2 text-sm">{row.title}</span><p className="mt-1 line-clamp-2 text-sm text-[#53615f]">{row.question_text || '待补题干'}</p></button>)}{!loading && !rows.length && <p className="p-5 text-sm text-[#53615f]">没有找到题目。</p>}</div><div className="mt-3 flex items-center justify-between text-sm"><button disabled={page === 0} onClick={() => setPage((value) => value - 1)}>上一页</button><span>第 {page + 1} 页</span><button disabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}>下一页</button></div></section>

@@ -80,7 +80,7 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 三份个人学习资料可在本机用 `scripts/build-pte-private-index.py` 和 `scripts/build-pte-private-questions.py` 提取。生成的 JSON 只应保留在本机，不要放进 Git 仓库、`public/` 或共享云端题库。脚本需要本机安装 `pypdf`；导入文件包含原资料的题型、题号、题干、可提取的答案和各 PDF 页码，重复题号只保留一条。导入页面按 50 题分批写入，同题型和题号已存在时跳过，以免覆盖人工修改。
 
-先在目标 Supabase 项目开启 Auth、创建自己的账号，然后在 SQL Editor 手动执行 `database/migrations/pte-private-questions.sql`。登录 `/pte-private-bank` 后导入本机 JSON，可按 `RS 103`、单独题号或题干/答案关键词搜索，逐题编辑或删除。RLS 使用 `auth.uid()` 隔离；未登录用户不能读取。不要把此表的 SELECT 策略改成公开。
+先在目标 Supabase 项目开启 Auth Email Provider，并在 Authentication URL Configuration 中允许 `/pte-private-bank` 的本地或线上回调地址，然后在 SQL Editor 手动执行 `database/migrations/pte-private-questions.sql`。私人题库没有预设账号密码；在 `/pte-private-bank` 使用自己的邮箱创建账号、验证邮箱后登录，也可通过该页找回密码。登录后导入本机 JSON，可按 `RS 103`、单独题号或题干/答案关键词搜索，逐题编辑或删除。RLS 使用 `auth.uid()` 隔离；未登录用户不能读取。不要把此表的 SELECT 策略改成公开。
 
 PDF 文本层不能可靠还原图片、音频、填空位置和所有参考答案。自动提取的记录默认“待校对”，缺失关键内容标为“资料不完整”；在核对原 PDF 前，不应将其视为可评分练习题。此私人页面仅供查看和校对，**不会自动合并到 `/pte-practice` 的共享题库、今日计划或模考**。资料只有个人学习权限时，也不应向其他账号开放或用于商业题库。
 
