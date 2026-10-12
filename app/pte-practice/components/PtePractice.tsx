@@ -1,15 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, Headset, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, Headset, History, LayoutDashboard, ListChecks, LockKeyhole, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
 import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
 import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
-import { itemKey, latestByItem, needsReview } from '../lib/study'
-import { loadTodayPlan, type TodayPlanSummary } from '../lib/today-plan'
+import { attemptKey, itemKey, latestByItem, needsReview } from '../lib/study'
+import { loadTodayPlan, recordTodayPractice, type TodayPlanSummary } from '../lib/today-plan'
 import { TASK_TYPES, type AttemptRecord, type PracticeItem, type TaskType } from '../types'
 import AnalyticsDashboard from './analytics/AnalyticsDashboard'
 import CommunityFeed from './CommunityFeed'
@@ -56,6 +56,8 @@ export default function PtePractice() {
   const [todayPlan, setTodayPlan] = useState<TodayPlanSummary | null>(null)
   const [todayPlanLoading, setTodayPlanLoading] = useState(true)
   const [todayPlanError, setTodayPlanError] = useState<string | null>(null)
+  const [planMessage, setPlanMessage] = useState<string | null>(null)
+  const planWriteQueueRef = useRef(Promise.resolve())
 
   useEffect(() => {
     let cancelled = false
@@ -139,6 +141,14 @@ export default function PtePractice() {
     else openTask(taskType)
   }
 
+  function startPlannedTask(taskType: TaskType) {
+    const queue = catalog.items.filter((item) => item.taskType === taskType)
+    const attempted = new Set(history.attempts.map(attemptKey))
+    const index = queue.findIndex((item) => !attempted.has(itemKey(item)))
+    if (queue.length) start(queue, index >= 0 ? index : 0)
+    else openTask(taskType)
+  }
+
   function bookmark(key: string) {
     update((p) => ({ ...p, bookmarks: p.bookmarks.includes(key) ? p.bookmarks.filter((id) => id !== key) : [...p.bookmarks, key] }))
   }
@@ -147,6 +157,21 @@ export default function PtePractice() {
     setHistory((previous) => ({ ...previous, source: previous.attempts.length === 0 ? source : previous.source === source ? source : 'mixed', attempts: [attempt, ...previous.attempts.filter((a) => a.id !== attempt.id)].slice(0, 200) }))
     setRefreshKey((key) => key + 1)
     setSessionSaved(true)
+    if (session && source === 'local' && todayPlan) {
+      setPlanMessage('本次练习使用本机记录，今日计划未自动登记。请核对练习记录和计划题号。')
+    }
+    if (session && source === 'cloud' && user && todayPlan) {
+      setPlanMessage(null)
+      const planId = todayPlan.planId
+      planWriteQueueRef.current = planWriteQueueRef.current.then(() => recordTodayPractice(user, planId, attempt.taskType, attempt.itemId))
+        .then((result) => {
+          if (result.plan) setTodayPlan(result.plan)
+          if (result.status === 'added') setPlanMessage(`题号 ${attempt.itemId} 已登记到今日计划。`)
+          if (result.status === 'conflict') setPlanMessage('练习已保存，但计划在其他页面更新过。请刷新后核对题号。')
+          if (result.status === 'unavailable') setPlanMessage('练习已保存，但今天的计划或对应题型已变化。请返回计划核对题号。')
+        })
+        .catch(() => setPlanMessage('练习已保存，今日计划登记失败。请返回计划核对题号。'))
+    }
   }
 
   async function syncHistory() {
@@ -173,7 +198,7 @@ export default function PtePractice() {
       <aside className="pte-sidebar">
         <p className="pte-nav-label">学习中心</p>
         <nav aria-label="PTE 学习导航">{NAV.map(({ id, label, icon: Icon }, index) => <button key={id} className={`pte-nav-item ${tab === id ? 'active' : ''} ${index === 4 ? 'pte-nav-break' : ''}`} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === 'review' && reviewCount > 0 && <small>{reviewCount}</small>}{id === 'bookmarks' && preferences.bookmarks.length > 0 && <small>{preferences.bookmarks.length}</small>}</button>)}</nav>
-        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
+        <div className="pte-sidebar-bottom"><Link href="/pte-private-bank"><LockKeyhole size={17} />私人资料题库<ChevronRight size={15} /></Link><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
       </aside>
       <div className="pte-workspace">
         <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : history.source === 'mixed' ? '云端 + 本机记录' : '本机练习记录'}</span></div>
@@ -182,13 +207,14 @@ export default function PtePractice() {
           {history.error && <div className="pte-notice" role="status">{history.error}</div>}
           {preferenceError && <div className="pte-notice" role="alert">{preferenceError}</div>}
           {syncMessage && <div className="pte-notice" role={syncMessage.error ? 'alert' : 'status'}>{syncMessage.text}</div>}
+          {planMessage && <div className="pte-notice" role="status">{planMessage}</div>}
           {session && currentItem ? <div>
             <div className="pte-session-context"><button className="pte-button" onClick={() => navigate(tab)}><ArrowLeft size={16} />返回列表</button><span>本组 {session.index + 1} / {session.queue.length} 题</span><button className={`pte-button ${preferences.bookmarks.includes(activeKey) ? 'bookmarked' : ''}`} disabled={!ready} aria-pressed={preferences.bookmarks.includes(activeKey)} onClick={() => bookmark(activeKey)}><Bookmark size={16} fill={preferences.bookmarks.includes(activeKey) ? 'currentColor' : 'none'} />{preferences.bookmarks.includes(activeKey) ? '已收藏' : '收藏'}</button></div>
             <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onRetry={() => setSessionSaved(false)} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
               <aside className="pte-notes"><h3><NotebookPen size={17} />本题笔记</h3><p className="pte-small-note">仅保存在本机</p><textarea aria-label="本题笔记" placeholder="记下生词、易错点或下次想改进的地方…" maxLength={3000} value={preferences.notes[activeKey] ?? ''} disabled={!ready} onChange={(e) => update((p) => ({ ...p, notes: { ...p.notes, [activeKey]: e.target.value } }))} /><small>{(preferences.notes[activeKey] ?? '').length} / 3000</small></aside>
             </div>
           </div> : <>
-            {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
+            {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onStartPlannedTask={startPlannedTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
             {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}

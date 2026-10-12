@@ -68,10 +68,19 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
 .pte-plan-tasks::-webkit-scrollbar { display: none; }
 .pte-plan-tasks button { display: flex; align-items: center; gap: 7px; min-width: 90px; min-height: 40px; padding: 6px 10px; border: 1px solid var(--pte-line); border-radius: 6px; background: var(--pte-surface); text-align: left; }
 .pte-plan-tasks button:hover { border-color: var(--pte-accent); }
-.pte-plan-tasks button > span { display: grid; place-items: center; width: 25px; height: 25px; flex-shrink: 0; border-radius: 5px; color: #b65f38; background: #fff1e9; font-size: 9px; font-weight: 750; }
-.pte-plan-tasks button > span.is-complete { color: #fff; background: var(--pte-accent); }
+.pte-plan-tasks button.is-selected { border-color: var(--pte-accent); box-shadow: inset 0 0 0 1px var(--pte-accent); }
+.pte-plan-tasks button > .pte-plan-task-done { display: grid; place-items: center; width: 19px; height: 19px; flex-shrink: 0; border-radius: 4px; color: #fff; background: var(--pte-accent); }
 .pte-plan-tasks strong { font-size: 11px; }
 .pte-plan-tasks small { margin-left: auto; color: var(--pte-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.pte-plan-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; padding: 13px 0 0; border-top: 1px solid var(--pte-line); }
+.pte-plan-detail > div:first-child { display: flex; align-items: baseline; gap: 9px; }
+.pte-plan-detail > div:first-child strong { font-size: 12px; }
+.pte-plan-detail > div:first-child span, .pte-plan-detail > p { color: var(--pte-muted); font-size: 11px; }
+.pte-plan-question-list { display: flex; flex: 1 1 100%; flex-wrap: wrap; gap: 7px; }
+.pte-plan-question-list button, .pte-plan-question-list span { display: inline-flex; align-items: center; gap: 5px; min-height: 31px; padding: 5px 8px; border: 1px solid var(--pte-line); border-radius: 5px; background: var(--pte-surface); font-size: 11px; }
+.pte-plan-question-list button:hover { border-color: var(--pte-accent); color: var(--pte-accent); }
+.pte-plan-question-list span { color: var(--pte-muted); }
+.pte-plan-detail > .pte-button { margin-left: auto; }
 .pte-plan-actions { justify-content: space-between; gap: 15px; margin-top: 16px; }
 .pte-plan-actions > a { display: inline-flex; align-items: center; gap: 5px; color: var(--pte-muted); font-size: 11px; }
 .pte-plan-actions > a:hover { color: var(--pte-accent); }

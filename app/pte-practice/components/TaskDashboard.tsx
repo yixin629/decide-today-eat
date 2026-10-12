@@ -12,7 +12,7 @@ import TodayPlanPanel from './TodayPlanPanel'
 
 const ICONS = { speaking: Mic, writing: PenLine, reading: BookOpen, listening: Headphones }
 
-export default function TaskDashboard({ items, attempts, preferences, todayPlan, todayPlanLoading, todayPlanError, onSelectTaskType, onContinue, onReview, onListen, onGoalChange }: {
+export default function TaskDashboard({ items, attempts, preferences, todayPlan, todayPlanLoading, todayPlanError, onSelectTaskType, onStartPlannedTask, onContinue, onReview, onListen, onGoalChange }: {
   items: PracticeItem[]
   attempts: AttemptRecord[]
   preferences: StudyPreferences
@@ -20,6 +20,7 @@ export default function TaskDashboard({ items, attempts, preferences, todayPlan,
   todayPlanLoading: boolean
   todayPlanError: string | null
   onSelectTaskType: (taskType: TaskType) => void
+  onStartPlannedTask: (taskType: TaskType) => void
   onContinue: (taskType: TaskType, itemId: string) => void
   onReview: () => void
   onListen: () => void
@@ -48,7 +49,7 @@ export default function TaskDashboard({ items, attempts, preferences, todayPlan,
       {nextItem && <button className="pte-button primary" onClick={() => onContinue(nextItem.taskType, nextItem.id)}><Play size={16} />{continuing ? '继续练习' : '开始今日练习'}</button>}
     </div>
 
-    <TodayPlanPanel plan={todayPlan} loading={todayPlanLoading} error={todayPlanError} onStartTask={onSelectTaskType} />
+    <TodayPlanPanel plan={todayPlan} items={items} loading={todayPlanLoading} error={todayPlanError} onStartTask={onStartPlannedTask} onStartItem={onContinue} />
 
     <section className="pte-today" aria-label="今日学习">
       <div className="pte-goal-block">

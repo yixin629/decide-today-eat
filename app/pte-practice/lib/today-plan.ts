@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { TaskType } from '../types'
+import { registerPracticeInPlan, type RegistrationStatus } from './today-plan-progress'
 
 const PLAN_TASK_TYPES: Record<string, TaskType> = {
   ra: 'speaking-read-aloud',
@@ -18,6 +19,10 @@ const PLAN_TASK_TYPES: Record<string, TaskType> = {
   hiw: 'listening-highlight-incorrect-words',
   wfd: 'listening-write-from-dictation',
 }
+
+const PRACTICE_TASK_IDS: Partial<Record<TaskType, string>> = Object.fromEntries(
+  Object.entries(PLAN_TASK_TYPES).map(([id, taskType]) => [taskType, id])
+)
 
 export interface TodayPlanTask {
   id: string
@@ -42,6 +47,7 @@ interface PlanRow {
   id: string
   name: string
   days: unknown
+  updated_at: string
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -109,4 +115,44 @@ export async function loadTodayPlan(userId: string): Promise<{ plan: TodayPlanSu
   if (error) return { plan: null, error: '今日计划暂时无法读取，可前往备考计划继续记录。' }
   const plan = (data ?? []).map((row) => parseTodayPlan(row as PlanRow)).find(Boolean) ?? null
   return { plan, error: null }
+}
+
+export async function recordTodayPractice(
+  userId: string,
+  planId: string,
+  taskType: TaskType,
+  questionId: string
+): Promise<{ status: RegistrationStatus | 'conflict'; plan: TodayPlanSummary | null }> {
+  const taskId = PRACTICE_TASK_IDS[taskType]
+  if (!taskId) return { status: 'unavailable', plan: null }
+  const { data, error } = await supabase
+    .from('pte_plans')
+    .select('id,name,days,updated_at')
+    .eq('id', planId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return { status: 'unavailable', plan: null }
+
+  const current = data as PlanRow
+  const result = registerPracticeInPlan(
+    current.days,
+    localDateValue(),
+    taskId,
+    questionId,
+    `${taskId}-practice-${crypto.randomUUID()}`
+  )
+  if (result.status !== 'added') return { status: result.status, plan: parseTodayPlan(current) }
+
+  const updatedAt = new Date().toISOString()
+  const { data: saved, error: saveError } = await supabase
+    .from('pte_plans')
+    .update({ days: result.days, updated_at: updatedAt })
+    .eq('id', planId)
+    .eq('user_id', userId)
+    .eq('updated_at', current.updated_at)
+    .select('id')
+  if (saveError) throw saveError
+  if (!saved?.length) return { status: 'conflict', plan: null }
+  return { status: 'added', plan: parseTodayPlan({ ...current, days: result.days, updated_at: updatedAt }) }
 }

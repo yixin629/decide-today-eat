@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useToast } from '@/app/components/feedback/ToastProvider'
 import { readSessionUser } from '@/lib/auth-session'
 import { generateStudyPlan } from '../engine/generate-plan'
-import { deleteCloudPlan, loadCloudPlans, saveCloudPlans } from '../lib/plan-repository'
+import { deleteCloudPlan, loadCloudPlans, saveCloudPlanIfCurrent, saveCloudPlans } from '../lib/plan-repository'
 import { getPreset, SCORE_PRESETS, SKILL_META } from '../lib/standards'
 import {
   SKILLS,
@@ -152,20 +152,27 @@ export default function PtePlanner() {
     const timer = window.setTimeout(async () => {
       autoSaveTimerRef.current = null
       setSyncStatus('saving')
+      const savedVersions: Record<string, string> = {}
       try {
-        await saveCloudPlans(currentUser, changedPlans)
+        for (const plan of changedPlans) {
+          const expected = syncedVersions[plan.id]
+          if (expected) await saveCloudPlanIfCurrent(currentUser, plan, expected)
+          else await saveCloudPlans(currentUser, [plan])
+          savedVersions[plan.id] = plan.updatedAt
+        }
         setSyncedVersions((current) => ({
           ...current,
-          ...Object.fromEntries(changedPlans.map((plan) => [plan.id, plan.updatedAt])),
+          ...savedVersions,
         }))
         syncErrorShownRef.current = false
         setSyncStatus('saved')
       } catch (error) {
+        if (Object.keys(savedVersions).length) setSyncedVersions((current) => ({ ...current, ...savedVersions }))
         console.error('保存 PTE 云端计划失败:', error)
         setSyncStatus('error')
         if (!syncErrorShownRef.current) {
           syncErrorShownRef.current = true
-          toast.error('云端保存失败，请保留页面并重试修改')
+          toast.error(error instanceof Error && error.message === 'PTE_PLAN_VERSION_CONFLICT' ? '计划在另一页面更新过，请刷新后核对题号再继续编辑' : '云端保存失败，请保留页面并重试修改')
         }
       }
     }, 800)
@@ -499,7 +506,9 @@ export default function PtePlanner() {
     setManualSaving(true)
     setSyncStatus('saving')
     try {
-      await saveCloudPlans(currentUser, [savedPlan])
+      const expected = syncedVersions[savedPlan.id]
+      if (expected) await saveCloudPlanIfCurrent(currentUser, savedPlan, expected)
+      else await saveCloudPlans(currentUser, [savedPlan])
       setSyncedVersions((current) => ({
         ...current,
         [savedPlan.id]: savedPlan.updatedAt,
@@ -510,7 +519,7 @@ export default function PtePlanner() {
     } catch (error) {
       console.error('手动保存 PTE 计划失败:', error)
       setSyncStatus('error')
-      toast.error('保存失败，请检查网络后重试')
+      toast.error(error instanceof Error && error.message === 'PTE_PLAN_VERSION_CONFLICT' ? '计划在另一页面更新过，请刷新后核对题号再继续编辑' : '保存失败，请检查网络后重试')
     } finally {
       setManualSaving(false)
     }

@@ -1,6 +1,6 @@
 # PTE 备考与练习指南
 
-网站有两个 PTE 相关页面：`/pte-plan`（备考计划）和 `/pte-practice`（练习平台），数据都按 `zyx` / `zly` 前端身份分开保存。
+备考计划 `/pte-plan` 和练习平台 `/pte-practice` 使用 `zyx` / `zly` 前端身份；私人资料题库 `/pte-private-bank` 独立使用 Supabase Auth，不能用前端身份代替登录。
 
 内置题目为原创练习素材，不是 Pearson 官方真题；用户上传题目须单独核验授权。页面上的分数只是练习估分，不代表官方评分。
 
@@ -20,6 +20,7 @@
 | `database/migrations/pte-practice-custom-items.sql` | 开启"上传题目"；会放宽 `pte_practice_items` 的写入策略，见下方安全说明 |
 | `database/migrations/pte-practice-custom-item-editing.sql` | 开启已上传题目的编辑；只授予自定义题 `payload` 更新权限 |
 | `database/migrations/pte-practice-task-types-v2.sql` | 把三张练习表的题型约束放开到 22 种（含 SGD、RTS）；在上面三份建表脚本之后执行 |
+| `database/migrations/pte-private-questions.sql` | 可选私人资料题库；仅 Supabase Auth 用户能读写自己的题目，不进入共享练习题库 |
 
 **已有数据库请务必执行 `pte-practice-task-types-v2.sql`**：旧版练习记录表和留言表只允许最早的 8 种题型，其余题型的练习记录会写入失败并回退到本机保存，留言也无法保存。
 
@@ -59,6 +60,10 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 题库、精听和上传页面都用"技能 → 题型"两级按钮选择题型，按钮上显示题目数量。
 
+学习工作台会读取最近更新且覆盖今天的备考计划，展示各题型已登记题号和计划进度。点击题型可展开题号；当前题库中的题号可直接重练，未收录的题号会标明。点击“继续今日计划”会打开该题型尚未练过的题目。专项练习成功保存到云端后，系统读取最新版计划，向今天的对应题型登记题号：优先填空行，没有空行则加一行；重复题号不会再添加。星标、得分和备注不会被改动。云端保存失败、计划不含今天或题型被隐藏时，需到备考计划核对。模考和离线练习不自动登记。
+
+同时打开备考计划与练习平台时，已有计划的自动和手动保存会校验云端版本。若另一页面先更新，旧页面会提示冲突，必须刷新并核对题号后继续编辑。
+
 听力音频使用浏览器语音合成。点击播放器上的设置按钮可以选择口音（每题随机、美式、英式、澳式、印度等，只显示当前浏览器提供的口音）、具体音色和语速；默认"每题随机"，更接近真实考试的多口音环境。Edge 的 Natural 音色和 Chrome 的 Google 音色通常更自然。
 
 做题时可在"自由练习"和"限时练习"间切换；提交后会显示估分、作答对照和参考答案，可以"再练一次"。
@@ -70,6 +75,14 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 ### 题库来源
 
 题库优先读取云端 `pte_practice_items`，并与 `app/pte-practice/lib/questionBank.ts` 中的内置题按 `taskType:id` 合并，同 id 以云端为准。云端不可用时自动使用内置题，练习不受影响。
+
+### 私人资料题库 `/pte-private-bank`
+
+三份个人学习资料可在本机用 `scripts/build-pte-private-index.py` 和 `scripts/build-pte-private-questions.py` 提取。生成的 JSON 只应保留在本机，不要放进 Git 仓库、`public/` 或共享云端题库。脚本需要本机安装 `pypdf`；导入文件包含原资料的题型、题号、题干、可提取的答案和各 PDF 页码，重复题号只保留一条。导入页面按 50 题分批写入，同题型和题号已存在时跳过，以免覆盖人工修改。
+
+先在目标 Supabase 项目开启 Auth、创建自己的账号，然后在 SQL Editor 手动执行 `database/migrations/pte-private-questions.sql`。登录 `/pte-private-bank` 后导入本机 JSON，可按 `RS 103`、单独题号或题干/答案关键词搜索，逐题编辑或删除。RLS 使用 `auth.uid()` 隔离；未登录用户不能读取。不要把此表的 SELECT 策略改成公开。
+
+PDF 文本层不能可靠还原图片、音频、填空位置和所有参考答案。自动提取的记录默认“待校对”，缺失关键内容标为“资料不完整”；在核对原 PDF 前，不应将其视为可评分练习题。此私人页面仅供查看和校对，**不会自动合并到 `/pte-practice` 的共享题库、今日计划或模考**。资料只有个人学习权限时，也不应向其他账号开放或用于商业题库。
 
 ### 上传与编辑题目
 
