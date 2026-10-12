@@ -6,14 +6,19 @@ import { TASK_TYPE_META } from '../lib/taskTypes'
 import { computeStreak } from '../lib/analyticsEngine'
 import { attemptKey, itemKey, latestByItem, needsReview, sameDay, SKILL_NAMES, STUDY_SKILLS, TASK_CODES } from '../lib/study'
 import type { StudyPreferences } from '../hooks/useStudyPreferences'
+import type { TodayPlanSummary } from '../lib/today-plan'
 import { TASK_TYPES, type AttemptRecord, type PracticeItem, type PteSkill, type TaskType } from '../types'
+import TodayPlanPanel from './TodayPlanPanel'
 
 const ICONS = { speaking: Mic, writing: PenLine, reading: BookOpen, listening: Headphones }
 
-export default function TaskDashboard({ items, attempts, preferences, onSelectTaskType, onContinue, onReview, onListen, onGoalChange }: {
+export default function TaskDashboard({ items, attempts, preferences, todayPlan, todayPlanLoading, todayPlanError, onSelectTaskType, onContinue, onReview, onListen, onGoalChange }: {
   items: PracticeItem[]
   attempts: AttemptRecord[]
   preferences: StudyPreferences
+  todayPlan: TodayPlanSummary | null
+  todayPlanLoading: boolean
+  todayPlanError: string | null
   onSelectTaskType: (taskType: TaskType) => void
   onContinue: (taskType: TaskType, itemId: string) => void
   onReview: () => void
@@ -43,6 +48,8 @@ export default function TaskDashboard({ items, attempts, preferences, onSelectTa
       {nextItem && <button className="pte-button primary" onClick={() => onContinue(nextItem.taskType, nextItem.id)}><Play size={16} />{continuing ? '继续练习' : '开始今日练习'}</button>}
     </div>
 
+    <TodayPlanPanel plan={todayPlan} loading={todayPlanLoading} error={todayPlanError} onStartTask={onSelectTaskType} />
+
     <section className="pte-today" aria-label="今日学习">
       <div className="pte-goal-block">
         <div className="pte-progress-ring" style={{ background: `conic-gradient(var(--pte-accent) ${goalPct}%, var(--pte-line) 0)` }} role="img" aria-label={`今日目标完成 ${goalPct}%`}><span><strong>{today.length}</strong><small>/ {preferences.dailyGoal} 题</small></span></div>
@@ -71,7 +78,7 @@ export default function TaskDashboard({ items, attempts, preferences, onSelectTa
         <button className="pte-action-row" onClick={onReview}><span className="pte-action-icon amber"><BookOpen size={20} /></span><span><strong>错题复习</strong><small>{reviewCount ? `${reviewCount} 道客观题待巩固` : '暂时没有待复习错题'}</small></span><ArrowRight size={17} /></button>
         <button className="pte-action-row" onClick={onListen}><span className="pte-action-icon blue"><Headphones size={20} /></span><span><strong>精听跟读</strong><small>逐句听读 · 变速 · 循环播放</small></span><ArrowRight size={17} /></button>
         <div className="pte-checklist"><p className="pte-eyebrow">今日足迹</p>{STUDY_SKILLS.map((s) => { const count = today.filter((a) => TASK_TYPE_META[a.taskType].skill === s).length; return <div key={s}><span className={count ? 'pte-done' : 'pte-undone'}>{count ? <Check size={13} /> : null}</span><span>{SKILL_NAMES[s]}练习</span><strong>{count} 题</strong></div> })}</div>
-        <p className="pte-small-note">内置内容为原创练习；练习反馈不等同于 Pearson 成绩。新增题型 SGD、RTS 尚未收录。</p>
+        <p className="pte-small-note">内置内容为原创练习；练习反馈不等同于 Pearson 成绩。全部 22 种题型均可进入专项练习。</p>
       </aside>
     </div>
   </div>

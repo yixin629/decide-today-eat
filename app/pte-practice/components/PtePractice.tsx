@@ -9,6 +9,7 @@ import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib
 import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
 import { itemKey, latestByItem, needsReview } from '../lib/study'
+import { loadTodayPlan, type TodayPlanSummary } from '../lib/today-plan'
 import { TASK_TYPES, type AttemptRecord, type PracticeItem, type TaskType } from '../types'
 import AnalyticsDashboard from './analytics/AnalyticsDashboard'
 import CommunityFeed from './CommunityFeed'
@@ -52,6 +53,9 @@ export default function PtePractice() {
   const [catalogRefresh, setCatalogRefresh] = useState(0)
   const [syncingHistory, setSyncingHistory] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ error: boolean; text: string } | null>(null)
+  const [todayPlan, setTodayPlan] = useState<TodayPlanSummary | null>(null)
+  const [todayPlanLoading, setTodayPlanLoading] = useState(true)
+  const [todayPlanError, setTodayPlanError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -68,6 +72,24 @@ export default function PtePractice() {
       if (cancelled) return
       setHistory(result)
       setHistoryLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [user, authLoading])
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      setTodayPlan(null)
+      setTodayPlanLoading(false)
+      return
+    }
+    let cancelled = false
+    setTodayPlanLoading(true)
+    loadTodayPlan(user).then((result) => {
+      if (cancelled) return
+      setTodayPlan(result.plan)
+      setTodayPlanError(result.error)
+      setTodayPlanLoading(false)
     })
     return () => { cancelled = true }
   }, [user, authLoading])
@@ -166,7 +188,7 @@ export default function PtePractice() {
               <aside className="pte-notes"><h3><NotebookPen size={17} />本题笔记</h3><p className="pte-small-note">仅保存在本机</p><textarea aria-label="本题笔记" placeholder="记下生词、易错点或下次想改进的地方…" maxLength={3000} value={preferences.notes[activeKey] ?? ''} disabled={!ready} onChange={(e) => update((p) => ({ ...p, notes: { ...p.notes, [activeKey]: e.target.value } }))} /><small>{(preferences.notes[activeKey] ?? '').length} / 3000</small></aside>
             </div>
           </div> : <>
-            {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
+            {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
             {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}

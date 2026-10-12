@@ -50,6 +50,39 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
 .pte-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid var(--pte-line); border-radius: 6px; color: var(--pte-muted); }
 .pte-icon-button:hover, .pte-icon-button.start { color: var(--pte-accent); background: var(--pte-soft); }
 .pte-app .bookmarked { color: #af7212; background: #fff8e9; }
+.pte-plan-panel { margin: 0 0 28px; padding: 20px 22px; border: 1px solid var(--pte-line); border-radius: 8px; background: var(--pte-bg); }
+.pte-plan-head, .pte-plan-title, .pte-plan-summary, .pte-plan-actions { display: flex; align-items: center; }
+.pte-plan-head { justify-content: space-between; gap: 20px; }
+.pte-plan-title { gap: 12px; min-width: 0; }
+.pte-plan-title > div { min-width: 0; }
+.pte-plan-title h3 { margin: 2px 0; font-size: 15px; }
+.pte-plan-title p:last-child { color: var(--pte-muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pte-plan-mark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 7px; color: #fff; background: #b65f38; }
+.pte-plan-summary { gap: 18px; flex-shrink: 0; }
+.pte-plan-summary > span { display: flex; align-items: center; gap: 5px; color: var(--pte-muted); font-size: 11px; }
+.pte-plan-summary strong { font-size: 22px; font-variant-numeric: tabular-nums; }
+.pte-plan-summary small { color: var(--pte-muted); font-size: 11px; font-weight: 500; }
+.pte-plan-progress { height: 4px; margin: 16px 0; overflow: hidden; border-radius: 4px; background: var(--pte-line); }
+.pte-plan-progress i { display: block; height: 100%; border-radius: inherit; background: var(--pte-accent); }
+.pte-plan-tasks { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+.pte-plan-tasks::-webkit-scrollbar { display: none; }
+.pte-plan-tasks button { display: flex; align-items: center; gap: 7px; min-width: 90px; min-height: 40px; padding: 6px 10px; border: 1px solid var(--pte-line); border-radius: 6px; background: var(--pte-surface); text-align: left; }
+.pte-plan-tasks button:hover { border-color: var(--pte-accent); }
+.pte-plan-tasks button > span { display: grid; place-items: center; width: 25px; height: 25px; flex-shrink: 0; border-radius: 5px; color: #b65f38; background: #fff1e9; font-size: 9px; font-weight: 750; }
+.pte-plan-tasks button > span.is-complete { color: #fff; background: var(--pte-accent); }
+.pte-plan-tasks strong { font-size: 11px; }
+.pte-plan-tasks small { margin-left: auto; color: var(--pte-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.pte-plan-actions { justify-content: space-between; gap: 15px; margin-top: 16px; }
+.pte-plan-actions > a { display: inline-flex; align-items: center; gap: 5px; color: var(--pte-muted); font-size: 11px; }
+.pte-plan-actions > a:hover { color: var(--pte-accent); }
+.pte-plan-empty { display: flex; align-items: center; gap: 14px; }
+.pte-plan-empty > div { flex: 1; min-width: 0; }
+.pte-plan-empty h3 { font-size: 14px; }
+.pte-plan-empty p { margin-top: 3px; color: var(--pte-muted); font-size: 11px; line-height: 1.6; }
+.pte-plan-panel.is-loading { display: flex; gap: 12px; min-height: 82px; align-items: center; }
+.pte-plan-skeleton { width: 90px; height: 36px; border-radius: 6px; background: var(--pte-line); animation: pte-pulse 1.4s ease-in-out infinite; }
+.pte-plan-skeleton.wide { flex: 1; }
+@keyframes pte-pulse { 50% { opacity: .45; } }
 .pte-today { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 26px; padding: 25px 0 30px; margin-bottom: 30px; border-top: 1px solid var(--pte-line); border-bottom: 1px solid var(--pte-line); align-items: center; }
 .pte-goal-block { display: flex; align-items: center; gap: 18px; }
 .pte-goal-block h3 { font-size: 14px; margin: 4px 0 10px; }
@@ -282,6 +315,15 @@ body:has(.pte-app) [data-global-utility="assistant"] { left: 240px; }
   .pte-workspace-top { padding: 0 18px; height: 43px; font-size: 10px; }
   .pte-content { padding: 22px 18px 36px; }
   .pte-app h2 { font-size: 20px; }
+  .pte-plan-panel { padding: 16px; }
+  .pte-plan-head { align-items: flex-start; }
+  .pte-plan-summary > span { display: none; }
+  .pte-plan-summary { gap: 0; }
+  .pte-plan-title p:last-child { max-width: 42vw; }
+  .pte-plan-actions { align-items: stretch; }
+  .pte-plan-actions .pte-button { min-height: 38px; }
+  .pte-plan-empty { align-items: flex-start; flex-wrap: wrap; }
+  .pte-plan-empty .pte-button { width: 100%; }
   .pte-section-heading { align-items: start; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
   .pte-today { grid-template-columns: 1fr; gap: 22px; padding: 22px 0; margin-bottom: 24px; }
   .pte-goal-block { gap: 18px; }
