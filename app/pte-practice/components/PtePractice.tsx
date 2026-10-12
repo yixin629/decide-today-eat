@@ -18,6 +18,7 @@ import ListeningStudio from './ListeningStudio'
 import MockExam from './mock-exam/MockExam'
 import PracticeSession from './PracticeSession'
 import QuestionLibrary, { type LibraryFilter } from './QuestionLibrary'
+import ReferenceQuestionBank from './ReferenceQuestionBank'
 import TaskDashboard from './TaskDashboard'
 import QuestionUploader from './upload/QuestionUploader'
 
@@ -39,6 +40,7 @@ export default function PtePractice() {
   const { user, loading: authLoading } = useAuth()
   const { preferences, error: preferenceError, update, ready } = useStudyPreferences(user)
   const [tab, setTab] = useState<Tab>('dashboard')
+  const [librarySource, setLibrarySource] = useState<'practice' | 'reference'>('practice')
   const [libraryTask, setLibraryTask] = useState<TaskType | undefined>()
   const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryKey, setLibraryKey] = useState(0)
@@ -215,7 +217,9 @@ export default function PtePractice() {
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onStartPlannedTask={startPlannedTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
-            {['library', 'review', 'bookmarks'].includes(tab) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
+            {tab === 'library' && <div className="pte-filter-tabs mb-5" aria-label="题库分类"><button aria-pressed={librarySource === 'practice'} className={librarySource === 'practice' ? 'active' : ''} onClick={() => setLibrarySource('practice')}>专项练习</button><button aria-pressed={librarySource === 'reference'} className={librarySource === 'reference' ? 'active' : ''} onClick={() => setLibrarySource('reference')}>资料题目</button></div>}
+            {['library', 'review', 'bookmarks'].includes(tab) && (tab !== 'library' || librarySource === 'practice') && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
+            {tab === 'library' && librarySource === 'reference' && <ReferenceQuestionBank />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}
             {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} onSync={user ? () => void syncHistory() : undefined} syncing={syncingHistory} />}
