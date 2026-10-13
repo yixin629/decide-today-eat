@@ -55,7 +55,7 @@ PTE 练习平台（`/pte-practice`）的口语朗读发音评分与写作语法�
 两个服务端环境变量接入；不配置时会自动回退到本地启发式估分，网站其余功能不受
 影响。部署方式见 [`pte-scoring-service/README.md`](./pte-scoring-service/README.md)，
 PTE 功能的数据库脚本、上传题目和使用说明见 [PTE 备考与练习](./docs/guides/PTE_STUDY.md)。
-个人授权资料可在独立的 `/pte-private-bank` 中按正式账号隔离保存和校对；它不向共享练习题库公开，启用前需执行对应的 Auth/RLS 迁移。
+`/pte-practice` 的“专项题库”默认展示已导入的资料题目，可按题型、题号和关键词查找；切换到“可练习题目”可使用具备练习流程的题目。资料题目的答案与素材仍需逐题校对，不能直接用于评分。
 未来独立 PTE 商业站的 Supabase Auth、会员权益和 Stripe 沙箱配置见
 [PTE 正式账号与支付配置](./docs/getting-started/PTE_COMMERCIAL_SETUP.md)；当前私人站默认关闭该模式。
 PTE 练习页可进入独立支持中心，使用可选 AI 助教或提交正式账号隔离的客服工单。

@@ -1,6 +1,6 @@
 # PTE 备考与练习指南
 
-备考计划 `/pte-plan` 和练习平台 `/pte-practice` 使用 `zyx` / `zly` 前端身份；私人资料题库 `/pte-private-bank` 独立使用 Supabase Auth，不能用前端身份代替登录。
+备考计划 `/pte-plan` 和练习平台 `/pte-practice` 使用 `zyx` / `zly` 前端身份；该本地身份不等于服务端认证。
 
 内置题目为原创练习素材，不是 Pearson 官方真题；用户上传题目须单独核验授权。页面上的分数只是练习估分，不代表官方评分。
 
@@ -20,7 +20,7 @@
 | `database/migrations/pte-practice-custom-items.sql` | 开启"上传题目"；会放宽 `pte_practice_items` 的写入策略，见下方安全说明 |
 | `database/migrations/pte-practice-custom-item-editing.sql` | 开启已上传题目的编辑；只授予自定义题 `payload` 更新权限 |
 | `database/migrations/pte-practice-task-types-v2.sql` | 把三张练习表的题型约束放开到 22 种（含 SGD、RTS）；在上面三份建表脚本之后执行 |
-| `database/migrations/pte-private-questions.sql` | 可选私人资料题库；仅 Supabase Auth 用户能读写自己的题目，不进入共享练习题库 |
+| `database/migrations/pte-reference-questions.sql` | 专项题库的资料题目；公开读取，不自动进入可评分练习 |
 
 **已有数据库请务必执行 `pte-practice-task-types-v2.sql`**：旧版练习记录表和留言表只允许最早的 8 种题型，其余题型的练习记录会写入失败并回退到本机保存，留言也无法保存。
 
@@ -76,15 +76,15 @@ SELECT count(*) FROM pte_practice_items WHERE payload::text ~ '[一-鿿]';
 
 题库优先读取云端 `pte_practice_items`，并与 `app/pte-practice/lib/questionBank.ts` 中的内置题按 `taskType:id` 合并，同 id 以云端为准。云端不可用时自动使用内置题，练习不受影响。
 
-### 私人资料题库 `/pte-private-bank`
+### 专项题库资料题目
 
-专项题库现在还有“资料题目”视图，读取独立的 `pte_reference_questions` 表。该表允许未登录访客读取，不能把它当作访问控制；导入内容前须确认网站公开访问风险与资料使用范围。此视图按题型、题号、题干和答案关键词搜索，显示原资料及校对状态。它是待校对资料目录，不自动进入可评分的 `pte_practice_items`；音频、图片、填空结构和答案未核准的题目不能直接练习或评分。现有数据库需执行 `database/migrations/pte-reference-questions.sql` 后才能使用。批量数据应在数据库备份后导入，原始资料和导入文件不要提交到 Git。
+专项题库默认显示“资料题目”视图，读取独立的 `pte_reference_questions` 表；可先按口语、写作、阅读、听力筛选，再按原资料题型编号进入具体题型。“可练习题目”视图显示现有练习题。该资料表允许未登录访客读取，不能把它当作访问控制；导入内容前须确认网站公开访问风险与资料使用范围。资料题目按题型、题号、题干和答案关键词搜索，显示原资料及校对状态。它是待校对资料目录，不自动进入可评分的 `pte_practice_items`；音频、图片、填空结构和答案未核准的题目不能直接练习或评分。现有数据库需执行 `database/migrations/pte-reference-questions.sql` 后才能使用。批量数据应在数据库备份后导入，原始资料和导入文件不要提交到 Git。
 
-三份个人学习资料可在本机用 `scripts/build-pte-private-index.py` 和 `scripts/build-pte-private-questions.py` 提取。生成的 JSON 只应保留在本机，不要放进 Git 仓库、`public/` 或共享云端题库。脚本需要本机安装 `pypdf`；导入文件包含原资料的题型、题号、题干、可提取的答案和各 PDF 页码，重复题号只保留一条。导入页面按 50 题分批写入，同题型和题号已存在时跳过，以免覆盖人工修改。
+三份个人学习资料可在本机用 `scripts/build-pte-private-index.py` 和 `scripts/build-pte-private-questions.py` 提取。生成的 JSON 只应保留在本机，不要放进 Git 仓库或 `public/`。脚本需要本机安装 `pypdf`；导入文件包含原资料的题型、题号、题干、可提取的答案和各 PDF 页码，重复题号只保留一条。
 
-先在目标 Supabase 项目开启 Auth Email Provider，并在 Authentication URL Configuration 中允许 `/pte-private-bank` 的本地或线上回调地址，然后在 SQL Editor 手动执行 `database/migrations/pte-private-questions.sql`。私人题库没有预设账号密码；在 `/pte-private-bank` 使用自己的邮箱创建账号、验证邮箱后登录，也可通过该页找回密码。登录后导入本机 JSON，可按 `RS 103`、单独题号或题干/答案关键词搜索，逐题编辑或删除。RLS 使用 `auth.uid()` 隔离；未登录用户不能读取。不要把此表的 SELECT 策略改成公开。
+旧 `/pte-private-bank` 页面已停用并跳转到练习平台；`pte_private_questions` 表及其迁移保留作历史数据，不再作为新库默认执行入口。不会自动迁移或删除旧表数据。
 
-PDF 文本层不能可靠还原图片、音频、填空位置和所有参考答案。自动提取的记录默认“待校对”，缺失关键内容标为“资料不完整”；在核对原 PDF 前，不应将其视为可评分练习题。此私人页面仅供查看和校对，**不会自动合并到 `/pte-practice` 的共享题库、今日计划或模考**。资料只有个人学习权限时，也不应向其他账号开放或用于商业题库。
+PDF 文本层不能可靠还原图片、音频、填空位置和所有参考答案。自动提取的记录默认“待校对”，缺失关键内容标为“资料不完整”；在核对原 PDF 前，不应将其视为可评分练习题。资料题目**不会自动合并到可评分练习、今日计划或模考**。资料只有个人学习权限时，公开展示和商业使用仍有授权风险。
 
 ### 上传与编辑题目
 

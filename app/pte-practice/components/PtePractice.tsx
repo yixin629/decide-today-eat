@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, Headset, History, LayoutDashboard, ListChecks, LockKeyhole, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
+import { ArrowLeft, BarChart3, Bookmark, BookOpen, CalendarDays, ChevronRight, Cloud, FilePlus2, GraduationCap, Headphones, Headset, History, LayoutDashboard, ListChecks, MessageSquare, NotebookPen, Timer, WifiOff } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useStudyPreferences } from '../hooks/useStudyPreferences'
 import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
@@ -40,7 +40,7 @@ export default function PtePractice() {
   const { user, loading: authLoading } = useAuth()
   const { preferences, error: preferenceError, update, ready } = useStudyPreferences(user)
   const [tab, setTab] = useState<Tab>('dashboard')
-  const [librarySource, setLibrarySource] = useState<'practice' | 'reference'>('practice')
+  const [librarySource, setLibrarySource] = useState<'practice' | 'reference'>('reference')
   const [libraryTask, setLibraryTask] = useState<TaskType | undefined>()
   const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryKey, setLibraryKey] = useState(0)
@@ -105,6 +105,7 @@ export default function PtePractice() {
     if (!TASK_TYPES.includes(task as TaskType) || !question) return
     setLibraryTask(task as TaskType)
     setLibraryQuery(question)
+    setLibrarySource('practice')
     setTab('library')
     setLibraryKey((key) => key + 1)
   }, [])
@@ -122,6 +123,7 @@ export default function PtePractice() {
 
   function openTask(task: TaskType) {
     setLibraryTask(task)
+    setLibrarySource('practice')
     setLibraryKey((key) => key + 1)
     setTab('library')
     setSession(null)
@@ -200,7 +202,7 @@ export default function PtePractice() {
       <aside className="pte-sidebar">
         <p className="pte-nav-label">学习中心</p>
         <nav aria-label="PTE 学习导航">{NAV.map(({ id, label, icon: Icon }, index) => <button key={id} className={`pte-nav-item ${tab === id ? 'active' : ''} ${index === 4 ? 'pte-nav-break' : ''}`} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === 'review' && reviewCount > 0 && <small>{reviewCount}</small>}{id === 'bookmarks' && preferences.bookmarks.length > 0 && <small>{preferences.bookmarks.length}</small>}</button>)}</nav>
-        <div className="pte-sidebar-bottom"><Link href="/pte-private-bank"><LockKeyhole size={17} />私人资料题库<ChevronRight size={15} /></Link><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
+        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
       </aside>
       <div className="pte-workspace">
         <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : history.source === 'mixed' ? '云端 + 本机记录' : '本机练习记录'}</span></div>
@@ -217,7 +219,7 @@ export default function PtePractice() {
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onStartPlannedTask={startPlannedTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
-            {tab === 'library' && <div className="pte-filter-tabs mb-5" aria-label="题库分类"><button aria-pressed={librarySource === 'practice'} className={librarySource === 'practice' ? 'active' : ''} onClick={() => setLibrarySource('practice')}>专项练习</button><button aria-pressed={librarySource === 'reference'} className={librarySource === 'reference' ? 'active' : ''} onClick={() => setLibrarySource('reference')}>资料题目</button></div>}
+            {tab === 'library' && <div className="pte-filter-tabs mb-5" aria-label="题库分类"><button aria-pressed={librarySource === 'reference'} className={librarySource === 'reference' ? 'active' : ''} onClick={() => setLibrarySource('reference')}>资料题目</button><button aria-pressed={librarySource === 'practice'} className={librarySource === 'practice' ? 'active' : ''} onClick={() => setLibrarySource('practice')}>可练习题目</button></div>}
             {['library', 'review', 'bookmarks'].includes(tab) && (tab !== 'library' || librarySource === 'practice') && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
             {tab === 'library' && librarySource === 'reference' && <ReferenceQuestionBank />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}

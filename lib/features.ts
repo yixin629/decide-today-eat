@@ -194,16 +194,6 @@ export const featureRegistry: readonly FeatureDefinition[] = [
     keywords: ['PTE', '英语', '考试', '口语', '写作', '听力', '阅读', '练习'],
   },
   {
-    name: 'PTE 私人资料题库',
-    path: '/pte-private-bank',
-    icon: '🔒',
-    description: '按题号和关键词查找个人资料题目',
-    category: 'plans',
-    showOnHome: false,
-    showInNavigation: false,
-    keywords: ['PTE', '私人题库', '题号'],
-  },
-  {
     name: 'PTE 支持中心',
     path: '/pte-support',
     icon: '🎧',
