@@ -8,6 +8,7 @@ import { useStudyPreferences } from '../hooks/useStudyPreferences'
 import { loadAttempts, syncLocalAttempts, type AttemptQueryResult } from '../lib/attempt-repository'
 import { loadPracticeCatalog, type CustomItemInfo } from '../lib/item-repository'
 import { getItemsForTaskType } from '../lib/questionBank'
+import { sourceCodeForTask } from '../lib/reference-items'
 import { attemptKey, itemKey, latestByItem, needsReview } from '../lib/study'
 import { loadTodayPlan, recordTodayPractice, type TodayPlanSummary } from '../lib/today-plan'
 import { TASK_TYPES, type AttemptRecord, type PracticeItem, type TaskType } from '../types'
@@ -40,7 +41,7 @@ export default function PtePractice() {
   const { user, loading: authLoading } = useAuth()
   const { preferences, error: preferenceError, update, ready } = useStudyPreferences(user)
   const [tab, setTab] = useState<Tab>('dashboard')
-  const [librarySource, setLibrarySource] = useState<'practice' | 'reference'>('reference')
+  const [libraryView, setLibraryView] = useState<'source' | 'training'>('source')
   const [libraryTask, setLibraryTask] = useState<TaskType | undefined>()
   const [libraryQuery, setLibraryQuery] = useState('')
   const [libraryKey, setLibraryKey] = useState(0)
@@ -103,9 +104,13 @@ export default function PtePractice() {
     const task = params.get('task')
     const question = params.get('question')?.trim() ?? ''
     if (!TASK_TYPES.includes(task as TaskType) || !question) return
+    const sourceCode = sourceCodeForTask(task as TaskType)
+    const sourceMatch = question.match(/^(?:ref-)?([A-Z&]+)[-\s]+#?(\d+)$/i)
+    const sourceNumber = /^#?\d+$/.test(question) ? question.replace(/^#/, '')
+      : sourceMatch && sourceMatch[1].toUpperCase() === sourceCode ? sourceMatch[2] : null
     setLibraryTask(task as TaskType)
-    setLibraryQuery(question)
-    setLibrarySource('practice')
+    setLibraryQuery(sourceNumber ?? question)
+    setLibraryView(sourceCode && sourceNumber ? 'source' : 'training')
     setTab('library')
     setLibraryKey((key) => key + 1)
   }, [])
@@ -118,12 +123,13 @@ export default function PtePractice() {
     setTab(nextTab)
     setLibraryTask(undefined)
     setLibraryQuery('')
+    setLibraryView('source')
     setLibraryKey((key) => key + 1)
   }
 
   function openTask(task: TaskType) {
     setLibraryTask(task)
-    setLibrarySource('practice')
+    setLibraryView('training')
     setLibraryKey((key) => key + 1)
     setTab('library')
     setSession(null)
@@ -202,7 +208,7 @@ export default function PtePractice() {
       <aside className="pte-sidebar">
         <p className="pte-nav-label">学习中心</p>
         <nav aria-label="PTE 学习导航">{NAV.map(({ id, label, icon: Icon }, index) => <button key={id} className={`pte-nav-item ${tab === id ? 'active' : ''} ${index === 4 ? 'pte-nav-break' : ''}`} aria-current={tab === id ? 'page' : undefined} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === 'review' && reviewCount > 0 && <small>{reviewCount}</small>}{id === 'bookmarks' && preferences.bookmarks.length > 0 && <small>{preferences.bookmarks.length}</small>}</button>)}</nav>
-        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>原创练习 · 非官方评分</p></div>
+        <div className="pte-sidebar-bottom"><Link href="/pte-plan"><CalendarDays size={17} />我的备考计划<ChevronRight size={15} /></Link><Link href="/pte-support"><Headset size={17} />AI 助教与客服<ChevronRight size={15} /></Link><Link href="/"><ArrowLeft size={16} />回到我们的小世界</Link><p>资料自练 · 非官方评分</p></div>
       </aside>
       <div className="pte-workspace">
         <div className="pte-workspace-top"><span>学习中心 <ChevronRight size={13} /> <strong>{contentTitle}</strong></span><span className="pte-sync">{history.source === 'cloud' ? <Cloud size={14} /> : <WifiOff size={14} />}{historyLoading ? '读取进度中' : history.source === 'cloud' ? '云端练习记录' : history.source === 'mixed' ? '云端 + 本机记录' : '本机练习记录'}</span></div>
@@ -214,14 +220,13 @@ export default function PtePractice() {
           {planMessage && <div className="pte-notice" role="status">{planMessage}</div>}
           {session && currentItem ? <div>
             <div className="pte-session-context"><button className="pte-button" onClick={() => navigate(tab)}><ArrowLeft size={16} />返回列表</button><span>本组 {session.index + 1} / {session.queue.length} 题</span><button className={`pte-button ${preferences.bookmarks.includes(activeKey) ? 'bookmarked' : ''}`} disabled={!ready} aria-pressed={preferences.bookmarks.includes(activeKey)} onClick={() => bookmark(activeKey)}><Bookmark size={16} fill={preferences.bookmarks.includes(activeKey) ? 'currentColor' : 'none'} />{preferences.bookmarks.includes(activeKey) ? '已收藏' : '收藏'}</button></div>
-            <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onRetry={() => setSessionSaved(false)} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
+            <div className="pte-session-grid"><PracticeSession key={activeKey} taskType={currentItem.taskType} itemId={currentItem.id} providedItem={currentItem.id.startsWith('ref-') ? currentItem : undefined} unverifiedSource={currentItem.id.startsWith('ref-')} userId={user} onExit={() => { setSession(null); setSessionSaved(false) }} exitLabel="返回题库" onAttemptSaved={saved} onRetry={() => setSessionSaved(false)} onSelfPracticeCompleted={() => setSessionSaved(true)} onNext={session.index < session.queue.length - 1 ? () => start(session.queue, session.index + 1) : undefined} />
               <aside className="pte-notes"><h3><NotebookPen size={17} />本题笔记</h3><p className="pte-small-note">仅保存在本机</p><textarea aria-label="本题笔记" placeholder="记下生词、易错点或下次想改进的地方…" maxLength={3000} value={preferences.notes[activeKey] ?? ''} disabled={!ready} onChange={(e) => update((p) => ({ ...p, notes: { ...p.notes, [activeKey]: e.target.value } }))} /><small>{(preferences.notes[activeKey] ?? '').length} / 3000</small></aside>
             </div>
           </div> : <>
             {tab === 'dashboard' && <TaskDashboard items={catalog.items} attempts={history.attempts} preferences={preferences} todayPlan={todayPlan} todayPlanLoading={todayPlanLoading} todayPlanError={todayPlanError} onSelectTaskType={openTask} onStartPlannedTask={startPlannedTask} onContinue={startItem} onReview={() => navigate('review')} onListen={() => navigate('listening')} onGoalChange={(goal) => update((p) => ({ ...p, dailyGoal: goal }))} />}
-            {tab === 'library' && <div className="pte-filter-tabs mb-5" aria-label="题库分类"><button aria-pressed={librarySource === 'reference'} className={librarySource === 'reference' ? 'active' : ''} onClick={() => setLibrarySource('reference')}>资料题目</button><button aria-pressed={librarySource === 'practice'} className={librarySource === 'practice' ? 'active' : ''} onClick={() => setLibrarySource('practice')}>可练习题目</button></div>}
-            {['library', 'review', 'bookmarks'].includes(tab) && (tab !== 'library' || librarySource === 'practice') && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
-            {tab === 'library' && librarySource === 'reference' && <ReferenceQuestionBank />}
+            {(['review', 'bookmarks'].includes(tab) || (tab === 'library' && libraryView === 'training')) && <QuestionLibrary key={`${tab}-${libraryKey}`} items={catalog.items} cloudIds={catalog.cloudIds} customKeys={catalog.customItems.map((info) => info.key)} attempts={history.attempts} bookmarks={preferences.bookmarks} initialTask={libraryTask} initialFilter={libraryFilter} initialQuery={libraryQuery} onBookmark={bookmark} onStart={start} />}
+            {tab === 'library' && libraryView === 'source' && <ReferenceQuestionBank key={`${libraryKey}-${libraryTask ?? ''}-${libraryQuery}`} initialCode={libraryTask ? sourceCodeForTask(libraryTask) : null} initialQuery={libraryQuery} onPractice={(item) => start([item], 0)} />}
             {tab === 'listening' && <ListeningStudio items={catalog.items} onPractice={startItem} />}
             {tab === 'mock-exam' && <MockExam userId={user} onRunningChange={setMockRunning} onAttemptSaved={saved} />}
             {tab === 'history' && <HistoryPanel attempts={history.attempts} source={history.source} onPractice={startItem} onSync={user ? () => void syncHistory() : undefined} syncing={syncingHistory} />}

@@ -62,7 +62,7 @@ export default function TaskDashboard({ items, attempts, preferences, todayPlan,
 
     <div className="pte-dashboard-grid">
       <section className="pte-task-section">
-        <div className="pte-section-heading compact"><div><h3>专项练习</h3><p className="pte-muted">{items.length} 道可用练习 · {TASK_TYPES.length} 种已支持题型</p></div></div>
+        <div className="pte-section-heading compact"><div><h3>内置训练题</h3><p className="pte-muted">{items.length} 道训练样题 · {TASK_TYPES.length} 种已支持题型</p></div></div>
         <div className="pte-skill-tabs" role="tablist" aria-label="技能分类">{STUDY_SKILLS.map((s) => { const Icon = ICONS[s]; return <button key={s} role="tab" aria-selected={skill === s} className={skill === s ? `active skill-${s}` : ''} onClick={() => setSkill(s)}><Icon size={17} />{SKILL_NAMES[s]}<span>{TASK_TYPES.filter((t) => TASK_TYPE_META[t].skill === s).length}</span></button> })}</div>
         <div role="tabpanel" aria-label={`${SKILL_NAMES[skill]}专项练习`} className="pte-task-list">{TASK_TYPES.filter((t) => TASK_TYPE_META[t].skill === skill).map((type) => {
           const meta = TASK_TYPE_META[type]
@@ -79,7 +79,7 @@ export default function TaskDashboard({ items, attempts, preferences, todayPlan,
         <button className="pte-action-row" onClick={onReview}><span className="pte-action-icon amber"><BookOpen size={20} /></span><span><strong>错题复习</strong><small>{reviewCount ? `${reviewCount} 道客观题待巩固` : '暂时没有待复习错题'}</small></span><ArrowRight size={17} /></button>
         <button className="pte-action-row" onClick={onListen}><span className="pte-action-icon blue"><Headphones size={20} /></span><span><strong>精听跟读</strong><small>逐句听读 · 变速 · 循环播放</small></span><ArrowRight size={17} /></button>
         <div className="pte-checklist"><p className="pte-eyebrow">今日足迹</p>{STUDY_SKILLS.map((s) => { const count = today.filter((a) => TASK_TYPE_META[a.taskType].skill === s).length; return <div key={s}><span className={count ? 'pte-done' : 'pte-undone'}>{count ? <Check size={13} /> : null}</span><span>{SKILL_NAMES[s]}练习</span><strong>{count} 题</strong></div> })}</div>
-        <p className="pte-small-note">内置内容为原创练习；练习反馈不等同于 Pearson 成绩。全部 22 种题型均可进入专项练习。</p>
+        <p className="pte-small-note">这里是独立训练样题；原资料题号统一在“专项题库”查看。练习反馈不等同于 Pearson 成绩。</p>
       </aside>
     </div>
   </div>

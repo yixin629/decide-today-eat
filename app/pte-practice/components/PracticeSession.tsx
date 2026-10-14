@@ -17,16 +17,19 @@ import PracticeInput from './session/PracticeInput'
 import { RecordingContext } from './session/RecordingContext'
 
 export default function PracticeSession({
-  taskType, itemId, userId, onExit, onQuit, onNext, onAttemptSaved, onRetry,
+  taskType, itemId, providedItem, unverifiedSource = false, userId, onExit, onQuit, onNext, onAttemptSaved, onRetry, onSelfPracticeCompleted,
   exitLabel = '返回题型列表', hideCommentThread = false,
 }: {
   taskType: TaskType
   itemId: string
+  providedItem?: PracticeItem
+  unverifiedSource?: boolean
   userId: string | null
   onExit: () => void
   onQuit?: () => void
   onNext?: () => void
   onRetry?: () => void
+  onSelfPracticeCompleted?: () => void
   onAttemptSaved: (attempt: AttemptRecord, source: 'cloud' | 'local') => void
   exitLabel?: string
   hideCommentThread?: boolean
@@ -59,6 +62,14 @@ export default function PracticeSession({
 
   useEffect(() => {
     let cancelled = false
+    if (providedItem) {
+      answerRef.current = emptyAnswerFor(taskType, providedItem)
+      startedAtRef.current = Date.now()
+      setItem(providedItem)
+      setItemLoadError(null)
+      setItemLoading(false)
+      return () => { cancelled = true }
+    }
     setItemLoading(true)
     loadItemById(taskType, itemId).then((result) => {
       if (cancelled) return
@@ -69,7 +80,7 @@ export default function PracticeSession({
       setItemLoading(false)
     })
     return () => { cancelled = true }
-  }, [taskType, itemId])
+  }, [taskType, itemId, providedItem])
 
   useEffect(() => {
     if (submitted || submitting || itemLoading || !item) return
@@ -102,6 +113,14 @@ export default function PracticeSession({
       const durationSeconds = (Date.now() - startedAtRef.current) / 1000
       let answer = answerRef.current
       if ('secondsUsed' in answer) answer = { ...answer, secondsUsed: durationSeconds }
+      if (unverifiedSource) {
+        setReviewAnswer(answer)
+        setDimensions([])
+        setFinalDurationSeconds(durationSeconds)
+        setSubmitted(true)
+        onSelfPracticeCompleted?.()
+        return
+      }
       const results = await scoreAttemptAsync(taskType, item, answer, mode === 'timed' ? meta.timeLimitSeconds ?? durationSeconds : Infinity)
       if (!mounted.current) return
       setReviewAnswer(answer)
@@ -122,7 +141,7 @@ export default function PracticeSession({
       locked.current = false
       if (mounted.current) setSubmitting(false)
     }
-  }, [item, itemLoading, submitted, taskType, itemId, mode, meta, userId, onAttemptSaved])
+  }, [item, itemLoading, submitted, taskType, itemId, mode, meta, userId, onAttemptSaved, unverifiedSource, onSelfPracticeCompleted])
 
   useEffect(() => {
     if (remaining === 0 && !expired.current && !submitted && !itemLoading) {
@@ -173,9 +192,9 @@ export default function PracticeSession({
       </fieldset>
     </RecordingContext.Provider>
     {submitError && <div className="pte-notice" role="alert">{submitError}</div>}
-    {!submitted && <button type="button" onClick={() => void handleSubmit()} disabled={submitting} className="pte-button primary"><Send size={16} />{submitting ? '正在提交并评分…' : '提交作答'}</button>}
+    {!submitted && <button type="button" onClick={() => void handleSubmit()} disabled={submitting} className="pte-button primary"><Send size={16} />{unverifiedSource ? submitting ? '正在完成…' : '完成自练' : submitting ? '正在提交并评分…' : '提交作答'}</button>}
     {submitted && <div className="space-y-5" aria-live="polite">
-      <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />
+      {unverifiedSource ? <div className="pte-notice" role="status">原资料尚未校对；本次仅供自主对照，不生成分数或练习记录。用时 {Math.round(finalDurationSeconds)} 秒。</div> : <ReportCard meta={meta} dimensions={dimensions} durationSeconds={finalDurationSeconds} />}
       {reviewAnswer && (item.taskType === 'speaking-read-aloud' || item.taskType === 'speaking-repeat-sentence') && 'recognizedTranscript' in reviewAnswer
         ? <PronunciationReview referenceText={item.text} transcript={reviewAnswer.recognizedTranscript} audioBlob={reviewAnswer.audioBlob} />
         : reviewAnswer && <AnswerReview item={item} answer={reviewAnswer} />}
@@ -185,7 +204,7 @@ export default function PracticeSession({
         {!hideCommentThread && <button className="pte-button" disabled={submitting} onClick={retry}><RotateCcw size={16} />再练一次</button>}
         <button className="pte-button" disabled={submitting} onClick={onExit}>{exitLabel}</button>
       </div>
-      {!hideCommentThread && <CommentThread itemId={itemId} taskType={taskType} userId={userId} />}
+      {!hideCommentThread && !unverifiedSource && <CommentThread itemId={itemId} taskType={taskType} userId={userId} />}
     </div>}
   </div>
 }
